@@ -27,6 +27,43 @@ let settings = {
   removeDuplicates: true // Remove duplicate URLs by default
 };
 
+// Theme management functions - defined early
+function initializeTheme() {
+  // Load saved theme or use system default
+  chrome.storage.local.get(['theme'], (result) => {
+    const savedTheme = result.theme || 'system';
+    applyTheme(savedTheme);
+    updateThemeButtons(savedTheme);
+  });
+}
+
+function setTheme(theme) {
+  console.log('setTheme called with:', theme);
+  applyTheme(theme);
+  updateThemeButtons(theme);
+  chrome.storage.local.set({ theme });
+}
+
+function applyTheme(theme) {
+  if (theme === 'system') {
+    // Remove manual theme override
+    document.body.removeAttribute('data-theme');
+  } else {
+    // Apply manual theme
+    document.body.setAttribute('data-theme', theme);
+  }
+}
+
+function updateThemeButtons(activeTheme) {
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    if (btn.dataset.theme === activeTheme) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('Popup loaded, initializing...');
   
@@ -152,7 +189,11 @@ function setupEventListeners() {
   
   // Theme switcher buttons
   document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+    console.log('Adding theme listener to button:', btn.dataset.theme);
+    btn.addEventListener('click', () => {
+      console.log('Theme button clicked:', btn.dataset.theme);
+      setTheme(btn.dataset.theme);
+    });
   });
   
   // Duplicate removal checkbox
@@ -1748,42 +1789,6 @@ function applySearchFilter() {
   if (searchQuery) {
     showStatus(`Found ${visibleCount} tabs matching "${searchQuery}"`, 'success');
   }
-}
-
-// Theme management functions
-function initializeTheme() {
-  // Load saved theme or use system default
-  chrome.storage.local.get(['theme'], (result) => {
-    const savedTheme = result.theme || 'system';
-    applyTheme(savedTheme);
-    updateThemeButtons(savedTheme);
-  });
-}
-
-function setTheme(theme) {
-  applyTheme(theme);
-  updateThemeButtons(theme);
-  chrome.storage.local.set({ theme });
-}
-
-function applyTheme(theme) {
-  if (theme === 'system') {
-    // Remove manual theme override
-    document.body.removeAttribute('data-theme');
-  } else {
-    // Apply manual theme
-    document.body.setAttribute('data-theme', theme);
-  }
-}
-
-function updateThemeButtons(activeTheme) {
-  document.querySelectorAll('.theme-btn').forEach(btn => {
-    if (btn.dataset.theme === activeTheme) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
 }
 
 // Clear popup state on window unload
