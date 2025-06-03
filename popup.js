@@ -1265,7 +1265,7 @@ async function saveTabs(closeAfterSave) {
       // Show option to view saved tabs with info about excluded tabs
       const excludedCount = categorizedTabs[1].length;
       const savedCount = categorizedTabs[2].length + categorizedTabs[3].length;
-      setTimeout(() => {
+      setTimeout(async () => {
         const message = excludedCount > 0 
           ? `Saved ${savedCount} tabs! (${excludedCount} "can be closed" tabs were not saved)\n\nView saved collections?`
           : `Saved ${savedCount} tabs!\n\nView saved collections?`;
