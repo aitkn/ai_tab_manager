@@ -27,6 +27,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return false;
   }
   
+  // Handle opening multiple tabs
+  if (request.action === 'openMultipleTabs') {
+    const { urls } = request.data;
+    console.log('Opening', urls.length, 'tabs in background');
+    
+    // Open tabs with delay to prevent browser overload
+    urls.forEach((url, index) => {
+      setTimeout(() => {
+        chrome.tabs.create({ url });
+      }, index * 100); // 100ms delay between each tab
+    });
+    
+    sendResponse({ success: true, count: urls.length });
+    return false;
+  }
+  
   if (request.action === 'categorizeTabs') {
     handleCategorizeTabs(request.data)
       .then(result => {

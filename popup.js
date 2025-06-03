@@ -890,7 +890,7 @@ function onGroupingChange(e) {
   displayTabs(isViewingSaved);
 }
 
-function openAllTabsInGroup(tabs) {
+async function openAllTabsInGroup(tabs) {
   if (tabs.length === 0) return;
   
   // Confirm if opening many tabs
@@ -900,15 +900,21 @@ function openAllTabsInGroup(tabs) {
     }
   }
   
-  // Open all tabs
-  tabs.forEach((tab, index) => {
-    // Delay opening to prevent browser overload
-    setTimeout(() => {
-      chrome.tabs.create({ url: tab.url });
-    }, index * 100); // 100ms delay between each tab
-  });
-  
-  showStatus(`Opening ${tabs.length} tabs...`, 'success');
+  try {
+    // Use background script to open tabs (won't be interrupted when popup closes)
+    const urls = tabs.map(tab => tab.url);
+    const response = await chrome.runtime.sendMessage({
+      action: 'openMultipleTabs',
+      data: { urls }
+    });
+    
+    if (response && response.success) {
+      showStatus(`Opening ${tabs.length} tabs...`, 'success');
+    }
+  } catch (error) {
+    console.error('Error opening tabs:', error);
+    showStatus('Error opening tabs', 'error');
+  }
 }
 
 function createTabElement(tab, category, isFromSaved = false) {
@@ -1254,7 +1260,7 @@ function openTab(url) {
 }
 
 // Open all tabs in a category
-function openAllTabsInCategory(category) {
+async function openAllTabsInCategory(category) {
   const tabs = categorizedTabs[category];
   if (tabs.length === 0) return;
   
@@ -1265,15 +1271,21 @@ function openAllTabsInCategory(category) {
     }
   }
   
-  // Open all tabs
-  tabs.forEach((tab, index) => {
-    // Delay opening to prevent browser overload
-    setTimeout(() => {
-      chrome.tabs.create({ url: tab.url });
-    }, index * 100); // 100ms delay between each tab
-  });
-  
-  showStatus(`Opening ${tabs.length} tabs...`, 'success');
+  try {
+    // Use background script to open tabs (won't be interrupted when popup closes)
+    const urls = tabs.map(tab => tab.url);
+    const response = await chrome.runtime.sendMessage({
+      action: 'openMultipleTabs',
+      data: { urls }
+    });
+    
+    if (response && response.success) {
+      showStatus(`Opening ${tabs.length} tabs...`, 'success');
+    }
+  } catch (error) {
+    console.error('Error opening tabs:', error);
+    showStatus('Error opening tabs', 'error');
+  }
 }
 
 // Show saved tabs from database
