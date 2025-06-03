@@ -130,6 +130,28 @@ The extension supports three theme modes:
 
 ## Development
 
+### Updating the Default Prompt
+
+When you need to update the default categorization prompt:
+
+1. Update the prompt in `config.js`:
+   ```javascript
+   DEFAULT_PROMPT: `Your new prompt here...`
+   ```
+
+2. **Important**: Increment the `PROMPT_VERSION`:
+   ```javascript
+   PROMPT_VERSION: 2, // Increment this number
+   ```
+
+3. Users will automatically get the new default prompt when they update the extension, unless they have customized their prompt.
+
+### How Prompt Updates Work
+
+- If a user has **not** customized their prompt: They automatically get the new default
+- If a user **has** customized their prompt: They keep their custom version
+- Users can always click "Reset to Default" to get the latest default prompt
+
 ### Technologies Used
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
 - **Storage**: IndexedDB for saved tabs, Chrome Storage API for settings

@@ -72,6 +72,9 @@ const CONFIG = {
     'github.com'
   ],
   
+  // Prompt versioning - increment this when you update the default prompt
+  PROMPT_VERSION: 1,
+  
   // Default categorization prompt
   DEFAULT_PROMPT: `You are a tab categorization assistant. Categorize the following browser tabs into exactly 3 categories:
 

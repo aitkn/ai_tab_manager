@@ -13,7 +13,9 @@ let settings = {
   model: CONFIG.DEFAULT_MODEL,
   apiKeys: {},
   selectedModels: {}, // Store selected model per provider
-  customPrompt: CONFIG.DEFAULT_PROMPT // Store custom prompt, default to CONFIG prompt
+  customPrompt: CONFIG.DEFAULT_PROMPT, // Store custom prompt, default to CONFIG prompt
+  promptVersion: CONFIG.PROMPT_VERSION, // Track prompt version
+  isPromptCustomized: false // Track if user has customized the prompt
 };
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -34,6 +36,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     const stored = await chrome.storage.local.get(['settings']);
     if (stored.settings) {
       settings = { ...settings, ...stored.settings };
+      
+      // Check if default prompt has been updated
+      if (!settings.isPromptCustomized && settings.promptVersion < CONFIG.PROMPT_VERSION) {
+        console.log('Updating to new default prompt (version', CONFIG.PROMPT_VERSION, ')');
+        settings.customPrompt = CONFIG.DEFAULT_PROMPT;
+        settings.promptVersion = CONFIG.PROMPT_VERSION;
+        await saveSettings();
+      }
     }
     console.log('Loaded settings:', settings);
     
@@ -1199,12 +1209,16 @@ function showStatus(message, type) {
 
 function onPromptChange(e) {
   settings.customPrompt = e.target.value;
+  // Mark as customized if different from default
+  settings.isPromptCustomized = (e.target.value !== CONFIG.DEFAULT_PROMPT && e.target.value !== '');
   saveSettings();
   updatePromptStatus();
 }
 
 function resetPrompt() {
   settings.customPrompt = CONFIG.DEFAULT_PROMPT;
+  settings.isPromptCustomized = false;
+  settings.promptVersion = CONFIG.PROMPT_VERSION;
   document.getElementById('promptTextarea').value = CONFIG.DEFAULT_PROMPT;
   saveSettings();
   updatePromptStatus();
@@ -1219,12 +1233,16 @@ function updatePromptStatus() {
   const currentPrompt = settings.customPrompt || '';
   const isDefault = currentPrompt === CONFIG.DEFAULT_PROMPT || currentPrompt === '';
   
-  if (isDefault) {
-    promptStatus.textContent = '(Using default prompt)';
+  if (isDefault && !settings.isPromptCustomized) {
+    promptStatus.textContent = `(Using default prompt v${CONFIG.PROMPT_VERSION})`;
     promptStatus.style.color = 'var(--text-muted)';
-  } else {
+  } else if (settings.isPromptCustomized) {
     promptStatus.textContent = '(Using custom prompt)';
     promptStatus.style.color = 'var(--warning-color)';
+  } else {
+    // Edge case: prompt matches default but was previously customized
+    promptStatus.textContent = '(Using default prompt)';
+    promptStatus.style.color = 'var(--text-muted)';
   }
 }
 
