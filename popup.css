@@ -975,9 +975,16 @@ input[type="checkbox"] {
 }
 
 /* Saved tab specific styles */
+#savedTabsContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 #savedContent {
   flex: 1;
   overflow-y: auto;
+  padding: var(--spacing-sm);
 }
 
 #savedContent .grouping-view {

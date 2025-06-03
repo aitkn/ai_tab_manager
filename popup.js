@@ -100,16 +100,6 @@ document.addEventListener('DOMContentLoaded', async function() {
       switchToTab(stored.popupState.activeTab);
     }
     
-    // Theme switcher buttons
-    document.querySelectorAll('.theme-btn').forEach(btn => {
-      btn.addEventListener('click', () => setTheme(btn.dataset.theme));
-    });
-    
-    // Duplicate removal checkbox
-    document.getElementById('removeDuplicatesCheckbox').addEventListener('change', (e) => {
-      settings.removeDuplicates = e.target.checked;
-      saveSettings();
-    });
     
     // Initialize settings UI
     initializeSettingsUI();
@@ -159,6 +149,17 @@ function setupEventListeners() {
   if (clearSavedSearchBtn) {
     clearSavedSearchBtn.addEventListener('click', clearSavedSearch);
   }
+  
+  // Theme switcher buttons
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+  });
+  
+  // Duplicate removal checkbox
+  document.getElementById('removeDuplicatesCheckbox').addEventListener('change', (e) => {
+    settings.removeDuplicates = e.target.checked;
+    saveSettings();
+  });
 }
 
 function initializeTabNavigation() {
@@ -1636,9 +1637,24 @@ async function showSavedTabsContent() {
       categoryView.appendChild(section);
     });
     
-    savedContent.appendChild(categoryView);
-    
-    showStatus(`Viewing ${allSavedTabs.length} saved tabs`, 'success');
+    if (allSavedTabs.length === 0) {
+      // Show empty state message
+      const emptyMessage = document.createElement('div');
+      emptyMessage.style.textAlign = 'center';
+      emptyMessage.style.padding = '40px 20px';
+      emptyMessage.style.color = 'var(--text-secondary)';
+      emptyMessage.innerHTML = `
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 16px; display: block; opacity: 0.5;">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <h3 style="margin: 0 0 8px 0; font-weight: 500;">No saved tabs yet</h3>
+        <p style="margin: 0; font-size: 14px;">Categorize your tabs and save them to view here</p>
+      `;
+      savedContent.appendChild(emptyMessage);
+    } else {
+      savedContent.appendChild(categoryView);
+      showStatus(`Viewing ${allSavedTabs.length} saved tabs`, 'success');
+    }
     
   } catch (error) {
     showStatus('Error loading saved tabs: ' + error.message, 'error');
