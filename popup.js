@@ -891,6 +891,8 @@ function onGroupingChange(e) {
 }
 
 async function openAllTabsInGroup(tabs) {
+  console.log('openAllTabsInGroup called:', { tabCount: tabs.length });
+  
   if (tabs.length === 0) return;
   
   // Confirm if opening many tabs
@@ -902,18 +904,44 @@ async function openAllTabsInGroup(tabs) {
   
   try {
     // Use background script to open tabs (won't be interrupted when popup closes)
-    const urls = tabs.map(tab => tab.url);
-    const response = await chrome.runtime.sendMessage({
-      action: 'openMultipleTabs',
-      data: { urls }
-    });
+    const urls = tabs.map(tab => tab.url).filter(url => url && url.length > 0);
+    console.log('URLs to open:', urls);
     
-    if (response && response.success) {
-      showStatus(`Opening ${tabs.length} tabs...`, 'success');
+    if (urls.length === 0) {
+      showStatus('No valid URLs to open', 'warning');
+      return;
     }
+    
+    // Try to use background script first
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'openMultipleTabs',
+        data: { urls }
+      });
+      
+      console.log('Background script response:', response);
+      
+      if (response && response.success) {
+        showStatus(`Opening ${urls.length} tabs...`, 'success');
+        return;
+      }
+    } catch (bgError) {
+      console.warn('Background script communication failed:', bgError);
+    }
+    
+    // Fallback: Open tabs directly (at least the first one will open)
+    console.log('Using fallback method to open tabs');
+    urls.forEach((url, index) => {
+      chrome.tabs.create({ url }, (tab) => {
+        if (chrome.runtime.lastError) {
+          console.error('Error opening tab:', chrome.runtime.lastError);
+        }
+      });
+    });
+    showStatus(`Opening ${urls.length} tabs...`, 'success');
   } catch (error) {
     console.error('Error opening tabs:', error);
-    showStatus('Error opening tabs', 'error');
+    showStatus('Error opening tabs: ' + error.message, 'error');
   }
 }
 
@@ -1262,6 +1290,8 @@ function openTab(url) {
 // Open all tabs in a category
 async function openAllTabsInCategory(category) {
   const tabs = categorizedTabs[category];
+  console.log('openAllTabsInCategory called:', { category, tabCount: tabs.length });
+  
   if (tabs.length === 0) return;
   
   // Confirm if opening many tabs
@@ -1273,18 +1303,44 @@ async function openAllTabsInCategory(category) {
   
   try {
     // Use background script to open tabs (won't be interrupted when popup closes)
-    const urls = tabs.map(tab => tab.url);
-    const response = await chrome.runtime.sendMessage({
-      action: 'openMultipleTabs',
-      data: { urls }
-    });
+    const urls = tabs.map(tab => tab.url).filter(url => url && url.length > 0);
+    console.log('URLs to open:', urls);
     
-    if (response && response.success) {
-      showStatus(`Opening ${tabs.length} tabs...`, 'success');
+    if (urls.length === 0) {
+      showStatus('No valid URLs to open', 'warning');
+      return;
     }
+    
+    // Try to use background script first
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'openMultipleTabs',
+        data: { urls }
+      });
+      
+      console.log('Background script response:', response);
+      
+      if (response && response.success) {
+        showStatus(`Opening ${urls.length} tabs...`, 'success');
+        return;
+      }
+    } catch (bgError) {
+      console.warn('Background script communication failed:', bgError);
+    }
+    
+    // Fallback: Open tabs directly (at least the first one will open)
+    console.log('Using fallback method to open tabs');
+    urls.forEach((url, index) => {
+      chrome.tabs.create({ url }, (tab) => {
+        if (chrome.runtime.lastError) {
+          console.error('Error opening tab:', chrome.runtime.lastError);
+        }
+      });
+    });
+    showStatus(`Opening ${urls.length} tabs...`, 'success');
   } catch (error) {
     console.error('Error opening tabs:', error);
-    showStatus('Error opening tabs', 'error');
+    showStatus('Error opening tabs: ' + error.message, 'error');
   }
 }
 

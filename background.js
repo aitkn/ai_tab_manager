@@ -30,16 +30,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Handle opening multiple tabs
   if (request.action === 'openMultipleTabs') {
     const { urls } = request.data;
-    console.log('Opening', urls.length, 'tabs in background');
+    console.log('Background: Opening', urls.length, 'tabs');
+    console.log('URLs:', urls);
     
-    // Open tabs with delay to prevent browser overload
-    urls.forEach((url, index) => {
-      setTimeout(() => {
-        chrome.tabs.create({ url });
-      }, index * 100); // 100ms delay between each tab
-    });
-    
-    sendResponse({ success: true, count: urls.length });
+    try {
+      // Open tabs with delay to prevent browser overload
+      urls.forEach((url, index) => {
+        setTimeout(() => {
+          console.log('Opening tab', index + 1, 'of', urls.length, ':', url);
+          chrome.tabs.create({ url }, (tab) => {
+            if (chrome.runtime.lastError) {
+              console.error('Error opening tab:', chrome.runtime.lastError);
+            } else {
+              console.log('Successfully opened tab:', tab.id);
+            }
+          });
+        }, index * 100); // 100ms delay between each tab
+      });
+      
+      sendResponse({ success: true, count: urls.length });
+    } catch (error) {
+      console.error('Error in openMultipleTabs:', error);
+      sendResponse({ success: false, error: error.message });
+    }
     return false;
   }
   
