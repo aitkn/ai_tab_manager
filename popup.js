@@ -302,7 +302,19 @@ async function handleCategorize() {
     
     // Categorize tabs using selected LLM
     const categorized = await categorizeTabs(tabsData, apiKey, settings.provider, settings.model, settings.customPrompt);
-    categorizedTabs = categorized;
+    
+    // Ensure categorized has all required categories
+    categorizedTabs = {
+      1: categorized[1] || [],
+      2: categorized[2] || [],
+      3: categorized[3] || []
+    };
+    
+    console.log('Categorized tabs:', {
+      category1: categorizedTabs[1].length,
+      category2: categorizedTabs[2].length,
+      category3: categorizedTabs[3].length
+    });
     
     // Display categorized tabs
     displayTabs();
@@ -464,9 +476,20 @@ function displayCategoryView(isFromSaved = false) {
   // Display each category
   [3, 2, 1].forEach(category => {
     const section = document.getElementById(`category${category}`);
+    if (!section) {
+      console.error(`Category section not found: category${category}`);
+      return;
+    }
+    
     const listContainer = section.querySelector('.tabs-list');
     const countSpan = section.querySelector('.count');
-    const tabs = categorizedTabs[category];
+    
+    if (!listContainer || !countSpan) {
+      console.error(`Missing elements in category ${category}:`, { listContainer, countSpan });
+      return;
+    }
+    
+    const tabs = categorizedTabs[category] || [];
     
     countSpan.textContent = tabs.length;
     listContainer.innerHTML = '';
@@ -1148,6 +1171,10 @@ function downloadFile(filename, content) {
 
 function showStatus(message, type) {
   const statusDiv = document.getElementById('status');
+  if (!statusDiv) {
+    console.error('Status div not found');
+    return;
+  }
   statusDiv.textContent = message;
   statusDiv.className = 'status ' + type;
 }
@@ -1351,22 +1378,27 @@ function updateThemeButtons(activeTheme) {
 function checkExtensionIntegrity() {
   // This ID will be set when published to Chrome Web Store
   const OFFICIAL_IDS = [
-    'development', // Allow development mode
     // Add your official Chrome Web Store ID here when published
+    // Example: 'abcdefghijklmnopqrstuvwxyzabcdef'
   ];
   
   const currentId = chrome.runtime.id;
-  const isOfficial = OFFICIAL_IDS.includes(currentId) || currentId.length !== 32;
   
-  if (!isOfficial) {
-    console.warn('Unofficial version detected');
-    // Show warning in UI
-    setTimeout(() => {
-      const status = document.getElementById('status');
-      if (status) {
-        status.innerHTML = '⚠️ Unofficial version! Get the official extension from <a href="https://github.com/aitkn/ai_tab_manager" target="_blank">GitHub</a>';
-        status.className = 'status error';
-      }
-    }, 2000);
-  }
+  // Check if running in development mode
+  chrome.management.getSelf((extensionInfo) => {
+    const isDevelopment = extensionInfo.installType === 'development';
+    const isOfficial = OFFICIAL_IDS.includes(currentId) || isDevelopment;
+    
+    if (!isOfficial && OFFICIAL_IDS.length > 0) {
+      console.warn('Unofficial version detected');
+      // Show warning in UI
+      setTimeout(() => {
+        const status = document.getElementById('status');
+        if (status) {
+          status.innerHTML = '⚠️ Unofficial version! Get the official extension from <a href="https://github.com/aitkn/ai_tab_manager" target="_blank">GitHub</a>';
+          status.className = 'status error';
+        }
+      }, 2000);
+    }
+  });
 }
