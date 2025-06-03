@@ -14,6 +14,7 @@ let popupState = {
   searchQuery: '',
   categorizedTabs: null
 };
+let urlToDuplicateIds = {}; // Maps URLs to all tab IDs with that URL
 let settings = {
   provider: CONFIG.DEFAULT_PROVIDER,
   model: CONFIG.DEFAULT_MODEL,
@@ -355,8 +356,21 @@ async function handleCategorize() {
     const tabs = await chrome.tabs.query({});
     console.log('Found', tabs.length, 'tabs');
     
-    // Remove duplicate URLs if enabled
+    // Track duplicate URLs and remove duplicates if enabled
+    urlToDuplicateIds = {}; // Reset the mapping
     let tabsToProcess = tabs;
+    
+    // Always track all tabs by URL (for closing duplicates)
+    tabs.forEach(tab => {
+      if (tab.url) {
+        if (!urlToDuplicateIds[tab.url]) {
+          urlToDuplicateIds[tab.url] = [];
+        }
+        urlToDuplicateIds[tab.url].push(tab.id);
+      }
+    });
+    
+    // Remove duplicates for display if enabled
     if (settings.removeDuplicates !== false) {
       const urlToTab = new Map();
       tabs.forEach(tab => {
@@ -1132,7 +1146,17 @@ function createTabElement(tab, category, isFromSaved = false) {
 
 async function closeTab(tabId, category) {
   try {
-    await chrome.tabs.remove(tabId);
+    // Find the tab to get its URL
+    const tab = categorizedTabs[category].find(t => t.id === tabId);
+    if (!tab) {
+      throw new Error('Tab not found');
+    }
+    
+    // Get all duplicate tab IDs for this URL
+    const tabIdsToClose = urlToDuplicateIds[tab.url] || [tabId];
+    
+    // Close all tabs with the same URL
+    await chrome.tabs.remove(tabIdsToClose);
     
     // Remove from categorized tabs
     categorizedTabs[category] = categorizedTabs[category].filter(tab => tab.id !== tabId);
@@ -1140,7 +1164,7 @@ async function closeTab(tabId, category) {
     // Update display
     displayTabs();
     
-    showStatus('Tab closed', 'success');
+    showStatus(`Tab${tabIdsToClose.length > 1 ? 's' : ''} closed`, 'success');
   } catch (error) {
     showStatus('Error closing tab: ' + error.message, 'error');
   }
@@ -1151,16 +1175,23 @@ async function closeAllInCategory(category) {
   const tabs = categorizedTabs[category];
   if (tabs.length === 0) return;
   
-  if (!confirm(`Close ${tabs.length} tabs?`)) {
+  // Collect all tab IDs including duplicates
+  const allTabIds = new Set();
+  tabs.forEach(tab => {
+    const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
+    duplicateIds.forEach(id => allTabIds.add(id));
+  });
+  
+  const totalCount = allTabIds.size;
+  if (!confirm(`Close ${totalCount} tab${totalCount > 1 ? 's' : ''}? (includes ${totalCount - tabs.length} duplicate${totalCount - tabs.length !== 1 ? 's' : ''})`)) {
     return;
   }
   
   try {
-    const tabIds = tabs.map(t => t.id);
-    await chrome.tabs.remove(tabIds);
+    await chrome.tabs.remove(Array.from(allTabIds));
     categorizedTabs[category] = [];
     displayTabs();
-    showStatus(`Closed ${tabs.length} tabs`, 'success');
+    showStatus(`Closed ${totalCount} tab${totalCount > 1 ? 's' : ''}`, 'success');
   } catch (error) {
     showStatus('Error closing tabs: ' + error.message, 'error');
   }
@@ -1182,13 +1213,20 @@ async function saveAndCloseCategory(category) {
       model: settings.model
     });
     
-    // Close tabs
-    const tabIds = tabs.map(t => t.id);
-    await chrome.tabs.remove(tabIds);
+    // Collect all tab IDs including duplicates
+    const allTabIds = new Set();
+    tabs.forEach(tab => {
+      const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
+      duplicateIds.forEach(id => allTabIds.add(id));
+    });
+    
+    // Close all tabs including duplicates
+    await chrome.tabs.remove(Array.from(allTabIds));
     categorizedTabs[category] = [];
     displayTabs();
     
-    showStatus(`Saved and closed ${tabs.length} tabs`, 'success');
+    const totalCount = allTabIds.size;
+    showStatus(`Saved and closed ${totalCount} tab${totalCount > 1 ? 's' : ''}`, 'success');
   } catch (error) {
     showStatus('Error saving tabs: ' + error.message, 'error');
   }
@@ -1214,13 +1252,20 @@ async function saveAndCloseAll() {
       });
     }
     
-    // Close all tabs
-    if (tabsToClose.length > 0) {
-      const tabIds = tabsToClose.map(t => t.id);
-      await chrome.tabs.remove(tabIds);
+    // Collect all tab IDs including duplicates
+    const allTabIds = new Set();
+    tabsToClose.forEach(tab => {
+      const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
+      duplicateIds.forEach(id => allTabIds.add(id));
+    });
+    
+    // Close all tabs including duplicates
+    if (allTabIds.size > 0) {
+      await chrome.tabs.remove(Array.from(allTabIds));
     }
     
-    const message = `Saved ${tabsToSave.length} tabs, closed ${tabsToClose.length} tabs`;
+    const totalClosed = allTabIds.size;
+    const message = `Saved ${tabsToSave.length} tabs, closed ${totalClosed} tab${totalClosed > 1 ? 's' : ''}`;
     showStatus(message, 'success');
     
     // Clear categorized tabs
@@ -1251,16 +1296,23 @@ async function saveTabs(closeAfterSave) {
     console.log('Saved to database with ID:', savedId);
     
     if (closeAfterSave) {
-      // Close tabs from all categories
-      const tabIds = [
-        ...categorizedTabs[1].map(t => t.id),
-        ...categorizedTabs[2].map(t => t.id),
-        ...categorizedTabs[3].map(t => t.id)
+      // Collect all tab IDs including duplicates
+      const allTabIds = new Set();
+      const allTabs = [
+        ...categorizedTabs[1],
+        ...categorizedTabs[2],
+        ...categorizedTabs[3]
       ];
       
-      await chrome.tabs.remove(tabIds);
+      allTabs.forEach(tab => {
+        const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
+        duplicateIds.forEach(id => allTabIds.add(id));
+      });
       
-      showStatus(`Saved to database and closed ${tabIds.length} tabs`, 'success');
+      await chrome.tabs.remove(Array.from(allTabIds));
+      
+      const totalClosed = allTabIds.size;
+      showStatus(`Saved to database and closed ${totalClosed} tab${totalClosed > 1 ? 's' : ''}`, 'success');
       
       // Show option to view saved tabs with info about excluded tabs
       const excludedCount = categorizedTabs[1].length;
