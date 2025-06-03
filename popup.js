@@ -1,3 +1,9 @@
+/*
+ * AI Tab Manager - Copyright (c) 2024 AI Tech Knowledge LLC
+ * Proprietary License - See LICENSE file
+ * support@aitkn.com
+ */
+
 let categorizedTabs = { 1: [], 2: [], 3: [] };
 let currentGrouping = 'category';
 let isViewingSaved = false;
@@ -14,6 +20,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   console.log('Popup loaded, initializing...');
   
   try {
+    // Check for unauthorized copies
+    checkExtensionIntegrity();
+    
     // Initialize theme
     initializeTheme();
     
@@ -1336,4 +1345,28 @@ function updateThemeButtons(activeTheme) {
       btn.classList.remove('active');
     }
   });
+}
+
+// Check extension integrity
+function checkExtensionIntegrity() {
+  // This ID will be set when published to Chrome Web Store
+  const OFFICIAL_IDS = [
+    'development', // Allow development mode
+    // Add your official Chrome Web Store ID here when published
+  ];
+  
+  const currentId = chrome.runtime.id;
+  const isOfficial = OFFICIAL_IDS.includes(currentId) || currentId.length !== 32;
+  
+  if (!isOfficial) {
+    console.warn('Unofficial version detected');
+    // Show warning in UI
+    setTimeout(() => {
+      const status = document.getElementById('status');
+      if (status) {
+        status.innerHTML = '⚠️ Unofficial version! Get the official extension from <a href="https://github.com/aitkn/ai_tab_manager" target="_blank">GitHub</a>';
+        status.className = 'status error';
+      }
+    }, 2000);
+  }
 }

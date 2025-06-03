@@ -1,3 +1,9 @@
+/*
+ * AI Tab Manager - Copyright (c) 2024 AI Tech Knowledge LLC
+ * Proprietary License - See LICENSE file
+ * support@aitkn.com
+ */
+
 // IndexedDB database for storing categorized tabs - Version 2
 // This version stores tabs individually for better flexibility
 

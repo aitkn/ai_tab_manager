@@ -1,3 +1,9 @@
+/*
+ * AI Tab Manager - Copyright (c) 2024 AI Tech Knowledge LLC
+ * Proprietary License - See LICENSE file
+ * support@aitkn.com
+ */
+
 // Configuration for the extension
 const CONFIG = {
   // LLM Provider configurations
