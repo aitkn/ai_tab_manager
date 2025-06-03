@@ -321,7 +321,7 @@ async function handleCategorize() {
     
     // Show action buttons
     document.querySelector('.action-buttons').style.display = 'flex';
-    tabsContainer.style.display = 'block';
+    document.getElementById('tabsContainer').style.display = 'block';
     
     // Remove any existing back button
     const existingBackBtn = document.getElementById('backToSaved');
@@ -331,7 +331,10 @@ async function handleCategorize() {
     
     // Reset grouping to category
     currentGrouping = 'category';
-    document.getElementById('groupingSelect').value = 'category';
+    const groupingSelect = document.getElementById('groupingSelect');
+    if (groupingSelect) {
+      groupingSelect.value = 'category';
+    }
     
     showStatus(`Categorized ${tabs.length} tabs`, 'success');
   } catch (error) {
@@ -451,16 +454,24 @@ function fallbackCategorization(tabs) {
 }
 
 function displayTabs(isFromSaved = false) {
-  isViewingSaved = isFromSaved;
-  
-  // Show grouping controls for saved tabs
-  document.getElementById('groupingControls').style.display = isFromSaved ? 'flex' : 'none';
-  
-  // Display based on current grouping
-  if (currentGrouping === 'category') {
-    displayCategoryView(isFromSaved);
-  } else {
-    displayGroupedView(currentGrouping, isFromSaved);
+  try {
+    isViewingSaved = isFromSaved;
+    
+    // Show grouping controls for saved tabs
+    const groupingControls = document.getElementById('groupingControls');
+    if (groupingControls) {
+      groupingControls.style.display = isFromSaved ? 'flex' : 'none';
+    }
+    
+    // Display based on current grouping
+    if (currentGrouping === 'category') {
+      displayCategoryView(isFromSaved);
+    } else {
+      displayGroupedView(currentGrouping, isFromSaved);
+    }
+  } catch (error) {
+    console.error('Error in displayTabs:', error);
+    throw error;
   }
 }
 
