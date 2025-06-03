@@ -225,6 +225,22 @@ body[data-theme="light"] {
   /* Force light theme colors (already defined in :root) */
 }
 
+/* Ensure scrollbar respects theme */
+body[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--md-sys-color-surface);
+}
+
+body[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-outline);
+}
+
+/* Fix input placeholder colors for dark theme */
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.6;
+}
+
 /* Base styles */
 * {
   box-sizing: border-box;
@@ -595,7 +611,7 @@ button svg {
 }
 
 .clear-search-btn:hover {
-  background-color: rgba(var(--md-sys-color-on-surface-variant), var(--md-sys-state-hover-opacity));
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 /* Tabs container */
@@ -1036,7 +1052,7 @@ button svg {
 }
 
 .theme-btn:hover {
-  background-color: rgba(var(--md-sys-color-on-surface), 0.08);
+  background-color: var(--md-sys-color-surface-container-high);
 }
 
 .theme-btn.active {
@@ -1051,7 +1067,8 @@ button svg {
   left: 50%;
   transform: translate(-50%, -50%);
   padding: var(--md-spacing-6);
-  background-color: var(--md-sys-color-error-container);
+  background-color: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline);
   border-radius: var(--md-sys-shape-corner-large);
   text-align: center;
   z-index: 200;
@@ -1062,7 +1079,7 @@ button svg {
 
 .api-key-prompt p {
   margin: 0 0 var(--md-spacing-4) 0;
-  color: var(--md-sys-color-on-error-container);
+  color: var(--md-sys-color-on-surface);
   font-size: var(--md-sys-typescale-body-large);
 }
 
