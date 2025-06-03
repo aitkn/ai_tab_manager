@@ -329,10 +329,6 @@ async function handleCategorize() {
       existingBackBtn.remove();
     }
     
-    // Reset button text
-    document.getElementById('saveBtn').textContent = 'Save Categories';
-    document.getElementById('saveAndCloseBtn').style.display = 'block';
-    
     // Reset grouping to category
     currentGrouping = 'category';
     document.getElementById('groupingSelect').value = 'category';
@@ -1123,7 +1119,9 @@ async function saveTabs(closeAfterSave) {
       // Show quick action to view saved tabs
       setTimeout(() => {
         const status = document.getElementById('status');
-        status.innerHTML = status.textContent + ' <a href="#" onclick="showSavedTabs(); return false;">View saved</a>';
+        if (status && status.textContent) {
+          status.innerHTML = status.textContent + ' <a href="#" onclick="showSavedTabs(); return false;">View saved</a>';
+        }
       }, 100);
     }
   } catch (error) {
