@@ -12,7 +12,8 @@ let popupState = {
   isViewingSaved: false,
   currentGrouping: 'category',
   searchQuery: '',
-  categorizedTabs: null
+  categorizedTabs: null,
+  activeTab: 'categorize' // Track active tab
 };
 let urlToDuplicateIds = {}; // Maps URLs to all tab IDs with that URL
 let settings = {
@@ -89,20 +90,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('Loaded settings:', settings);
     
     // Set up event listeners
-    document.getElementById('categorizeBtn').addEventListener('click', handleCategorize);
-    document.getElementById('saveAndCloseAllBtn').addEventListener('click', () => saveAndCloseAll());
-    document.getElementById('saveApiKeyBtn').addEventListener('click', saveApiKey);
-    document.getElementById('settingsBtn').addEventListener('click', showSettings);
-    document.getElementById('closeSettingsBtn').addEventListener('click', hideSettings);
-    document.getElementById('openSettingsBtn').addEventListener('click', showSettings);
-    document.getElementById('providerSelect').addEventListener('change', onProviderChange);
-    document.getElementById('modelSelect').addEventListener('change', onModelChange);
-    document.getElementById('promptTextarea').addEventListener('input', onPromptChange);
-    document.getElementById('resetPromptBtn').addEventListener('click', resetPrompt);
-    document.getElementById('viewSavedBtn').addEventListener('click', showSavedTabs);
-    document.getElementById('groupingSelect').addEventListener('change', onGroupingChange);
-    document.getElementById('searchInput').addEventListener('input', onSearchInput);
-    document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
+    setupEventListeners();
+    
+    // Initialize tab navigation
+    initializeTabNavigation();
+    
+    // Restore active tab if available
+    if (stored.popupState && stored.popupState.activeTab) {
+      switchToTab(stored.popupState.activeTab);
+    }
     
     // Theme switcher buttons
     document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -137,18 +133,79 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 });
 
+function setupEventListeners() {
+  document.getElementById('categorizeBtn').addEventListener('click', handleCategorize);
+  document.getElementById('saveAndCloseAllBtn').addEventListener('click', () => saveAndCloseAll());
+  document.getElementById('saveApiKeyBtn').addEventListener('click', saveApiKey);
+  document.getElementById('openSettingsBtn').addEventListener('click', () => switchToTab('settings'));
+  document.getElementById('providerSelect').addEventListener('change', onProviderChange);
+  document.getElementById('modelSelect').addEventListener('change', onModelChange);
+  document.getElementById('promptTextarea').addEventListener('input', onPromptChange);
+  document.getElementById('resetPromptBtn').addEventListener('click', resetPrompt);
+  document.getElementById('searchInput').addEventListener('input', onSearchInput);
+  document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
+  
+  // Saved tab controls
+  const savedGroupingSelect = document.getElementById('savedGroupingSelect');
+  const savedSearchInput = document.getElementById('savedSearchInput');
+  const clearSavedSearchBtn = document.getElementById('clearSavedSearchBtn');
+  
+  if (savedGroupingSelect) {
+    savedGroupingSelect.addEventListener('change', onSavedGroupingChange);
+  }
+  if (savedSearchInput) {
+    savedSearchInput.addEventListener('input', onSavedSearchInput);
+  }
+  if (clearSavedSearchBtn) {
+    clearSavedSearchBtn.addEventListener('click', clearSavedSearch);
+  }
+}
+
+function initializeTabNavigation() {
+  // Tab button click handlers
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabName = btn.dataset.tab;
+      switchToTab(tabName);
+    });
+  });
+}
+
+function switchToTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+  
+  // Update tab panes
+  document.querySelectorAll('.tab-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === `${tabName}Tab`);
+  });
+  
+  // Special handling for each tab
+  switch(tabName) {
+    case 'categorize':
+      // Show categorized tabs if available
+      if (categorizedTabs[1].length > 0 || categorizedTabs[2].length > 0 || categorizedTabs[3].length > 0) {
+        document.getElementById('tabsContainer').style.display = 'block';
+      }
+      break;
+    case 'saved':
+      showSavedTabsContent();
+      break;
+    case 'settings':
+      // Hide API key prompt when showing settings
+      document.getElementById('apiKeyPrompt').style.display = 'none';
+      break;
+  }
+  
+  // Update popup state
+  popupState.activeTab = tabName;
+  savePopupState();
+}
+
 function showApiKeyPrompt() {
   document.getElementById('apiKeyPrompt').style.display = 'block';
-}
-
-function showSettings() {
-  document.getElementById('settingsPanel').style.display = 'block';
-  document.getElementById('apiKeyPrompt').style.display = 'none';
-  document.getElementById('tabsContainer').style.display = 'none';
-}
-
-function hideSettings() {
-  document.getElementById('settingsPanel').style.display = 'none';
 }
 
 function initializeSettingsUI() {
@@ -321,7 +378,8 @@ async function savePopupState() {
     isViewingSaved,
     currentGrouping,
     searchQuery,
-    categorizedTabs: isViewingSaved ? null : categorizedTabs
+    categorizedTabs: isViewingSaved ? null : categorizedTabs,
+    activeTab: popupState.activeTab || 'categorize'
   };
   await chrome.storage.local.set({ popupState });
 }
@@ -613,6 +671,13 @@ function displayCategoryView(isFromSaved = false) {
     }
     
     const tabs = categorizedTabs[category] || [];
+    
+    // Hide empty categories
+    if (tabs.length === 0 && !isFromSaved) {
+      section.classList.add('empty');
+    } else {
+      section.classList.remove('empty');
+    }
     
     countSpan.textContent = tabs.length;
     listContainer.innerHTML = '';
@@ -993,11 +1058,10 @@ async function openAllTabsInGroup(tabs) {
   
   if (tabs.length === 0) return;
   
-  // Confirm if opening many tabs
-  if (tabs.length > 10) {
-    if (!confirm(`Open ${tabs.length} tabs? This might slow down your browser.`)) {
-      return;
-    }
+  // Skip if too many tabs (safety limit)
+  if (tabs.length > 50) {
+    showStatus('Too many tabs to open at once (limit: 50)', 'warning');
+    return;
   }
   
   try {
@@ -1093,15 +1157,31 @@ function createTabElement(tab, category, isFromSaved = false) {
     deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
     deleteBtn.title = 'Delete saved tab';
     deleteBtn.onclick = async () => {
-      if (confirm('Delete this saved tab?')) {
-        try {
-          await tabDatabase.deleteSavedTab(tab.id);
-          // Remove from current display
-          div.remove();
-          showStatus('Tab deleted', 'success');
-        } catch (error) {
-          showStatus('Error deleting tab: ' + error.message, 'error');
+      try {
+        await tabDatabase.deleteSavedTab(tab.id);
+        // Remove from current display
+        div.remove();
+        
+        // Update categorized tabs
+        categorizedTabs[category] = categorizedTabs[category].filter(t => t.id !== tab.id);
+        
+        // Check if category is now empty and hide it
+        const categorySection = div.closest('.category-section');
+        if (categorySection) {
+          const remainingTabs = categorySection.querySelectorAll('.tab-item').length - 1; // -1 for the one being removed
+          if (remainingTabs === 0) {
+            categorySection.classList.add('empty');
+          }
+          // Update count
+          const countSpan = categorySection.querySelector('.count');
+          if (countSpan) {
+            countSpan.textContent = remainingTabs;
+          }
         }
+        
+        showStatus('Tab deleted', 'success');
+      } catch (error) {
+        showStatus('Error deleting tab: ' + error.message, 'error');
       }
     };
     div.appendChild(deleteBtn);
@@ -1183,13 +1263,14 @@ async function closeAllInCategory(category) {
   });
   
   const totalCount = allTabIds.size;
-  if (!confirm(`Close ${totalCount} tab${totalCount > 1 ? 's' : ''}? (includes ${totalCount - tabs.length} duplicate${totalCount - tabs.length !== 1 ? 's' : ''})`)) {
-    return;
-  }
   
   try {
     await chrome.tabs.remove(Array.from(allTabIds));
     categorizedTabs[category] = [];
+    
+    // Update popup state
+    await savePopupState();
+    
     displayTabs();
     showStatus(`Closed ${totalCount} tab${totalCount > 1 ? 's' : ''}`, 'success');
   } catch (error) {
@@ -1271,14 +1352,13 @@ async function saveAndCloseAll() {
     // Clear categorized tabs
     categorizedTabs = { 1: [], 2: [], 3: [] };
     
-    // Show option to view saved tabs
+    // Clear popup state since all tabs are closed
+    await chrome.storage.local.remove('popupState');
+    
+    // Switch to saved tab to show the saved tabs
     setTimeout(() => {
-      if (confirm(`${message}\n\nView saved collections?`)) {
-        showSavedTabs();
-      } else {
-        window.close();
-      }
-    }, 1000);
+      switchToTab('saved');
+    }, 500);
   } catch (error) {
     showStatus('Error: ' + error.message, 'error');
   }
@@ -1317,19 +1397,13 @@ async function saveTabs(closeAfterSave) {
       // Show option to view saved tabs with info about excluded tabs
       const excludedCount = categorizedTabs[1].length;
       const savedCount = categorizedTabs[2].length + categorizedTabs[3].length;
-      setTimeout(async () => {
-        const message = excludedCount > 0 
-          ? `Saved ${savedCount} tabs! (${excludedCount} "can be closed" tabs were not saved)\n\nView saved collections?`
-          : `Saved ${savedCount} tabs!\n\nView saved collections?`;
-        
-        if (confirm(message)) {
-          showSavedTabs();
-        } else {
-          // Clear state and close
-          await chrome.storage.local.remove('popupState');
-          window.close();
-        }
-      }, 1000);
+      
+      // Clear popup state and switch to saved tab
+      await chrome.storage.local.remove('popupState');
+      
+      setTimeout(() => {
+        switchToTab('saved');
+      }, 500);
     } else {
       showStatus('Tabs saved to database successfully', 'success');
       
@@ -1447,11 +1521,10 @@ async function openAllTabsInCategory(category) {
   
   if (tabs.length === 0) return;
   
-  // Confirm if opening many tabs
-  if (tabs.length > 10) {
-    if (!confirm(`Open ${tabs.length} tabs? This might slow down your browser.`)) {
-      return;
-    }
+  // Skip if too many tabs (safety limit)
+  if (tabs.length > 50) {
+    showStatus('Too many tabs to open at once (limit: 50)', 'warning');
+    return;
   }
   
   try {
@@ -1497,44 +1570,84 @@ async function openAllTabsInCategory(category) {
   }
 }
 
-// Show saved tabs from database
-async function showSavedTabs(restoringState = false) {
+// Show saved tabs content in the saved tab
+async function showSavedTabsContent() {
   try {
     const allSavedTabs = await tabDatabase.getAllSavedTabs();
     
     // Convert to categorized format for display
-    categorizedTabs = { 1: [], 2: [], 3: [] };
+    const savedCategorizedTabs = { 1: [], 2: [], 3: [] };
     allSavedTabs.forEach(tab => {
-      if (categorizedTabs[tab.category]) {
-        categorizedTabs[tab.category].push(tab);
+      if (savedCategorizedTabs[tab.category]) {
+        savedCategorizedTabs[tab.category].push(tab);
       }
     });
     
-    // Hide other panels
-    document.getElementById('settingsPanel').style.display = 'none';
-    document.getElementById('apiKeyPrompt').style.display = 'none';
+    // Get the saved content container
+    const savedContent = document.getElementById('savedContent');
+    savedContent.innerHTML = '';
     
-    // Show tabs container with grouping controls
-    document.getElementById('tabsContainer').style.display = 'block';
-    document.getElementById('searchControls').style.display = 'flex';
-    document.getElementById('groupingControls').style.display = 'flex';
+    // Create a category view in saved content
+    const categoryView = document.createElement('div');
+    categoryView.className = 'grouping-view';
+    categoryView.id = 'savedCategoryView';
     
-    // Display tabs
-    displayTabs(true);
+    // Display each category
+    [3, 2, 1].forEach(category => {
+      const tabs = savedCategorizedTabs[category] || [];
+      if (tabs.length === 0) return; // Skip empty categories
+      
+      const section = document.createElement('div');
+      section.className = 'category-section';
+      section.id = `savedCategory${category}`;
+      
+      const header = document.createElement('h2');
+      header.className = `category-header ${category === 3 ? 'important' : category === 2 ? 'somewhat-important' : 'not-important'}`;
+      
+      const iconSvg = category === 3 
+        ? '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'
+        : category === 2
+        ? '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>'
+        : '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+      
+      const categoryName = category === 3 ? 'Important Links' : category === 2 ? 'Save for Later' : 'Can Be Closed';
+      header.innerHTML = `${iconSvg} ${categoryName} (<span class="count">${tabs.length}</span>)`;
+      
+      const listContainer = document.createElement('div');
+      listContainer.className = 'tabs-list';
+      
+      // Add open all button
+      if (tabs.length > 0) {
+        const openAllBtn = document.createElement('button');
+        openAllBtn.className = 'open-all-btn';
+        openAllBtn.textContent = `Open All ${tabs.length} tabs`;
+        openAllBtn.onclick = () => openAllTabsInGroup(tabs);
+        listContainer.appendChild(openAllBtn);
+      }
+      
+      // Add tabs
+      tabs.forEach(tab => {
+        const tabElement = createTabElement(tab, category, true);
+        listContainer.appendChild(tabElement);
+      });
+      
+      section.appendChild(header);
+      section.appendChild(listContainer);
+      categoryView.appendChild(section);
+    });
     
-    // Hide main action buttons for saved view
-    document.querySelector('.action-buttons').style.display = 'none';
+    savedContent.appendChild(categoryView);
     
     showStatus(`Viewing ${allSavedTabs.length} saved tabs`, 'success');
-    
-    // Save state unless we're restoring
-    if (!restoringState) {
-      await savePopupState();
-    }
     
   } catch (error) {
     showStatus('Error loading saved tabs: ' + error.message, 'error');
   }
+}
+
+// Legacy function for compatibility
+async function showSavedTabs() {
+  switchToTab('saved');
 }
 
 
@@ -1664,6 +1777,22 @@ window.addEventListener('beforeunload', () => {
     savePopupState();
   }
 });
+
+// Saved tab event handlers
+function onSavedGroupingChange(e) {
+  // TODO: Implement grouping for saved tabs
+  console.log('Saved grouping changed to:', e.target.value);
+}
+
+function onSavedSearchInput(e) {
+  // TODO: Implement search for saved tabs
+  console.log('Saved search query:', e.target.value);
+}
+
+function clearSavedSearch() {
+  document.getElementById('savedSearchInput').value = '';
+  onSavedSearchInput({ target: { value: '' } });
+}
 
 // Check extension integrity
 function checkExtensionIntegrity() {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Smart Tab Manager",
-  "version": "2.0",
+  "name": "AI Tab Manager",
+  "version": "2.1",
   "description": "Categorize and manage tabs using AI",
   "permissions": [
     "tabs",
