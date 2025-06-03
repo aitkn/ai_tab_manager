@@ -83,7 +83,10 @@
       </div>
       
       <div class="setting-group">
-        <label for="promptTextarea">Custom Prompt:</label>
+        <label for="promptTextarea">
+          Custom Prompt:
+          <span id="promptStatus" class="text-muted" style="font-size: 11px; margin-left: 8px;"></span>
+        </label>
         <textarea id="promptTextarea" class="setting-textarea" rows="10" placeholder="Leave empty to use default prompt"></textarea>
         <button id="resetPromptBtn" class="secondary-btn">Reset to Default</button>
       </div>

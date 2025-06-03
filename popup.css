@@ -871,6 +871,12 @@ button svg {
   font-size: 11px;
 }
 
+/* Prompt status indicator */
+#promptStatus {
+  font-weight: normal;
+  transition: color 0.2s ease;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }

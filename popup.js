@@ -112,6 +112,9 @@ function initializeSettingsUI() {
   // Set custom prompt
   const promptTextarea = document.getElementById('promptTextarea');
   promptTextarea.value = settings.customPrompt || CONFIG.DEFAULT_PROMPT;
+  
+  // Update prompt status
+  updatePromptStatus();
 }
 
 async function updateModelDropdown() {
@@ -268,7 +271,13 @@ async function handleCategorize() {
   
   console.log('Using provider:', settings.provider, 'Model:', settings.model);
   console.log('API key:', apiKey.substring(0, 10) + '...');
-  showStatus('Gathering and categorizing tabs...', 'loading');
+  
+  // Check if using custom prompt
+  const isCustomPrompt = settings.customPrompt && settings.customPrompt !== CONFIG.DEFAULT_PROMPT;
+  const statusMessage = isCustomPrompt 
+    ? 'Gathering and categorizing tabs (custom prompt)...' 
+    : 'Gathering and categorizing tabs...';
+  showStatus(statusMessage, 'loading');
   
   try {
     // Get all tabs
@@ -1191,13 +1200,32 @@ function showStatus(message, type) {
 function onPromptChange(e) {
   settings.customPrompt = e.target.value;
   saveSettings();
+  updatePromptStatus();
 }
 
 function resetPrompt() {
   settings.customPrompt = CONFIG.DEFAULT_PROMPT;
   document.getElementById('promptTextarea').value = CONFIG.DEFAULT_PROMPT;
   saveSettings();
+  updatePromptStatus();
   showStatus('Prompt reset to default', 'success');
+}
+
+// Update prompt status indicator
+function updatePromptStatus() {
+  const promptStatus = document.getElementById('promptStatus');
+  if (!promptStatus) return;
+  
+  const currentPrompt = settings.customPrompt || '';
+  const isDefault = currentPrompt === CONFIG.DEFAULT_PROMPT || currentPrompt === '';
+  
+  if (isDefault) {
+    promptStatus.textContent = '(Using default prompt)';
+    promptStatus.style.color = 'var(--text-muted)';
+  } else {
+    promptStatus.textContent = '(Using custom prompt)';
+    promptStatus.style.color = 'var(--warning-color)';
+  }
 }
 
 // Open a single tab
