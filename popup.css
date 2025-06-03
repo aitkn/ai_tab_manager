@@ -979,14 +979,22 @@ input[type="checkbox"] {
   display: flex;
   flex-direction: column;
   height: 100%;
+  flex: 1;
 }
 
 #savedContent {
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-sm);
+  background-color: var(--surface);
 }
 
 #savedContent .grouping-view {
   display: block !important;
+}
+
+/* Settings tab specific */
+.settings-content {
+  flex: 1;
+  height: 100%;
 }
