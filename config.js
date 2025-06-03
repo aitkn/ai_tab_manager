@@ -73,24 +73,26 @@ const CONFIG = {
   ],
   
   // Prompt versioning - increment this when you update the default prompt
-  PROMPT_VERSION: 1,
+  PROMPT_VERSION: 2,
   
   // Default categorization prompt
   DEFAULT_PROMPT: `You are a tab categorization assistant. Categorize the following browser tabs into exactly 3 categories:
 
-1. Not Important (can be closed): Empty tabs, new tabs, error pages (404, 500, etc.), frequently opened sites (Gmail, X/Twitter homepage, YouTube homepage, etc.), default pages, inbox pages
+1. Not Important (can be closed): Empty tabs, new tabs, error pages (404, 500, etc.), login/signin pages, authentication pages, frequently opened sites (Gmail, X/Twitter homepage, YouTube homepage, etc.), default pages, inbox pages
 2. Somewhat Important (save for later): Interesting articles/videos that aren't too old, useful posts that might be referenced later, general browsing
 3. Important (must save): Unique websites HARD to find again, important articles/documentation, active LLM conversations that may need continuation, work-related tabs, specific tweets/posts, GitHub repos with code
 
 Consider these domains as category 1 when they're just the homepage/inbox: {FREQUENT_DOMAINS}
 
 Rules:
+- Login/signin/authentication pages are ALWAYS category 1 (bankofamerica.com/login, apple.com/auth, etc.)
 - LLM chat conversations (claude.ai/chat/*, chatgpt.com/*, grok.com/chat/*) are ALWAYS category 3
 - GitHub repos (not just github.com) are category 3
 - Specific tweets/posts are category 2 or 3, but twitter/x.com homepage is category 1
 - Documentation sites are category 3
 - Google searches are category 1
 - YouTube videos (not homepage) are category 2
+- Banking/financial sites: login pages are category 1, but transaction history or specific account pages might be category 2
 
 For each tab, assign a category (1, 2, or 3) based on the title and URL.
 
