@@ -877,6 +877,16 @@ button svg {
   transition: color 0.2s ease;
 }
 
+/* Checkbox styling */
+input[type="checkbox"] {
+  margin-right: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.setting-group label input[type="checkbox"] {
+  vertical-align: middle;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }

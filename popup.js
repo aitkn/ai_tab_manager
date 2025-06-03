@@ -15,7 +15,8 @@ let settings = {
   selectedModels: {}, // Store selected model per provider
   customPrompt: CONFIG.DEFAULT_PROMPT, // Store custom prompt, default to CONFIG prompt
   promptVersion: CONFIG.PROMPT_VERSION, // Track prompt version
-  isPromptCustomized: false // Track if user has customized the prompt
+  isPromptCustomized: false, // Track if user has customized the prompt
+  removeDuplicates: true // Remove duplicate URLs by default
 };
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -66,6 +67,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Theme switcher buttons
     document.querySelectorAll('.theme-btn').forEach(btn => {
       btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+    });
+    
+    // Duplicate removal checkbox
+    document.getElementById('removeDuplicatesCheckbox').addEventListener('change', (e) => {
+      settings.removeDuplicates = e.target.checked;
+      saveSettings();
     });
     
     // Initialize settings UI
@@ -122,6 +129,9 @@ function initializeSettingsUI() {
   // Set custom prompt
   const promptTextarea = document.getElementById('promptTextarea');
   promptTextarea.value = settings.customPrompt || CONFIG.DEFAULT_PROMPT;
+  
+  // Set duplicate removal checkbox
+  document.getElementById('removeDuplicatesCheckbox').checked = settings.removeDuplicates !== false;
   
   // Update prompt status
   updatePromptStatus();
@@ -295,8 +305,28 @@ async function handleCategorize() {
     const tabs = await chrome.tabs.query({});
     console.log('Found', tabs.length, 'tabs');
     
+    // Remove duplicate URLs if enabled
+    let tabsToProcess = tabs;
+    if (settings.removeDuplicates !== false) {
+      const urlToTab = new Map();
+      tabs.forEach(tab => {
+        if (tab.url) {
+          const existing = urlToTab.get(tab.url);
+          if (!existing || (tab.lastAccessed && (!existing.lastAccessed || tab.lastAccessed > existing.lastAccessed))) {
+            urlToTab.set(tab.url, tab);
+          }
+        }
+      });
+      
+      tabsToProcess = Array.from(urlToTab.values());
+      if (tabs.length > tabsToProcess.length) {
+        console.log(`Removed ${tabs.length - tabsToProcess.length} duplicate URLs`);
+        showStatus(`Found ${tabs.length} tabs (${tabs.length - tabsToProcess.length} duplicates removed)`, 'loading');
+      }
+    }
+    
     // Prepare tabs data for Claude
-    const tabsData = tabs.map(tab => {
+    const tabsData = tabsToProcess.map(tab => {
       let domain = 'unknown';
       try {
         if (tab.url && tab.url.startsWith('http')) {
@@ -355,7 +385,7 @@ async function handleCategorize() {
       groupingSelect.value = 'category';
     }
     
-    showStatus(`Categorized ${tabs.length} tabs`, 'success');
+    showStatus(`Categorized ${tabsToProcess.length} tabs`, 'success');
   } catch (error) {
     showStatus('Error: ' + error.message, 'error');
     console.error('Categorization error:', error);
