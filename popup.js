@@ -8,6 +8,12 @@ let categorizedTabs = { 1: [], 2: [], 3: [] };
 let currentGrouping = 'category';
 let isViewingSaved = false;
 let searchQuery = '';
+let popupState = {
+  isViewingSaved: false,
+  currentGrouping: 'category',
+  searchQuery: '',
+  categorizedTabs: null
+};
 let settings = {
   provider: CONFIG.DEFAULT_PROVIDER,
   model: CONFIG.DEFAULT_MODEL,
@@ -33,8 +39,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     await tabDatabase.init();
     console.log('Database initialized');
     
-    // Load settings from storage
-    const stored = await chrome.storage.local.get(['settings']);
+    // Load settings and popup state from storage
+    const stored = await chrome.storage.local.get(['settings', 'popupState']);
     if (stored.settings) {
       settings = { ...settings, ...stored.settings };
       
@@ -46,6 +52,39 @@ document.addEventListener('DOMContentLoaded', async function() {
         await saveSettings();
       }
     }
+    
+    // Restore popup state if available
+    if (stored.popupState) {
+      popupState = stored.popupState;
+      isViewingSaved = popupState.isViewingSaved;
+      currentGrouping = popupState.currentGrouping;
+      searchQuery = popupState.searchQuery || '';
+      
+      // Restore UI based on saved state
+      if (popupState.isViewingSaved) {
+        // Show saved tabs
+        await showSavedTabs(true); // true = restoring state
+      } else if (popupState.categorizedTabs) {
+        // Restore categorized tabs
+        categorizedTabs = popupState.categorizedTabs;
+        document.getElementById('tabsContainer').style.display = 'block';
+        document.querySelector('.action-buttons').style.display = 'flex';
+        displayTabs();
+      }
+      
+      // Restore search
+      if (searchQuery) {
+        document.getElementById('searchInput').value = searchQuery;
+        applySearchFilter();
+      }
+      
+      // Restore grouping
+      const groupingSelect = document.getElementById('groupingSelect');
+      if (groupingSelect) {
+        groupingSelect.value = currentGrouping;
+      }
+    }
+    
     console.log('Loaded settings:', settings);
     
     // Set up event listeners
@@ -275,6 +314,17 @@ async function saveSettings() {
   console.log('Settings saved:', settings);
 }
 
+// Save popup state
+async function savePopupState() {
+  popupState = {
+    isViewingSaved,
+    currentGrouping,
+    searchQuery,
+    categorizedTabs: isViewingSaved ? null : categorizedTabs
+  };
+  await chrome.storage.local.set({ popupState });
+}
+
 async function handleCategorize() {
   console.log('handleCategorize called');
   const statusDiv = document.getElementById('status');
@@ -371,6 +421,9 @@ async function handleCategorize() {
     // Show action buttons
     document.querySelector('.action-buttons').style.display = 'flex';
     document.getElementById('tabsContainer').style.display = 'block';
+    
+    // Save state
+    await savePopupState();
     
     // Remove any existing back button
     const existingBackBtn = document.getElementById('backToSaved');
@@ -918,6 +971,7 @@ function createGroupSection(groupName, tabs, groupType, isFromSaved) {
 function onGroupingChange(e) {
   currentGrouping = e.target.value;
   displayTabs(isViewingSaved);
+  savePopupState();
 }
 
 async function openAllTabsInGroup(tabs) {
@@ -1005,9 +1059,13 @@ function createTabElement(tab, category, isFromSaved = false) {
   div.appendChild(favicon);
   div.appendChild(info);
   
-  // Make tab clickable to activate it
-  if (!isFromSaved) {
-    info.style.cursor = 'pointer';
+  // Make tab clickable
+  info.style.cursor = 'pointer';
+  if (isFromSaved) {
+    // For saved tabs, open in new tab
+    info.onclick = () => openTab(tab.url);
+  } else {
+    // For current tabs, activate the tab
     info.onclick = () => {
       chrome.tabs.update(tab.id, { active: true });
       chrome.windows.update(tab.windowId, { focused: true });
@@ -1016,12 +1074,23 @@ function createTabElement(tab, category, isFromSaved = false) {
   
   // Create appropriate action buttons
   if (isFromSaved) {
-    const openBtn = document.createElement('button');
-    openBtn.className = 'open-btn';
-    openBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>';
-    openBtn.title = 'Open tab';
-    openBtn.onclick = () => openTab(tab.url);
-    div.appendChild(openBtn);
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+    deleteBtn.title = 'Delete saved tab';
+    deleteBtn.onclick = async () => {
+      if (confirm('Delete this saved tab?')) {
+        try {
+          await tabDatabase.deleteSavedTab(tab.id);
+          // Remove from current display
+          div.remove();
+          showStatus('Tab deleted', 'success');
+        } catch (error) {
+          showStatus('Error deleting tab: ' + error.message, 'error');
+        }
+      }
+    };
+    div.appendChild(deleteBtn);
   } else {
     // Add movement buttons for non-saved tabs
     const moveButtons = document.createElement('div');
@@ -1204,6 +1273,8 @@ async function saveTabs(closeAfterSave) {
         if (confirm(message)) {
           showSavedTabs();
         } else {
+          // Clear state and close
+          await chrome.storage.local.remove('popupState');
           window.close();
         }
       }, 1000);
@@ -1375,7 +1446,7 @@ async function openAllTabsInCategory(category) {
 }
 
 // Show saved tabs from database
-async function showSavedTabs() {
+async function showSavedTabs(restoringState = false) {
   try {
     const allSavedTabs = await tabDatabase.getAllSavedTabs();
     
@@ -1403,6 +1474,11 @@ async function showSavedTabs() {
     document.querySelector('.action-buttons').style.display = 'none';
     
     showStatus(`Viewing ${allSavedTabs.length} saved tabs`, 'success');
+    
+    // Save state unless we're restoring
+    if (!restoringState) {
+      await savePopupState();
+    }
     
   } catch (error) {
     showStatus('Error loading saved tabs: ' + error.message, 'error');
@@ -1446,12 +1522,14 @@ function moveTab(tabId, fromCategory, direction) {
 function onSearchInput(e) {
   searchQuery = e.target.value.toLowerCase().trim();
   applySearchFilter();
+  savePopupState();
 }
 
 function clearSearch() {
   searchQuery = '';
   document.getElementById('searchInput').value = '';
   applySearchFilter();
+  savePopupState();
 }
 
 function matchesSearch(tab, query) {
@@ -1526,6 +1604,14 @@ function updateThemeButtons(activeTheme) {
     }
   });
 }
+
+// Clear popup state on window unload
+window.addEventListener('beforeunload', () => {
+  // Only save state if we have tabs displayed
+  if (document.getElementById('tabsContainer').style.display !== 'none') {
+    savePopupState();
+  }
+});
 
 // Check extension integrity
 function checkExtensionIntegrity() {
