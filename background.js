@@ -331,6 +331,9 @@ function organizeTabs(tabs, categorization) {
       if (tab && tab.id !== undefined && tab.id !== null) {
         const idKey = tab.id.toString();
         category = categorization[idKey] || 1;
+      } else if (tab && tab.tempId) {
+        // For imported tabs with temporary IDs, check both tempId and index
+        category = categorization[tab.tempId] || categorization[index.toString()] || 1;
       } else {
         // For imported tabs without IDs, use the index
         const indexKey = index.toString();

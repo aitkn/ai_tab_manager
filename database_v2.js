@@ -506,6 +506,7 @@ class TabDatabase {
     const tabsToImport = [];
     const tabsNeedingCategorization = [];
     const duplicates = [];
+    const urlToProcessedTab = new Map(); // Track all processed tabs by URL
     
     for (let i = 1; i < lines.length; i++) {
       const row = parseCSVLine(lines[i]);
@@ -569,11 +570,23 @@ class TabDatabase {
         }
       };
       
+      // Track this tab by URL to prevent duplicates after categorization
+      urlToProcessedTab.set(url, tab);
+      
       if (category) {
         tab.category = category;
         tabsToImport.push(tab);
       } else {
-        tabsNeedingCategorization.push(tab);
+        // Format tab for categorization to match what the AI expects
+        const tabForCategorization = {
+          id: i, // Use row index as ID for categorization
+          title: title,
+          url: url,
+          domain: domain,
+          windowId: 0, // Dummy window ID
+          lastAccessed: savedAt
+        };
+        tabsNeedingCategorization.push(tabForCategorization);
       }
     }
     
@@ -641,32 +654,42 @@ class TabDatabase {
       // Include all categories, even category 1 (we'll filter it out if needed)
       [1, 2, 3].forEach(category => {
         if (categorizationResults[category]) {
-          categorizationResults[category].forEach(tab => {
+          categorizationResults[category].forEach(categorizedTab => {
             // Only import categories 2 and 3 (skip category 1 - "Can Be Closed")
             if (category === 2 || category === 3) {
-              tabsToImport.push({
-                ...tab,
-                category,
-                metadata: {
-                  ...tab.metadata,
-                  categorizedDuringImport: true
-                }
-              });
+              // Get the original tab data from our tracking map
+              const originalTab = urlToProcessedTab.get(categorizedTab.url);
+              
+              if (originalTab && !existingUrls.has(originalTab.url)) {
+                tabsToImport.push({
+                  ...originalTab,
+                  category,
+                  metadata: {
+                    ...originalTab.metadata,
+                    categorizedDuringImport: true
+                  }
+                });
+              }
             }
           });
         }
       });
     } else if (tabsNeedingCategorization.length > 0) {
       // Default uncategorized tabs to category 2
-      tabsNeedingCategorization.forEach(tab => {
-        tabsToImport.push({
-          ...tab,
-          category: 2,
-          metadata: {
-            ...tab.metadata,
-            defaultCategorized: true
-          }
-        });
+      tabsNeedingCategorization.forEach(categorizedTab => {
+        // Get the original tab data from our tracking map
+        const originalTab = urlToProcessedTab.get(categorizedTab.url);
+        
+        if (originalTab && !existingUrls.has(originalTab.url)) {
+          tabsToImport.push({
+            ...originalTab,
+            category: 2,
+            metadata: {
+              ...originalTab.metadata,
+              defaultCategorized: true
+            }
+          });
+        }
       });
     }
     
