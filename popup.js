@@ -197,6 +197,13 @@ function setupEventListeners() {
       setTheme(btn.dataset.theme);
     });
   });
+  
+  // CSV Export/Import handlers
+  document.getElementById('exportCSVBtn').addEventListener('click', exportToCSV);
+  document.getElementById('importCSVBtn').addEventListener('click', () => {
+    document.getElementById('csvFileInput').click();
+  });
+  document.getElementById('csvFileInput').addEventListener('change', handleCSVImport);
 }
 
 function initializeTabNavigation() {
@@ -2140,4 +2147,134 @@ function checkExtensionIntegrity() {
       }, 2000);
     }
   });
+}
+
+// Export tabs to CSV
+async function exportToCSV() {
+  try {
+    showStatus('Exporting tabs to CSV...', 'loading');
+    
+    const csvContent = await tabDatabase.exportAsCSV();
+    
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const filename = `saved_tabs_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    
+    showStatus('Tabs exported successfully', 'success');
+  } catch (error) {
+    console.error('Export error:', error);
+    showStatus('Failed to export tabs: ' + error.message, 'error');
+  }
+}
+
+// Handle CSV import
+async function handleCSVImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  try {
+    showStatus('Reading CSV file...', 'loading');
+    
+    const csvContent = await readFileAsText(file);
+    
+    // Show import dialog to confirm
+    const confirmed = await showImportDialog(csvContent);
+    
+    if (confirmed) {
+      showStatus('Importing tabs...', 'loading');
+      
+      // Get current settings for categorization
+      const importSettings = {
+        apiKey: settings.apiKeys[settings.provider],
+        provider: settings.provider,
+        model: settings.model,
+        customPrompt: settings.customPrompt
+      };
+      
+      const result = await tabDatabase.importFromCSV(csvContent, importSettings);
+      
+      // Build status message
+      let statusMessage = `Imported ${result.imported} tabs`;
+      const details = [];
+      
+      if (result.duplicates > 0) {
+        details.push(`${result.duplicates} duplicates skipped`);
+      }
+      
+      if (result.categorized > 0) {
+        details.push(`${result.categorized} categorized by AI`);
+      }
+      
+      if (details.length > 0) {
+        statusMessage += ` (${details.join(', ')})`;
+      }
+      
+      showStatus(statusMessage, 'success');
+      
+      // Refresh saved tabs view if currently showing
+      if (popupState.activeTab === 'saved') {
+        showSavedTabsContent();
+      }
+    }
+  } catch (error) {
+    console.error('Import error:', error);
+    showStatus('Failed to import tabs: ' + error.message, 'error');
+  }
+  
+  // Reset file input
+  event.target.value = '';
+}
+
+// Read file as text
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = (e) => reject(new Error('Failed to read file'));
+    reader.readAsText(file);
+  });
+}
+
+// Show import confirmation dialog
+async function showImportDialog(csvContent) {
+  // Simple preview of the CSV
+  const lines = csvContent.split('\n').filter(line => line.trim());
+  const rowCount = lines.length - 1; // Minus header
+  
+  // Parse to check for duplicates
+  const existingTabs = await tabDatabase.getAllSavedTabs();
+  const existingUrls = new Set(existingTabs.map(tab => tab.url));
+  
+  let duplicateCount = 0;
+  let newCount = 0;
+  
+  // Quick check for duplicates (simplified parsing)
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    // Extract URL (assuming it's in the second column after title)
+    const match = line.match(/,([^,]+?),/);
+    if (match && match[1]) {
+      const url = match[1].replace(/^"|"$/g, '');
+      if (existingUrls.has(url)) {
+        duplicateCount++;
+      } else {
+        newCount++;
+      }
+    }
+  }
+  
+  const message = `Import ${rowCount} tabs from CSV?\n\n` +
+    `• ${newCount} new tabs will be imported\n` +
+    `• ${duplicateCount} duplicates will be skipped\n\n` +
+    `Note: Tabs without categories will be categorized using ${settings.provider} if API key is available.`;
+  
+  return confirm(message);
 }

@@ -1318,8 +1318,15 @@ input[type="checkbox"] {
   background-color: var(--md-sys-color-surface-container);
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: var(--md-spacing-2);
+}
+
+/* Export/Import buttons container */
+.export-import-btns {
+  display: flex;
+  gap: var(--md-spacing-1);
+  margin-left: auto;
 }
 
 .grouping-controls label {

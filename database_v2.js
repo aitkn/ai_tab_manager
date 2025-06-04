@@ -403,6 +403,263 @@ class TabDatabase {
     
     return stats;
   }
+
+  // Export tabs as CSV
+  async exportAsCSV(tabIds = null) {
+    let tabs;
+    if (tabIds) {
+      tabs = await this.getTabsByIds(tabIds);
+    } else {
+      tabs = await this.getAllSavedTabs();
+    }
+    
+    // CSV header
+    const headers = ['Title', 'URL', 'Domain', 'Category', 'Saved Date', 'Saved Time'];
+    const rows = [headers];
+    
+    tabs.forEach(tab => {
+      const savedDate = new Date(tab.savedAt);
+      const dateStr = savedDate.toLocaleDateString();
+      const timeStr = savedDate.toLocaleTimeString();
+      const categoryName = tab.category === 3 ? 'Important' : 'Save for Later';
+      
+      // Escape fields that might contain commas or quotes
+      const escapeCSV = (field) => {
+        if (field === null || field === undefined) return '';
+        const str = String(field);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+      
+      rows.push([
+        escapeCSV(tab.title),
+        escapeCSV(tab.url),
+        escapeCSV(tab.domain),
+        escapeCSV(categoryName),
+        escapeCSV(dateStr),
+        escapeCSV(timeStr)
+      ]);
+    });
+    
+    return rows.map(row => row.join(',')).join('\n');
+  }
+
+  // Import tabs from CSV
+  async importFromCSV(csvContent, settings = {}) {
+    if (!csvContent || typeof csvContent !== 'string') {
+      throw new Error('Invalid CSV content');
+    }
+    
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    if (lines.length < 2) {
+      throw new Error('CSV file must contain headers and at least one data row');
+    }
+    
+    // Parse CSV (simple parser, handles basic escaping)
+    const parseCSVLine = (line) => {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+        
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            current += '"';
+            i++; // Skip next quote
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      
+      return result;
+    };
+    
+    // Parse header to find column indices
+    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+    const titleIdx = headers.findIndex(h => h.includes('title'));
+    const urlIdx = headers.findIndex(h => h.includes('url'));
+    const domainIdx = headers.findIndex(h => h.includes('domain'));
+    const categoryIdx = headers.findIndex(h => h.includes('category'));
+    const dateIdx = headers.findIndex(h => h.includes('date'));
+    
+    if (titleIdx === -1 || urlIdx === -1) {
+      throw new Error('CSV must contain at least Title and URL columns');
+    }
+    
+    // Get existing tabs to check for duplicates
+    const existingTabs = await this.getAllSavedTabs();
+    const existingUrls = new Set(existingTabs.map(tab => tab.url));
+    
+    // Process data rows
+    const tabsToImport = [];
+    const tabsNeedingCategorization = [];
+    const duplicates = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCSVLine(lines[i]);
+      if (row.length < 2) continue; // Skip empty rows
+      
+      const url = row[urlIdx]?.trim();
+      const title = row[titleIdx]?.trim() || 'Untitled';
+      
+      if (!url) continue; // Skip rows without URL
+      
+      // Check for duplicates
+      if (existingUrls.has(url)) {
+        duplicates.push({ title, url });
+        continue;
+      }
+      
+      // Parse domain
+      let domain = 'unknown';
+      if (domainIdx !== -1 && row[domainIdx]) {
+        domain = row[domainIdx].trim();
+      } else {
+        // Extract domain from URL
+        try {
+          if (url.startsWith('http')) {
+            domain = new URL(url).hostname;
+          }
+        } catch (e) {
+          // Keep 'unknown' as domain
+        }
+      }
+      
+      // Parse category
+      let category = null;
+      if (categoryIdx !== -1 && row[categoryIdx]) {
+        const catStr = row[categoryIdx].toLowerCase().trim();
+        if (catStr.includes('important') || catStr === '3') {
+          category = 3;
+        } else if (catStr.includes('save') || catStr.includes('later') || catStr === '2') {
+          category = 2;
+        }
+      }
+      
+      // Parse date
+      let savedAt = Date.now();
+      if (dateIdx !== -1 && row[dateIdx]) {
+        const parsedDate = new Date(row[dateIdx]);
+        if (!isNaN(parsedDate.getTime())) {
+          savedAt = parsedDate.getTime();
+        }
+      }
+      
+      const tab = {
+        title,
+        url,
+        domain,
+        savedAt,
+        savedDate: new Date(savedAt).toISOString(),
+        metadata: {
+          importedAt: Date.now(),
+          source: 'csv'
+        }
+      };
+      
+      if (category) {
+        tab.category = category;
+        tabsToImport.push(tab);
+      } else {
+        tabsNeedingCategorization.push(tab);
+      }
+    }
+    
+    // If we have tabs needing categorization, categorize them
+    let categorizationResults = null;
+    if (tabsNeedingCategorization.length > 0 && settings.apiKey && settings.provider && settings.model) {
+      try {
+        // Send to background script for categorization
+        const response = await chrome.runtime.sendMessage({
+          action: 'categorizeTabs',
+          data: {
+            tabs: tabsNeedingCategorization,
+            apiKey: settings.apiKey,
+            provider: settings.provider,
+            model: settings.model,
+            customPrompt: settings.customPrompt
+          }
+        });
+        
+        if (response && response.success && response.data) {
+          categorizationResults = response.data;
+        }
+      } catch (error) {
+        console.error('Failed to categorize imported tabs:', error);
+      }
+    }
+    
+    // If categorization succeeded, merge results
+    if (categorizationResults) {
+      [2, 3].forEach(category => {
+        if (categorizationResults[category]) {
+          categorizationResults[category].forEach(tab => {
+            tabsToImport.push({
+              ...tab,
+              category,
+              metadata: {
+                ...tab.metadata,
+                categorizedDuringImport: true
+              }
+            });
+          });
+        }
+      });
+    } else if (tabsNeedingCategorization.length > 0) {
+      // Default uncategorized tabs to category 2
+      tabsNeedingCategorization.forEach(tab => {
+        tabsToImport.push({
+          ...tab,
+          category: 2,
+          metadata: {
+            ...tab.metadata,
+            defaultCategorized: true
+          }
+        });
+      });
+    }
+    
+    // Import tabs to database
+    const transaction = this.db.transaction([TABS_STORE], 'readwrite');
+    const store = transaction.objectStore(TABS_STORE);
+    const imported = [];
+    
+    for (const tab of tabsToImport) {
+      try {
+        await new Promise((resolve, reject) => {
+          const request = store.add(tab);
+          request.onsuccess = () => {
+            imported.push(tab);
+            resolve();
+          };
+          request.onerror = () => reject(new Error(`Failed to import tab: ${tab.url}`));
+        });
+      } catch (error) {
+        console.error('Error importing tab:', error);
+      }
+    }
+    
+    return {
+      imported: imported.length,
+      duplicates: duplicates.length,
+      categorized: categorizationResults ? tabsNeedingCategorization.length : 0,
+      total: lines.length - 1, // Minus header
+      importedTabs: imported,
+      duplicateTabs: duplicates
+    };
+  }
 }
 
 // Export a singleton instance
