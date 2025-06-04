@@ -413,14 +413,24 @@ class TabDatabase {
       tabs = await this.getAllSavedTabs();
     }
     
-    // CSV header
-    const headers = ['Title', 'URL', 'Domain', 'Category', 'Saved Date', 'Saved Time'];
+    // CSV header - now includes both timestamps
+    const headers = ['Title', 'URL', 'Domain', 'Category', 'Saved Date', 'Saved Time', 'Last Accessed Date', 'Last Accessed Time'];
     const rows = [headers];
     
     tabs.forEach(tab => {
       const savedDate = new Date(tab.savedAt);
-      const dateStr = savedDate.toLocaleDateString();
-      const timeStr = savedDate.toLocaleTimeString();
+      const savedDateStr = savedDate.toLocaleDateString();
+      const savedTimeStr = savedDate.toLocaleTimeString();
+      
+      // Handle lastAccessed timestamp
+      let lastAccessedDateStr = '';
+      let lastAccessedTimeStr = '';
+      if (tab.lastAccessed) {
+        const lastAccessedDate = new Date(tab.lastAccessed);
+        lastAccessedDateStr = lastAccessedDate.toLocaleDateString();
+        lastAccessedTimeStr = lastAccessedDate.toLocaleTimeString();
+      }
+      
       const categoryName = tab.category === 3 ? 'Important' : 'Save for Later';
       
       // Escape fields that might contain commas or quotes
@@ -438,8 +448,10 @@ class TabDatabase {
         escapeCSV(tab.url),
         escapeCSV(tab.domain),
         escapeCSV(categoryName),
-        escapeCSV(dateStr),
-        escapeCSV(timeStr)
+        escapeCSV(savedDateStr),
+        escapeCSV(savedTimeStr),
+        escapeCSV(lastAccessedDateStr),
+        escapeCSV(lastAccessedTimeStr)
       ]);
     });
     
@@ -492,7 +504,9 @@ class TabDatabase {
     const urlIdx = headers.findIndex(h => h.includes('url'));
     const domainIdx = headers.findIndex(h => h.includes('domain'));
     const categoryIdx = headers.findIndex(h => h.includes('category'));
-    const dateIdx = headers.findIndex(h => h.includes('date'));
+    const dateIdx = headers.findIndex(h => h.includes('saved') && h.includes('date'));
+    const lastAccessedDateIdx = headers.findIndex(h => h.includes('accessed') && h.includes('date'));
+    const lastAccessedTimeIdx = headers.findIndex(h => h.includes('accessed') && h.includes('time'));
     
     if (titleIdx === -1 || urlIdx === -1) {
       throw new Error('CSV must contain at least Title and URL columns');
@@ -549,12 +563,26 @@ class TabDatabase {
         }
       }
       
-      // Parse date
+      // Parse saved date
       let savedAt = Date.now();
       if (dateIdx !== -1 && row[dateIdx]) {
         const parsedDate = new Date(row[dateIdx]);
         if (!isNaN(parsedDate.getTime())) {
           savedAt = parsedDate.getTime();
+        }
+      }
+      
+      // Parse last accessed date
+      let lastAccessed = null;
+      if (lastAccessedDateIdx !== -1 && row[lastAccessedDateIdx]) {
+        let dateTimeStr = row[lastAccessedDateIdx];
+        // If we have a separate time column, combine them
+        if (lastAccessedTimeIdx !== -1 && row[lastAccessedTimeIdx]) {
+          dateTimeStr += ' ' + row[lastAccessedTimeIdx];
+        }
+        const parsedDate = new Date(dateTimeStr);
+        if (!isNaN(parsedDate.getTime())) {
+          lastAccessed = parsedDate.getTime();
         }
       }
       
@@ -570,6 +598,11 @@ class TabDatabase {
         }
       };
       
+      // Include lastAccessed if available
+      if (lastAccessed) {
+        tab.lastAccessed = lastAccessed;
+      }
+      
       // Track this tab by URL to prevent duplicates after categorization
       urlToProcessedTab.set(url, tab);
       
@@ -584,7 +617,7 @@ class TabDatabase {
           url: url,
           domain: domain,
           windowId: 0, // Dummy window ID
-          lastAccessed: savedAt
+          lastAccessed: lastAccessed || savedAt
         };
         tabsNeedingCategorization.push(tabForCategorization);
       }

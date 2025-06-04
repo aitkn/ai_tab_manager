@@ -907,6 +907,15 @@ function displayGroupedView(groupBy, isFromSaved = false) {
     case 'savedMonth':
       groups = groupBySavedMonth(allTabs);
       break;
+    case 'lastAccessedDate':
+      groups = groupByLastAccessedDate(allTabs);
+      break;
+    case 'lastAccessedWeek':
+      groups = groupByLastAccessedWeek(allTabs);
+      break;
+    case 'lastAccessedMonth':
+      groups = groupByLastAccessedMonth(allTabs);
+      break;
   }
   
   // Display groups
@@ -1253,6 +1262,99 @@ function onGroupingChange(e) {
   currentGrouping = e.target.value;
   displayTabs(isViewingSaved);
   savePopupState();
+}
+
+// Group by last accessed date
+function groupByLastAccessedDate(tabs) {
+  const groups = {};
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  tabs.forEach(tab => {
+    const accessedDate = tab.lastAccessed ? new Date(tab.lastAccessed) : new Date(tab.savedAt);
+    accessedDate.setHours(0, 0, 0, 0);
+    
+    let groupName;
+    const daysDiff = Math.floor((today - accessedDate) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff === 0) {
+      groupName = 'Opened Today';
+    } else if (daysDiff === 1) {
+      groupName = 'Opened Yesterday';
+    } else if (daysDiff < 7) {
+      groupName = `Opened ${daysDiff} days ago`;
+    } else {
+      groupName = `Opened ${accessedDate.toLocaleDateString()}`;
+    }
+    
+    if (!groups[groupName]) {
+      groups[groupName] = [];
+    }
+    groups[groupName].push(tab);
+  });
+  
+  return groups;
+}
+
+// Group by last accessed week
+function groupByLastAccessedWeek(tabs) {
+  const groups = {};
+  const today = new Date();
+  const currentWeek = getWeekNumber(today);
+  const currentYear = today.getFullYear();
+  
+  tabs.forEach(tab => {
+    const tabDate = tab.lastAccessed ? new Date(tab.lastAccessed) : new Date(tab.savedAt);
+    const tabWeek = getWeekNumber(tabDate);
+    const tabYear = tabDate.getFullYear();
+    
+    let groupName;
+    if (tabYear === currentYear && tabWeek === currentWeek) {
+      groupName = 'Opened This Week';
+    } else if (tabYear === currentYear && tabWeek === currentWeek - 1) {
+      groupName = 'Opened Last Week';
+    } else {
+      groupName = `Opened Week ${tabWeek}, ${tabYear}`;
+    }
+    
+    if (!groups[groupName]) {
+      groups[groupName] = [];
+    }
+    groups[groupName].push(tab);
+  });
+  
+  return groups;
+}
+
+// Group by last accessed month
+function groupByLastAccessedMonth(tabs) {
+  const groups = {};
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  tabs.forEach(tab => {
+    const tabDate = tab.lastAccessed ? new Date(tab.lastAccessed) : new Date(tab.savedAt);
+    const tabMonth = tabDate.getMonth();
+    const tabYear = tabDate.getFullYear();
+    
+    let groupName;
+    if (tabYear === currentYear && tabMonth === currentMonth) {
+      groupName = 'Opened This Month';
+    } else if (tabYear === currentYear && tabMonth === currentMonth - 1) {
+      groupName = 'Opened Last Month';
+    } else {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      groupName = `Opened ${monthNames[tabMonth]} ${tabYear}`;
+    }
+    
+    if (!groups[groupName]) {
+      groups[groupName] = [];
+    }
+    groups[groupName].push(tab);
+  });
+  
+  return groups;
 }
 
 async function openAllTabsInGroup(tabs) {
@@ -2117,13 +2219,22 @@ async function showSavedTabsContent(groupingType) {
             groupTypeLabel = groupCount === 1 ? 'domain' : 'domains';
             break;
           case 'savedDate':
-            groupTypeLabel = groupCount === 1 ? 'date' : 'dates';
+            groupTypeLabel = groupCount === 1 ? 'save date' : 'save dates';
             break;
           case 'savedWeek':
-            groupTypeLabel = groupCount === 1 ? 'week' : 'weeks';
+            groupTypeLabel = groupCount === 1 ? 'save week' : 'save weeks';
             break;
           case 'savedMonth':
-            groupTypeLabel = groupCount === 1 ? 'month' : 'months';
+            groupTypeLabel = groupCount === 1 ? 'save month' : 'save months';
+            break;
+          case 'lastAccessedDate':
+            groupTypeLabel = groupCount === 1 ? 'open date' : 'open dates';
+            break;
+          case 'lastAccessedWeek':
+            groupTypeLabel = groupCount === 1 ? 'open week' : 'open weeks';
+            break;
+          case 'lastAccessedMonth':
+            groupTypeLabel = groupCount === 1 ? 'open month' : 'open months';
             break;
         }
         
