@@ -99,6 +99,23 @@ document.addEventListener('DOMContentLoaded', async function() {
       currentGrouping = popupState.currentGrouping;
       searchQuery = popupState.searchQuery || '';
       
+      // Restore grouping selections first
+      if (popupState.groupingSelections) {
+        if (popupState.groupingSelections.categorize) {
+          const groupingSelect = document.getElementById('groupingSelect');
+          if (groupingSelect) {
+            groupingSelect.value = popupState.groupingSelections.categorize;
+            currentGrouping = popupState.groupingSelections.categorize;
+          }
+        }
+        if (popupState.groupingSelections.saved) {
+          const savedGroupingSelect = document.getElementById('savedGroupingSelect');
+          if (savedGroupingSelect) {
+            savedGroupingSelect.value = popupState.groupingSelections.saved;
+          }
+        }
+      }
+      
       // Restore UI based on saved state
       if (popupState.isViewingSaved) {
         // Show saved tabs
@@ -111,6 +128,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           document.getElementById('tabsContainer').style.display = 'block';
           document.querySelector('.action-buttons').style.display = 'flex';
           displayTabs();
+          updateCategorizeBadge();
         }
       }
       
@@ -120,10 +138,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         applySearchFilter();
       }
       
-      // Restore grouping
-      const groupingSelect = document.getElementById('groupingSelect');
-      if (groupingSelect) {
-        groupingSelect.value = currentGrouping;
+      // Restore scroll positions after content is loaded
+      if (popupState.scrollPositions) {
+        setTimeout(() => {
+          if (popupState.activeTab === 'categorize' && popupState.scrollPositions.categorize) {
+            const tabsContainer = document.getElementById('tabsContainer');
+            if (tabsContainer) {
+              tabsContainer.scrollTop = popupState.scrollPositions.categorize;
+            }
+          } else if (popupState.activeTab === 'saved' && popupState.scrollPositions.saved) {
+            const savedTabsContainer = document.getElementById('savedTabsContainer');
+            if (savedTabsContainer) {
+              savedTabsContainer.scrollTop = popupState.scrollPositions.saved;
+            }
+          }
+        }, 100); // Small delay to ensure content is rendered
       }
     }
     
@@ -212,6 +241,13 @@ function setupEventListeners() {
   
   // Toggle all groups button
   document.getElementById('toggleAllGroupsBtn').addEventListener('click', toggleAllGroups);
+  
+  // Categorize tab grouping controls
+  const groupingSelect = document.getElementById('groupingSelect');
+  if (groupingSelect) {
+    groupingSelect.addEventListener('change', onGroupingChange);
+  }
+  document.getElementById('toggleCategorizeGroupsBtn').addEventListener('click', toggleCategorizeGroups);
 }
 
 function initializeTabNavigation() {
@@ -464,12 +500,37 @@ function onMaxTabsChange(e) {
 
 // Save popup state
 async function savePopupState() {
+  // Get current scroll positions
+  const scrollPositions = {};
+  
+  // Save scroll position for current tab
+  const activeTabName = popupState.activeTab || 'categorize';
+  if (activeTabName === 'categorize') {
+    const tabsContainer = document.getElementById('tabsContainer');
+    if (tabsContainer) {
+      scrollPositions.categorize = tabsContainer.scrollTop;
+    }
+  } else if (activeTabName === 'saved') {
+    const savedTabsContainer = document.getElementById('savedTabsContainer');
+    if (savedTabsContainer) {
+      scrollPositions.saved = savedTabsContainer.scrollTop;
+    }
+  }
+  
+  // Get current grouping selections
+  const groupingSelections = {
+    categorize: document.getElementById('groupingSelect')?.value || 'category',
+    saved: document.getElementById('savedGroupingSelect')?.value || 'category'
+  };
+  
   popupState = {
     isViewingSaved,
     currentGrouping,
     searchQuery,
     categorizedTabs: isViewingSaved ? null : categorizedTabs,
-    activeTab: popupState.activeTab || 'categorize'
+    activeTab: popupState.activeTab || 'categorize',
+    scrollPositions: { ...popupState.scrollPositions, ...scrollPositions },
+    groupingSelections
   };
   await chrome.storage.local.set({ popupState });
 }
@@ -766,10 +827,10 @@ function displayTabs(isFromSaved = false) {
   try {
     isViewingSaved = isFromSaved;
     
-    // Show grouping controls for saved tabs
-    const groupingControls = document.getElementById('groupingControls');
-    if (groupingControls) {
-      groupingControls.style.display = isFromSaved ? 'flex' : 'none';
+    // Show appropriate grouping controls
+    const categorizeGroupingControls = document.getElementById('categorizeGroupingControls');
+    if (categorizeGroupingControls && !isFromSaved) {
+      categorizeGroupingControls.style.display = 'flex';
     }
     
     // Display based on current grouping
@@ -2674,6 +2735,51 @@ window.addEventListener('beforeunload', () => {
     savePopupState();
   }
 });
+
+// Grouping change handler for categorize tab
+function onGroupingChange(e) {
+  const newGrouping = e.target.value;
+  currentGrouping = newGrouping;
+  savePopupState();
+  displayTabs();
+}
+
+// Toggle all groups in categorize tab
+function toggleCategorizeGroups() {
+  const container = isViewingSaved ? document.getElementById('savedContent') : document.getElementById('tabsContainer');
+  if (!container) return;
+  
+  const groupSections = container.querySelectorAll('.group-section, .category-section');
+  if (groupSections.length === 0) return;
+  
+  // Check if any group is expanded
+  const anyExpanded = Array.from(groupSections).some(section => !section.classList.contains('collapsed'));
+  
+  // Toggle all groups
+  groupSections.forEach(section => {
+    const tabsList = section.querySelector('.tabs-list');
+    if (tabsList) {
+      if (anyExpanded) {
+        section.classList.add('collapsed');
+        tabsList.style.display = 'none';
+      } else {
+        section.classList.remove('collapsed');
+        tabsList.style.display = 'block';
+      }
+    }
+  });
+  
+  // Update button icon
+  const btn = document.getElementById('toggleCategorizeGroupsBtn');
+  if (btn) {
+    const svg = btn.querySelector('svg');
+    if (svg) {
+      svg.innerHTML = anyExpanded 
+        ? '<path d="M6 9l6 6 6-6"/>' // Chevron down
+        : '<path d="M18 15l-6-6-6 6"/>'; // Chevron up
+    }
+  }
+}
 
 // Saved tab event handlers
 function onSavedGroupingChange(e) {

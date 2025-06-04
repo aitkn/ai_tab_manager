@@ -78,6 +78,20 @@
         </div>
         
         <div id="tabsContainer" class="tabs-container" style="display: none;">
+          <!-- Grouping Controls -->
+          <div id="categorizeGroupingControls" class="grouping-controls">
+            <label>Group by:</label>
+            <select id="groupingSelect" class="grouping-select">
+              <option value="category">Category</option>
+              <option value="domain">Domain</option>
+            </select>
+            <button id="toggleCategorizeGroupsBtn" class="icon-btn" title="Collapse/Expand all groups">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+          </div>
+          
           <!-- Search and Filter Controls -->
           <div id="searchControls" class="search-controls">
             <input type="text" id="searchInput" class="search-input" placeholder="Search tabs by title or URL...">
