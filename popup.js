@@ -1280,7 +1280,7 @@ async function closeTab(tabId, category) {
     const tabIdsToClose = urlToDuplicateIds[tab.url] || [tabId];
     
     // Close all tabs with the same URL
-    await chrome.tabs.remove(tabIdsToClose);
+    const { closedCount, missingCount } = await safelyCloseTabs(tabIdsToClose);
     
     // Remove from categorized tabs
     categorizedTabs[category] = categorizedTabs[category].filter(tab => tab.id !== tabId);
@@ -1288,10 +1288,39 @@ async function closeTab(tabId, category) {
     // Update display
     displayTabs();
     
-    showStatus(`Tab${tabIdsToClose.length > 1 ? 's' : ''} closed`, 'success');
+    let statusMessage = `${closedCount} tab${closedCount > 1 ? 's' : ''} closed`;
+    if (missingCount > 0) {
+      statusMessage += ` (${missingCount} already closed)`;
+    }
+    showStatus(statusMessage, 'success');
   } catch (error) {
     showStatus('Error closing tab: ' + error.message, 'error');
   }
+}
+
+// Helper function to safely close tabs, ignoring missing tab IDs
+async function safelyCloseTabs(tabIds) {
+  const existingTabs = await chrome.tabs.query({ currentWindow: true });
+  const existingTabIds = new Set(existingTabs.map(tab => tab.id));
+  
+  // Filter out tab IDs that no longer exist
+  const validTabIds = tabIds.filter(id => existingTabIds.has(id));
+  const missingCount = tabIds.length - validTabIds.length;
+  
+  if (validTabIds.length > 0) {
+    // Check if we're about to close all tabs in the window
+    const tabsToKeep = existingTabs.filter(tab => !validTabIds.includes(tab.id));
+    
+    // If we're closing all tabs, create a new one first
+    if (tabsToKeep.length === 0) {
+      await chrome.tabs.create({ active: true });
+    }
+    
+    // Close only the tabs that still exist
+    await chrome.tabs.remove(validTabIds);
+  }
+  
+  return { closedCount: validTabIds.length, missingCount };
 }
 
 // Close all tabs in a category
@@ -1309,14 +1338,19 @@ async function closeAllInCategory(category) {
   const totalCount = allTabIds.size;
   
   try {
-    await chrome.tabs.remove(Array.from(allTabIds));
+    const { closedCount, missingCount } = await safelyCloseTabs(Array.from(allTabIds));
     categorizedTabs[category] = [];
     
     // Update popup state
     await savePopupState();
     
     displayTabs();
-    showStatus(`Closed ${totalCount} tab${totalCount > 1 ? 's' : ''}`, 'success');
+    
+    let statusMessage = `Closed ${closedCount} tab${closedCount > 1 ? 's' : ''}`;
+    if (missingCount > 0) {
+      statusMessage += ` (${missingCount} already closed)`;
+    }
+    showStatus(statusMessage, 'success');
   } catch (error) {
     showStatus('Error closing tabs: ' + error.message, 'error');
   }
@@ -1345,13 +1379,15 @@ async function saveAndCloseCategory(category) {
       duplicateIds.forEach(id => allTabIds.add(id));
     });
     
-    // Close all tabs including duplicates
-    await chrome.tabs.remove(Array.from(allTabIds));
+    const { closedCount, missingCount } = await safelyCloseTabs(Array.from(allTabIds));
     categorizedTabs[category] = [];
     displayTabs();
     
-    const totalCount = allTabIds.size;
-    showStatus(`Saved and closed ${totalCount} tab${totalCount > 1 ? 's' : ''}`, 'success');
+    let statusMessage = `Saved and closed ${closedCount} tab${closedCount > 1 ? 's' : ''}`;
+    if (missingCount > 0) {
+      statusMessage += ` (${missingCount} already closed)`;
+    }
+    showStatus(statusMessage, 'success');
   } catch (error) {
     showStatus('Error saving tabs: ' + error.message, 'error');
   }
@@ -1385,12 +1421,18 @@ async function saveAndCloseAll() {
     });
     
     // Close all tabs including duplicates
+    let closedCount = 0;
+    let missingCount = 0;
     if (allTabIds.size > 0) {
-      await chrome.tabs.remove(Array.from(allTabIds));
+      const result = await safelyCloseTabs(Array.from(allTabIds));
+      closedCount = result.closedCount;
+      missingCount = result.missingCount;
     }
     
-    const totalClosed = allTabIds.size;
-    const message = `Saved ${tabsToSave.length} tabs, closed ${totalClosed} tab${totalClosed > 1 ? 's' : ''}`;
+    let message = `Saved ${tabsToSave.length} tabs, closed ${closedCount} tab${closedCount > 1 ? 's' : ''}`;
+    if (missingCount > 0) {
+      message += ` (${missingCount} already closed)`;
+    }
     showStatus(message, 'success');
     
     // Clear categorized tabs
@@ -1433,10 +1475,13 @@ async function saveTabs(closeAfterSave) {
         duplicateIds.forEach(id => allTabIds.add(id));
       });
       
-      await chrome.tabs.remove(Array.from(allTabIds));
+      const { closedCount, missingCount } = await safelyCloseTabs(Array.from(allTabIds));
       
-      const totalClosed = allTabIds.size;
-      showStatus(`Saved to database and closed ${totalClosed} tab${totalClosed > 1 ? 's' : ''}`, 'success');
+      let statusMessage = `Saved to database and closed ${closedCount} tab${closedCount > 1 ? 's' : ''}`;
+      if (missingCount > 0) {
+        statusMessage += ` (${missingCount} already closed)`;
+      }
+      showStatus(statusMessage, 'success');
       
       // Show option to view saved tabs with info about excluded tabs
       const excludedCount = categorizedTabs[1].length;
