@@ -406,6 +406,22 @@ h1 {
   transform: translateX(-50%) scaleX(1);
 }
 
+/* Tab badge */
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.4;
+}
+
 .tab-btn svg {
   width: 18px;
   height: 18px;
@@ -857,15 +873,15 @@ button svg {
   color: #66bb6a; /* Material green 400 for dark mode */
 }
 
-/* Important tabs - pinkish color */
-.category-section#category3 .tab-item .tab-title,
-.category-section#savedCategory3 .tab-item .tab-title {
-  color: #c2185b; /* Material pink 700 */
+/* Important tabs - less saturated pinkish color */
+.tab-item[data-category="3"] .tab-title {
+  color: #ad1457; /* Less saturated pink */
+  opacity: 0.85;
 }
 
-[data-theme="dark"] .category-section#category3 .tab-item .tab-title,
-[data-theme="dark"] .category-section#savedCategory3 .tab-item .tab-title {
-  color: #f48fb1; /* Material pink 200 for dark mode */
+[data-theme="dark"] .tab-item[data-category="3"] .tab-title {
+  color: #f8bbd0; /* Less saturated pink for dark mode */
+  opacity: 0.9;
 }
 
 /* Favicon */

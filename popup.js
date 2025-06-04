@@ -144,6 +144,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize settings UI
     initializeSettingsUI();
     
+    // Update badges
+    updateSavedBadge();
+    
     // Check if API key exists for current provider
     if (!settings.apiKeys[settings.provider]) {
       console.log('No API key found for', settings.provider);
@@ -563,6 +566,9 @@ async function handleCategorize() {
     // Show action buttons
     document.querySelector('.action-buttons').style.display = 'flex';
     document.getElementById('tabsContainer').style.display = 'block';
+    
+    // Update badge
+    updateCategorizeBadge();
     
     // Save state
     await savePopupState();
@@ -1010,16 +1016,16 @@ function extractDateFromGroupName(groupName) {
     return date;
   }
   
-  // Handle "Week of Mon DD" format
-  const weekOfMatch = groupName.match(/Week of (\w+)\s+(\d+)/);
+  // Handle "Week of Mon DD" or "Week of Mon DD, YYYY" format
+  const weekOfMatch = groupName.match(/Week of (\w+)\s+(\d+)(?:,\s+(\d{4}))?/);
   if (weekOfMatch) {
     const monthName = weekOfMatch[1];
     const day = parseInt(weekOfMatch[2]);
+    const year = weekOfMatch[3] ? parseInt(weekOfMatch[3]) : new Date().getFullYear();
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthIndex = monthNames.indexOf(monthName);
     if (monthIndex !== -1) {
-      // Assume current year, adjust if needed
-      const date = new Date(new Date().getFullYear(), monthIndex, day);
+      const date = new Date(year, monthIndex, day);
       return date;
     }
   }
@@ -1185,7 +1191,11 @@ function groupByWeek(tabs) {
       // Get the Monday of that week
       const weekStart = getWeekStartDate(tabDate);
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      groupName = `Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
+      if (tabYear === currentYear) {
+        groupName = `Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
+      } else {
+        groupName = `Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}, ${tabYear}`;
+      }
     }
     
     if (!groups[groupName]) {
@@ -1298,7 +1308,11 @@ function groupBySavedWeek(tabs) {
       // Get the Monday of that week
       const weekStart = getWeekStartDate(savedDate);
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      groupName = `Saved Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
+      if (savedYear === currentYear) {
+        groupName = `Saved Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
+      } else {
+        groupName = `Saved Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}, ${savedYear}`;
+      }
     }
     
     if (!groups[groupName]) {
@@ -1515,7 +1529,11 @@ function groupByLastAccessedWeek(tabs) {
       // Get the Monday of that week
       const weekStart = getWeekStartDate(tabDate);
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      groupName = `Opened Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
+      if (tabYear === currentYear) {
+        groupName = `Opened Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
+      } else {
+        groupName = `Opened Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}, ${tabYear}`;
+      }
     }
     
     if (!groups[groupName]) {
@@ -2105,6 +2123,9 @@ async function saveTabs(closeAfterSave) {
       }
       showStatus(statusMessage, 'success');
       
+      // Update saved badge
+      updateSavedBadge();
+      
       // Show option to view saved tabs with info about excluded tabs
       const excludedCount = categorizedTabs[1].length;
       const savedCount = categorizedTabs[2].length + categorizedTabs[3].length;
@@ -2597,9 +2618,52 @@ function applySearchFilter() {
     }
   });
   
+  // Update categorize tab badge with important + save for later counts
+  updateCategorizeBadge();
+  
   // Update status
   if (searchQuery) {
     showStatus(`Found ${visibleCount} tabs matching "${searchQuery}"`, 'success');
+  }
+}
+
+// Update the categorize tab badge
+function updateCategorizeBadge() {
+  const badge = document.getElementById('categorizeBadge');
+  if (!badge) return;
+  
+  const importantCount = categorizedTabs[3] ? categorizedTabs[3].length : 0;
+  const saveForLaterCount = categorizedTabs[2] ? categorizedTabs[2].length : 0;
+  const total = importantCount + saveForLaterCount;
+  
+  if (total > 0) {
+    badge.textContent = total;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Update the saved tab badge
+async function updateSavedBadge() {
+  const badge = document.getElementById('savedBadge');
+  if (!badge) return;
+  
+  try {
+    await tabDatabase.init();
+    const savedTabs = await tabDatabase.getAllSavedTabs();
+    const importantCount = savedTabs.filter(tab => tab.category === 3).length;
+    const saveForLaterCount = savedTabs.filter(tab => tab.category === 2).length;
+    const total = importantCount + saveForLaterCount;
+    
+    if (total > 0) {
+      badge.textContent = total;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Error updating saved badge:', error);
   }
 }
 
