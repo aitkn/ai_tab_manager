@@ -23,8 +23,7 @@ let settings = {
   selectedModels: {}, // Store selected model per provider
   customPrompt: CONFIG.DEFAULT_PROMPT, // Store custom prompt, default to CONFIG prompt
   promptVersion: CONFIG.PROMPT_VERSION, // Track prompt version
-  isPromptCustomized: false, // Track if user has customized the prompt
-  removeDuplicates: true // Remove duplicate URLs by default
+  isPromptCustomized: false // Track if user has customized the prompt
 };
 
 // Theme management functions - defined early
@@ -195,12 +194,6 @@ function setupEventListeners() {
       setTheme(btn.dataset.theme);
     });
   });
-  
-  // Duplicate removal checkbox
-  document.getElementById('removeDuplicatesCheckbox').addEventListener('change', (e) => {
-    settings.removeDuplicates = e.target.checked;
-    saveSettings();
-  });
 }
 
 function initializeTabNavigation() {
@@ -268,9 +261,6 @@ function initializeSettingsUI() {
   // Set custom prompt
   const promptTextarea = document.getElementById('promptTextarea');
   promptTextarea.value = settings.customPrompt || CONFIG.DEFAULT_PROMPT;
-  
-  // Set duplicate removal checkbox
-  document.getElementById('removeDuplicatesCheckbox').checked = settings.removeDuplicates !== false;
   
   // Update prompt status
   updatePromptStatus();
@@ -470,23 +460,21 @@ async function handleCategorize() {
       }
     });
     
-    // Remove duplicates for display if enabled
-    if (settings.removeDuplicates !== false) {
-      const urlToTab = new Map();
-      tabs.forEach(tab => {
-        if (tab.url) {
-          const existing = urlToTab.get(tab.url);
-          if (!existing || (tab.lastAccessed && (!existing.lastAccessed || tab.lastAccessed > existing.lastAccessed))) {
-            urlToTab.set(tab.url, tab);
-          }
+    // Always remove duplicates for display
+    const urlToTab = new Map();
+    tabs.forEach(tab => {
+      if (tab.url) {
+        const existing = urlToTab.get(tab.url);
+        if (!existing || (tab.lastAccessed && (!existing.lastAccessed || tab.lastAccessed > existing.lastAccessed))) {
+          urlToTab.set(tab.url, tab);
         }
-      });
-      
-      tabsToProcess = Array.from(urlToTab.values());
-      if (tabs.length > tabsToProcess.length) {
-        console.log(`Removed ${tabs.length - tabsToProcess.length} duplicate URLs`);
-        showStatus(`Found ${tabs.length} tabs (${tabs.length - tabsToProcess.length} duplicates removed)`, 'loading');
       }
+    });
+    
+    tabsToProcess = Array.from(urlToTab.values());
+    if (tabs.length > tabsToProcess.length) {
+      console.log(`Removed ${tabs.length - tabsToProcess.length} duplicate URLs`);
+      showStatus(`Found ${tabs.length} tabs (${tabs.length - tabsToProcess.length} duplicates removed)`, 'loading');
     }
     
     // Prepare tabs data for Claude
