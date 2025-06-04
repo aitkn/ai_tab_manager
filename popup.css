@@ -1028,6 +1028,13 @@ button svg {
   margin-left: auto;
 }
 
+/* Group actions container */
+.group-actions {
+  display: flex;
+  gap: var(--md-spacing-1);
+  margin-left: var(--md-spacing-2);
+}
+
 .group-title {
   display: flex;
   align-items: center;

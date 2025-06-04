@@ -771,13 +771,6 @@ function displayCategoryView(isFromSaved = false) {
       }
     }
     
-    if (isFromSaved && tabs.length > 0) {
-      const openAllBtn = document.createElement('button');
-      openAllBtn.className = 'open-all-btn';
-      openAllBtn.textContent = `Open All ${tabs.length} tabs`;
-      openAllBtn.onclick = () => openAllTabsInCategory(category);
-      listContainer.appendChild(openAllBtn);
-    }
     
     tabs.forEach(tab => {
       const tabElement = createTabElement(tab, category, isFromSaved);
@@ -1101,16 +1094,47 @@ function createGroupSection(groupName, tabs, groupType, isFromSaved) {
   
   headerRight.appendChild(stats);
   
-  // Add 'Open All' button for saved collections in header
+  // Add action buttons for saved collections in header
   if (isFromSaved && tabs.length > 0) {
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'group-actions';
+    
+    // Open All button with icon
     const openAllBtn = document.createElement('button');
-    openAllBtn.className = 'primary-btn inline-action-btn';
-    openAllBtn.textContent = `Open All ${tabs.length}`;
+    openAllBtn.className = 'icon-btn';
+    openAllBtn.title = `Open all ${tabs.length} tabs in this group`;
+    openAllBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+        <polyline points="15 3 21 3 21 9"></polyline>
+        <line x1="10" y1="14" x2="21" y2="3"></line>
+      </svg>
+    `;
     openAllBtn.onclick = (e) => {
       e.stopPropagation(); // Prevent header click
       openAllTabsInGroup(tabs);
     };
-    headerRight.appendChild(openAllBtn);
+    
+    // Delete group button with icon
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'icon-btn delete-btn';
+    deleteBtn.title = `Delete all ${tabs.length} tabs in this group`;
+    deleteBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <line x1="10" y1="11" x2="10" y2="17"></line>
+        <line x1="14" y1="11" x2="14" y2="17"></line>
+      </svg>
+    `;
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation(); // Prevent header click
+      deleteTabsInGroup(tabs, groupName);
+    };
+    
+    actionsDiv.appendChild(openAllBtn);
+    actionsDiv.appendChild(deleteBtn);
+    headerRight.appendChild(actionsDiv);
   }
   
   header.appendChild(headerRight);
@@ -1195,6 +1219,40 @@ async function openAllTabsInGroup(tabs) {
   } catch (error) {
     console.error('Error opening tabs:', error);
     showStatus('Error opening tabs: ' + error.message, 'error');
+  }
+}
+
+async function deleteTabsInGroup(tabs, groupName) {
+  console.log('deleteTabsInGroup called:', { tabCount: tabs.length, groupName });
+  
+  if (tabs.length === 0) return;
+  
+  // Ask for confirmation
+  const message = `Delete all ${tabs.length} tabs in "${groupName}"?\n\nThis action cannot be undone.`;
+  if (!confirm(message)) {
+    return;
+  }
+  
+  try {
+    showStatus('Deleting tabs...', 'loading');
+    
+    // Extract the tab IDs
+    const tabIds = tabs.map(tab => tab.id).filter(id => id !== undefined);
+    
+    if (tabIds.length > 0) {
+      // Delete from database
+      await tabDatabase.deleteMultipleTabs(tabIds);
+      
+      showStatus(`Deleted ${tabIds.length} tabs from "${groupName}"`, 'success');
+      
+      // Refresh the saved tabs view
+      showSavedTabsContent();
+    } else {
+      showStatus('No tabs to delete', 'warning');
+    }
+  } catch (error) {
+    console.error('Error deleting tabs:', error);
+    showStatus('Failed to delete tabs: ' + error.message, 'error');
   }
 }
 
@@ -1854,14 +1912,39 @@ async function showSavedTabsContent(groupingType) {
         <div class="category-header-actions"></div>
       `;
       
-      // Add open all button to header
+      // Add action buttons to header
       if (tabs.length > 0) {
         const headerActions = header.querySelector('.category-header-actions');
+        
+        // Open All button with icon
         const openAllBtn = document.createElement('button');
-        openAllBtn.className = 'primary-btn inline-action-btn';
-        openAllBtn.textContent = `Open All ${tabs.length}`;
+        openAllBtn.className = 'icon-btn';
+        openAllBtn.title = `Open all ${tabs.length} tabs`;
+        openAllBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        `;
         openAllBtn.onclick = () => openAllTabsInGroup(tabs);
+        
+        // Delete all button with icon
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'icon-btn delete-btn';
+        deleteBtn.title = `Delete all ${tabs.length} tabs`;
+        deleteBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+        `;
+        deleteBtn.onclick = () => deleteTabsInGroup(tabs, categoryName);
+        
         headerActions.appendChild(openAllBtn);
+        headerActions.appendChild(deleteBtn);
       }
       
       const listContainer = document.createElement('div');
