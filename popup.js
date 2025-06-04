@@ -750,11 +750,20 @@ function displayCategoryView(isFromSaved = false) {
 }
 
 function displayGroupedView(groupBy, isFromSaved = false) {
-  // Hide category view, show grouped view
-  document.getElementById('categoryView').style.display = 'none';
-  document.getElementById('groupedView').style.display = 'block';
+  let groupedView;
   
-  const groupedView = document.getElementById('groupedView');
+  if (isFromSaved) {
+    // For saved tabs, create a new grouped view container
+    groupedView = document.createElement('div');
+    groupedView.className = 'grouping-view';
+    groupedView.id = 'savedGroupedView';
+  } else {
+    // For regular categorize tab
+    document.getElementById('categoryView').style.display = 'none';
+    document.getElementById('groupedView').style.display = 'block';
+    groupedView = document.getElementById('groupedView');
+  }
+  
   groupedView.innerHTML = '';
   
   // Combine all tabs
@@ -788,6 +797,11 @@ function displayGroupedView(groupBy, isFromSaved = false) {
     const groupSection = createGroupSection(groupName, tabs, groupBy, isFromSaved);
     groupedView.appendChild(groupSection);
   });
+  
+  // Return the grouped view for saved tabs to append
+  if (isFromSaved) {
+    return groupedView;
+  }
 }
 
 function groupByDomain(tabs) {
@@ -1694,8 +1708,7 @@ async function showSavedTabsContent(groupingType) {
     } else {
       // Use the existing displayGroupedView function for other groupings
       isViewingSaved = true;
-      displayGroupedView(groupingType, true);
-      const groupedView = document.getElementById('groupedView');
+      const groupedView = displayGroupedView(groupingType, true);
       if (groupedView) {
         savedContent.appendChild(groupedView);
       }
