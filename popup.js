@@ -805,7 +805,15 @@ function displayCategoryView(isFromSaved = false) {
       section.classList.remove('empty');
     }
     
-    countSpan.textContent = tabs.length;
+    // Count already saved tabs
+    const alreadySavedCount = tabs.filter(tab => tab.alreadySaved).length;
+    
+    if (alreadySavedCount > 0) {
+      countSpan.textContent = `${tabs.length} (${alreadySavedCount} already saved)`;
+    } else {
+      countSpan.textContent = tabs.length;
+    }
+    
     listContainer.innerHTML = '';
     
     // Add action buttons based on category and context
@@ -1323,6 +1331,9 @@ async function deleteTabsInGroup(tabs, groupName) {
 function createTabElement(tab, category, isFromSaved = false) {
   const div = document.createElement('div');
   div.className = 'tab-item';
+  if (tab.alreadySaved) {
+    div.className += ' already-saved';
+  }
   div.dataset.tabId = tab.id;
   div.dataset.category = category;
   
@@ -1336,12 +1347,23 @@ function createTabElement(tab, category, isFromSaved = false) {
   
   const title = document.createElement('div');
   title.className = 'tab-title';
-  // Add duplicate count to title if there are duplicates
+  // Build title with indicators
+  let titleText = tab.title;
+  const indicators = [];
+  
   if (tab.duplicateCount && tab.duplicateCount > 1) {
-    title.textContent = `${tab.title} (${tab.duplicateCount} tabs)`;
-  } else {
-    title.textContent = tab.title;
+    indicators.push(`${tab.duplicateCount} tabs`);
   }
+  
+  if (tab.alreadySaved) {
+    indicators.push('already saved');
+  }
+  
+  if (indicators.length > 0) {
+    titleText += ` (${indicators.join(', ')})`;
+  }
+  
+  title.textContent = titleText;
   title.title = tab.title;
   
   const url = document.createElement('div');

@@ -149,6 +149,9 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
           representativeTab.duplicateCount = tabs.length;
         }
         
+        // Mark as already saved
+        representativeTab.alreadySaved = true;
+        
         expandedCategorized[1].push(representativeTab);
       }
     });
