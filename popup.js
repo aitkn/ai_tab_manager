@@ -2357,22 +2357,33 @@ async function handleCSVImport(event) {
       const result = await tabDatabase.importFromCSV(csvContent, importSettings);
       
       // Build status message
-      let statusMessage = `Imported ${result.imported} tabs`;
+      let statusMessage;
       const details = [];
       
-      if (result.duplicates > 0) {
-        details.push(`${result.duplicates} duplicates skipped`);
+      if (result.imported === 0 && result.duplicates > 0) {
+        // All tabs were duplicates
+        statusMessage = `No new tabs imported (all ${result.duplicates} were already saved)`;
+      } else if (result.imported === 0) {
+        // No valid tabs found
+        statusMessage = 'No valid tabs found in CSV file';
+      } else {
+        // Normal import
+        statusMessage = `Imported ${result.imported} tabs`;
+        
+        if (result.duplicates > 0) {
+          details.push(`${result.duplicates} duplicates skipped`);
+        }
+        
+        if (result.categorized > 0) {
+          details.push(`${result.categorized} categorized by AI`);
+        }
+        
+        if (details.length > 0) {
+          statusMessage += ` (${details.join(', ')})`;
+        }
       }
       
-      if (result.categorized > 0) {
-        details.push(`${result.categorized} categorized by AI`);
-      }
-      
-      if (details.length > 0) {
-        statusMessage += ` (${details.join(', ')})`;
-      }
-      
-      showStatus(statusMessage, 'success');
+      showStatus(statusMessage, result.imported > 0 ? 'success' : 'warning');
       
       // Refresh saved tabs view if currently showing
       if (popupState.activeTab === 'saved') {
