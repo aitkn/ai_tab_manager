@@ -316,28 +316,53 @@ async function callOpenAIAPI(tabs, apiKey, model, customPrompt) {
 
 // Helper function to organize tabs
 function organizeTabs(tabs, categorization) {
+  console.log('organizeTabs called with', tabs.length, 'tabs');
+  console.log('Sample tab:', tabs[0]);
+  console.log('Categorization type:', typeof categorization);
+  console.log('Categorization keys:', Object.keys(categorization || {}).slice(0, 10));
+  
   const organized = { 1: [], 2: [], 3: [] };
   
   tabs.forEach((tab, index) => {
     // Check for categorization by tab ID (for regular tabs) or by index (for imported tabs)
     let category;
-    if (tab.id !== undefined) {
-      category = categorization[tab.id.toString()] || 1;
-    } else {
-      // For imported tabs without IDs, use the index
-      category = categorization[index.toString()] || 1;
-    }
     
-    organized[category].push(tab);
+    try {
+      if (tab && tab.id !== undefined && tab.id !== null) {
+        const idKey = tab.id.toString();
+        category = categorization[idKey] || 1;
+      } else {
+        // For imported tabs without IDs, use the index
+        const indexKey = index.toString();
+        category = categorization[indexKey] || 1;
+      }
+      
+      // Ensure category is valid
+      if (![1, 2, 3].includes(category)) {
+        console.warn(`Invalid category ${category} for tab at index ${index}, defaulting to 1`);
+        category = 1;
+      }
+      
+      organized[category].push(tab);
+    } catch (err) {
+      console.error(`Error processing tab at index ${index}:`, err);
+      console.error('Tab data:', tab);
+      // Default to category 1 on error
+      organized[1].push(tab);
+    }
   });
   
   // Sort tabs within each category by domain
   Object.keys(organized).forEach(cat => {
-    organized[cat].sort((a, b) => {
-      const domainA = a.domain || '';
-      const domainB = b.domain || '';
-      return domainA.localeCompare(domainB);
-    });
+    try {
+      organized[cat].sort((a, b) => {
+        const domainA = (a && a.domain) || '';
+        const domainB = (b && b.domain) || '';
+        return domainA.localeCompare(domainB);
+      });
+    } catch (err) {
+      console.error(`Error sorting category ${cat}:`, err);
+    }
   });
   
   return organized;
