@@ -805,8 +805,14 @@ function displayCategoryView(isFromSaved = false) {
       section.classList.remove('empty');
     }
     
-    // Just show the count, no extra info about already saved
-    countSpan.textContent = tabs.length;
+    // Show count with already saved info if any
+    const alreadySavedCount = tabs.filter(tab => tab.alreadySaved).length;
+    
+    if (alreadySavedCount > 0) {
+      countSpan.textContent = `${tabs.length}, ${alreadySavedCount} already saved`;
+    } else {
+      countSpan.textContent = tabs.length;
+    }
     
     listContainer.innerHTML = '';
     
@@ -841,6 +847,22 @@ function displayCategoryView(isFromSaved = false) {
       const tabElement = createTabElement(tab, category, isFromSaved);
       listContainer.appendChild(tabElement);
     });
+    
+    // Make category header clickable to collapse/expand
+    const header = section.querySelector('.category-header');
+    if (header && !header.hasAttribute('data-collapse-enabled')) {
+      header.style.cursor = 'pointer';
+      header.setAttribute('data-collapse-enabled', 'true');
+      
+      header.onclick = (e) => {
+        // Don't collapse if clicking on action buttons
+        if (e.target.closest('.category-header-actions')) return;
+        
+        section.classList.toggle('collapsed');
+        const isCollapsed = section.classList.contains('collapsed');
+        listContainer.style.display = isCollapsed ? 'none' : 'block';
+      };
+    }
   });
 }
 
@@ -2035,6 +2057,18 @@ async function showSavedTabsContent(groupingType) {
       
       section.appendChild(header);
       section.appendChild(listContainer);
+      
+      // Make category header clickable to collapse/expand
+      header.style.cursor = 'pointer';
+      header.onclick = (e) => {
+        // Don't collapse if clicking on action buttons
+        if (e.target.closest('.category-header-actions')) return;
+        
+        section.classList.toggle('collapsed');
+        const isCollapsed = section.classList.contains('collapsed');
+        listContainer.style.display = isCollapsed ? 'none' : 'block';
+      };
+      
       categoryView.appendChild(section);
     });
     

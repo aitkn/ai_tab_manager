@@ -741,6 +741,21 @@ button svg {
   display: none;
 }
 
+/* Collapsible sections - add arrow indicator */
+.category-header-title::before,
+.group-header::before {
+  content: '▼';
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.category-section.collapsed .category-header-title::before,
+.group-section.collapsed .group-header::before {
+  transform: rotate(-90deg);
+}
+
 .category-header {
   display: flex;
   align-items: center;
