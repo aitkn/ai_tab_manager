@@ -2383,9 +2383,15 @@ async function handleCSVImport(event) {
       
       showStatus(statusMessage, result.imported > 0 ? 'success' : 'warning');
       
+      // Store the import message to preserve it
+      const importMessage = statusMessage;
+      const importStatus = result.imported > 0 ? 'success' : 'warning';
+      
       // Refresh saved tabs view if currently showing
       if (popupState.activeTab === 'saved') {
-        showSavedTabsContent();
+        await showSavedTabsContent();
+        // Restore the import status message after refresh
+        showStatus(importMessage, importStatus);
       }
     }
   } catch (error) {
