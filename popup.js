@@ -591,7 +591,53 @@ async function categorizeTabs(tabs, apiKey, provider, model, customPrompt) {
       throw new Error('Chrome runtime not available');
     }
     
-    // Send message to background script
+    // For very large numbers of tabs, use batch processing
+    const BATCH_SIZE = 100;
+    
+    if (tabs.length > BATCH_SIZE) {
+      console.log(`Large number of tabs detected (${tabs.length}), processing in batches of ${BATCH_SIZE}`);
+      showStatus(`Categorizing ${tabs.length} tabs in batches...`, 'loading');
+      
+      const categorizedResults = { 1: [], 2: [], 3: [] };
+      
+      for (let i = 0; i < tabs.length; i += BATCH_SIZE) {
+        const batch = tabs.slice(i, i + BATCH_SIZE);
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(tabs.length / BATCH_SIZE);
+        
+        showStatus(`Processing batch ${batchNumber} of ${totalBatches}...`, 'loading');
+        console.log(`Processing batch ${batchNumber} of ${totalBatches} (${batch.length} tabs)`);
+        
+        const response = await chrome.runtime.sendMessage({
+          action: 'categorizeTabs',
+          data: { tabs: batch, apiKey, provider, model, customPrompt }
+        });
+        
+        if (!response || response.error) {
+          console.error(`Batch ${batchNumber} failed:`, response?.error || 'No response');
+          throw new Error(response?.error || 'Batch processing failed');
+        }
+        
+        if (response.success && response.data) {
+          // Merge batch results
+          [1, 2, 3].forEach(category => {
+            if (response.data[category]) {
+              categorizedResults[category].push(...response.data[category]);
+            }
+          });
+        }
+        
+        // Small delay between batches to avoid rate limiting
+        if (i + BATCH_SIZE < tabs.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      console.log('Successfully categorized all batches');
+      return categorizedResults;
+    }
+    
+    // For smaller numbers of tabs, process all at once
     const response = await chrome.runtime.sendMessage({
       action: 'categorizeTabs',
       data: { tabs, apiKey, provider, model, customPrompt }
