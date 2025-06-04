@@ -333,7 +333,11 @@ function organizeTabs(tabs, categorization) {
   
   // Sort tabs within each category by domain
   Object.keys(organized).forEach(cat => {
-    organized[cat].sort((a, b) => a.domain.localeCompare(b.domain));
+    organized[cat].sort((a, b) => {
+      const domainA = a.domain || '';
+      const domainB = b.domain || '';
+      return domainA.localeCompare(domainB);
+    });
   });
   
   return organized;
