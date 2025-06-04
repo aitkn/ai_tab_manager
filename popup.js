@@ -1,5 +1,5 @@
 /*
- * AI Tab Manager - Copyright (c) 2024 AI Tech Knowledge LLC
+ * AI Tab Manager - Copyright (c) 2025 AI Tech Knowledge LLC
  * Proprietary License - See LICENSE file
  * support@aitkn.com
  */
@@ -1601,15 +1601,21 @@ async function openAllTabsInCategory(category) {
 }
 
 // Show saved tabs content in the saved tab
-async function showSavedTabsContent() {
+async function showSavedTabsContent(groupingType) {
   try {
     const allSavedTabs = await tabDatabase.getAllSavedTabs();
     
-    // Convert to categorized format for display
-    const savedCategorizedTabs = { 1: [], 2: [], 3: [] };
+    // Get current grouping from dropdown if not passed
+    if (!groupingType) {
+      const savedGroupingSelect = document.getElementById('savedGroupingSelect');
+      groupingType = savedGroupingSelect ? savedGroupingSelect.value : 'category';
+    }
+    
+    // Store the tabs in the categorized format for compatibility
+    categorizedTabs = { 1: [], 2: [], 3: [] };
     allSavedTabs.forEach(tab => {
-      if (savedCategorizedTabs[tab.category]) {
-        savedCategorizedTabs[tab.category].push(tab);
+      if (categorizedTabs[tab.category]) {
+        categorizedTabs[tab.category].push(tab);
       }
     });
     
@@ -1617,14 +1623,15 @@ async function showSavedTabsContent() {
     const savedContent = document.getElementById('savedContent');
     savedContent.innerHTML = '';
     
-    // Create a category view in saved content
-    const categoryView = document.createElement('div');
-    categoryView.className = 'grouping-view';
-    categoryView.id = 'savedCategoryView';
+    if (groupingType === 'category') {
+      // Create a category view in saved content
+      const categoryView = document.createElement('div');
+      categoryView.className = 'grouping-view';
+      categoryView.id = 'savedCategoryView';
     
-    // Display each category
-    [3, 2, 1].forEach(category => {
-      const tabs = savedCategorizedTabs[category] || [];
+      // Display each category
+      [3, 2, 1].forEach(category => {
+        const tabs = categorizedTabs[category] || [];
       if (tabs.length === 0) return; // Skip empty categories
       
       const section = document.createElement('div');
@@ -1683,6 +1690,15 @@ async function showSavedTabsContent() {
     } else {
       savedContent.appendChild(categoryView);
       showStatus(`Viewing ${allSavedTabs.length} saved tabs`, 'success');
+    }
+    } else {
+      // Use the existing displayGroupedView function for other groupings
+      isViewingSaved = true;
+      displayGroupedView(groupingType, true);
+      const groupedView = document.getElementById('groupedView');
+      if (groupedView) {
+        savedContent.appendChild(groupedView);
+      }
     }
     
   } catch (error) {
@@ -1789,8 +1805,9 @@ window.addEventListener('beforeunload', () => {
 
 // Saved tab event handlers
 function onSavedGroupingChange(e) {
-  // TODO: Implement grouping for saved tabs
-  console.log('Saved grouping changed to:', e.target.value);
+  const newGrouping = e.target.value;
+  // Update the grouping and refresh the saved tabs display
+  showSavedTabsContent(newGrouping);
 }
 
 function onSavedSearchInput(e) {

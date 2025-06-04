@@ -1,5 +1,5 @@
 /*
- * AI Tab Manager - Copyright (c) 2024 AI Tech Knowledge LLC
+ * AI Tab Manager - Copyright (c) 2025 AI Tech Knowledge LLC
  * Proprietary License - See LICENSE file
  * support@aitkn.com
  */
@@ -115,7 +115,7 @@
 
 /* Dark theme - System preference */
 @media (prefers-color-scheme: dark) {
-  body:not([data-theme="light"]) {
+  body:not([data-theme="light"]):not([data-theme="dark"]) {
     /* Primary colors */
     --md-sys-color-primary: #8dcdff;
     --md-sys-color-on-primary: #00344f;
@@ -247,7 +247,7 @@ body[data-theme="dark"] textarea::placeholder {
 }
 
 body {
-  width: 800px;
+  width: 600px;
   height: 600px;
   margin: 0;
   padding: 0;
@@ -995,6 +995,11 @@ button svg {
   font-weight: 500;
   color: var(--md-sys-color-on-surface);
   font-size: var(--md-sys-typescale-title-small);
+}
+
+/* Save API Key button spacing */
+#saveApiKeyBtn {
+  margin-top: var(--md-spacing-2);
 }
 
 /* Material Design 3 Select/Dropdown */

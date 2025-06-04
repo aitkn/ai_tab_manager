@@ -1,5 +1,5 @@
 /*
- * AI Tab Manager - Copyright (c) 2024 AI Tech Knowledge LLC
+ * AI Tab Manager - Copyright (c) 2025 AI Tech Knowledge LLC
  * Proprietary License - See LICENSE file
  * support@aitkn.com
  */
