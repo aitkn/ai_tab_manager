@@ -267,6 +267,11 @@ async function callClaudeAPI(tabs, apiKey, model, customPrompt) {
   console.log('Request headers:', requestHeaders);
   console.log('API Key length:', apiKey.length);
   console.log('API Key starts with:', apiKey.substring(0, 10) + '...');
+  
+  // Log the complete request body
+  console.log('=== CLAUDE API REQUEST BODY ===');
+  console.log('Request body:', JSON.stringify(requestBody, null, 2));
+  console.log('=== END CLAUDE API REQUEST BODY ===');
 
   let response;
   try {
@@ -378,24 +383,39 @@ async function callOpenAIAPI(tabs, apiKey, model, customPrompt) {
   try {
     const prompt = getCategorizationPrompt(tabs, customPrompt);
     
+    // Log the exact prompt being sent
+    console.log('=== OPENAI API REQUEST ===');
+    console.log('Model:', model);
+    console.log('Number of tabs:', tabs.length);
+    console.log('Prompt length:', prompt.length);
+    console.log('Full prompt:', prompt);
+    console.log('=== END OPENAI API REQUEST ===');
+    
+    const requestBody = {
+      model: model,
+      messages: [{
+        role: 'system',
+        content: 'You are a helpful assistant that categorizes browser tabs.'
+      }, {
+        role: 'user',
+        content: prompt
+      }],
+      temperature: 0.3,
+      max_tokens: 4096
+    };
+    
+    // Log the complete request body
+    console.log('=== OPENAI API REQUEST BODY ===');
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
+    console.log('=== END OPENAI API REQUEST BODY ===');
+    
     const response = await fetch(CONFIG.PROVIDERS.OpenAI.apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify({
-        model: model,
-        messages: [{
-          role: 'system',
-          content: 'You are a helpful assistant that categorizes browser tabs.'
-        }, {
-          role: 'user',
-          content: prompt
-        }],
-        temperature: 0.3,
-        max_tokens: 4096
-      })
+      body: JSON.stringify(requestBody)
     });
     
     if (!response.ok) {
@@ -404,7 +424,21 @@ async function callOpenAIAPI(tabs, apiKey, model, customPrompt) {
     }
     
     const data = await response.json();
+    
+    // Log the complete response
+    console.log('=== OPENAI API RESPONSE ===');
+    console.log('Response status:', response.status);
+    console.log('Response data structure:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+      throw new Error('Invalid response format from OpenAI');
+    }
+    
     const content = data.choices[0].message.content;
+    console.log('Content length:', content.length);
+    console.log('Full content:', content);
+    console.log('=== END OPENAI API RESPONSE ===');
+    
     const categorization = JSON.parse(content);
     
     return organizeTabs(tabs, categorization);
