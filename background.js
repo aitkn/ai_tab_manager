@@ -280,6 +280,12 @@ function getCategorizationPrompt(tabs, customPrompt) {
 async function callClaudeAPI(tabs, apiKey, model, customPrompt) {
   console.log('callClaudeAPI started with model:', model);
   
+  // Safety check - don't call API if no tabs
+  if (!tabs || tabs.length === 0) {
+    console.log('No tabs to categorize, skipping Claude API call');
+    return { 1: [], 2: [], 3: [] };
+  }
+  
   try {
     const prompt = getCategorizationPrompt(tabs, customPrompt);
     console.log('Calling Claude API with', tabs.length, 'tabs');
@@ -425,6 +431,12 @@ async function callClaudeAPI(tabs, apiKey, model, customPrompt) {
 // OpenAI API implementation
 async function callOpenAIAPI(tabs, apiKey, model, customPrompt) {
   console.log('callOpenAIAPI started with model:', model);
+  
+  // Safety check - don't call API if no tabs
+  if (!tabs || tabs.length === 0) {
+    console.log('No tabs to categorize, skipping OpenAI API call');
+    return { 1: [], 2: [], 3: [] };
+  }
   
   try {
     const prompt = getCategorizationPrompt(tabs, customPrompt);
