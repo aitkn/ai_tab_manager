@@ -2413,31 +2413,8 @@ async function showImportDialog(csvContent) {
   const lines = csvContent.split('\n').filter(line => line.trim());
   const rowCount = lines.length - 1; // Minus header
   
-  // Parse to check for duplicates
-  const existingTabs = await tabDatabase.getAllSavedTabs();
-  const existingUrls = new Set(existingTabs.map(tab => tab.url));
   
-  let duplicateCount = 0;
-  let newCount = 0;
-  
-  // Quick check for duplicates (simplified parsing)
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    // Extract URL (assuming it's in the second column after title)
-    const match = line.match(/,([^,]+?),/);
-    if (match && match[1]) {
-      const url = match[1].replace(/^"|"$/g, '');
-      if (existingUrls.has(url)) {
-        duplicateCount++;
-      } else {
-        newCount++;
-      }
-    }
-  }
-  
-  const message = `Import ${rowCount} tabs from CSV?\n\n` +
-    `• ${newCount} new tabs will be imported\n` +
-    `• ${duplicateCount} duplicates will be skipped\n\n` +
+  const message = `Import ${rowCount} rows from CSV?\n\n` +
     `Note: Tabs without categories will be categorized using ${settings.provider} if API key is available.`;
   
   return confirm(message);
