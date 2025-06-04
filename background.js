@@ -114,7 +114,12 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
         throw new Error(`Unknown provider: ${provider}`);
     }
     
-    console.log('Background: API response received', categorized);
+    console.log('Background: API response received, categories:', Object.keys(categorized));
+    console.log('Background: Tab counts by category:', {
+      category1: categorized[1]?.length || 0,
+      category2: categorized[2]?.length || 0,
+      category3: categorized[3]?.length || 0
+    });
     return { success: true, data: categorized };
   } catch (error) {
     console.error('Background: API error', error);
@@ -196,40 +201,67 @@ async function callClaudeAPI(tabs, apiKey, model, customPrompt) {
   
   const content = data.content[0].text;
   console.log('Claude response text length:', content.length);
-  console.log('Claude response preview:', content.substring(0, 200) + '...');
+  
+  // Don't log the full content to avoid console truncation issues
+  if (content.length > 1000) {
+    console.log('Claude response preview:', content.substring(0, 100) + '...[truncated]...' + content.substring(content.length - 100));
+  } else {
+    console.log('Claude response text:', content);
+  }
 
   // Extract JSON from response
   let categorization;
   try {
+    // Clean the content first - remove any potential whitespace or newlines
+    const cleanedContent = content.trim();
+    
     // Try to parse the entire response as JSON first
-    categorization = JSON.parse(content);
+    categorization = JSON.parse(cleanedContent);
   } catch (e) {
-    // If that fails, try to extract JSON from the text
-    // Use a more robust regex that handles multiline JSON
-    const jsonMatch = content.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
-    if (!jsonMatch) {
-      // Try another approach - find first { and last }
-      const firstBrace = content.indexOf('{');
-      const lastBrace = content.lastIndexOf('}');
+    console.log('Direct JSON parse failed, trying extraction methods...');
+    
+    // Method 1: Try to find JSON object boundaries
+    const firstBrace = content.indexOf('{');
+    const lastBrace = content.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonString = content.substring(firstBrace, lastBrace + 1).trim();
       
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        const jsonString = content.substring(firstBrace, lastBrace + 1);
+      try {
+        categorization = JSON.parse(jsonString);
+        console.log('Successfully parsed JSON using brace extraction');
+      } catch (parseError) {
+        console.error('Failed to parse extracted JSON:', parseError.message);
+        
+        // Method 2: Try line-by-line parsing for potential formatting issues
         try {
-          categorization = JSON.parse(jsonString);
-        } catch (parseError) {
-          console.error('Failed to parse extracted JSON:', parseError);
-          console.error('Extracted string:', jsonString.substring(0, 500) + '...');
+          // Remove any markdown code blocks if present
+          const cleanJson = jsonString
+            .replace(/^```json\s*/i, '')
+            .replace(/^```\s*/i, '')
+            .replace(/\s*```$/i, '')
+            .trim();
+          
+          categorization = JSON.parse(cleanJson);
+          console.log('Successfully parsed JSON after cleaning markdown');
+        } catch (cleanError) {
+          console.error('All parsing methods failed');
+          console.error('First 500 chars of extracted string:', jsonString.substring(0, 500));
+          console.error('Last 100 chars of extracted string:', jsonString.substring(jsonString.length - 100));
           throw new Error('Invalid JSON in Claude response');
         }
-      } else {
-        throw new Error('No JSON found in Claude response');
       }
     } else {
-      categorization = JSON.parse(jsonMatch[0]);
+      throw new Error('No JSON object found in Claude response');
     }
   }
 
-  console.log('Parsed categorization:', categorization);
+  // Validate the categorization object
+  if (!categorization || typeof categorization !== 'object') {
+    throw new Error('Invalid categorization result');
+  }
+  
+  console.log('Successfully parsed categorization for', Object.keys(categorization).length, 'items');
   
   return organizeTabs(tabs, categorization);
   

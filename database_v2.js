@@ -581,20 +581,55 @@ class TabDatabase {
     let categorizationResults = null;
     if (tabsNeedingCategorization.length > 0 && settings.apiKey && settings.provider && settings.model) {
       try {
-        // Send to background script for categorization
-        const response = await chrome.runtime.sendMessage({
-          action: 'categorizeTabs',
-          data: {
-            tabs: tabsNeedingCategorization,
-            apiKey: settings.apiKey,
-            provider: settings.provider,
-            model: settings.model,
-            customPrompt: settings.customPrompt
-          }
-        });
+        console.log(`Categorizing ${tabsNeedingCategorization.length} imported tabs...`);
         
-        if (response && response.success && response.data) {
-          categorizationResults = response.data;
+        // For very large imports, batch the categorization to avoid timeouts
+        const BATCH_SIZE = 100;
+        
+        if (tabsNeedingCategorization.length > BATCH_SIZE) {
+          console.log(`Large import detected, processing in batches of ${BATCH_SIZE}`);
+          categorizationResults = { 1: [], 2: [], 3: [] };
+          
+          for (let i = 0; i < tabsNeedingCategorization.length; i += BATCH_SIZE) {
+            const batch = tabsNeedingCategorization.slice(i, i + BATCH_SIZE);
+            console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(tabsNeedingCategorization.length / BATCH_SIZE)}`);
+            
+            const response = await chrome.runtime.sendMessage({
+              action: 'categorizeTabs',
+              data: {
+                tabs: batch,
+                apiKey: settings.apiKey,
+                provider: settings.provider,
+                model: settings.model,
+                customPrompt: settings.customPrompt
+              }
+            });
+            
+            if (response && response.success && response.data) {
+              // Merge batch results
+              [1, 2, 3].forEach(category => {
+                if (response.data[category]) {
+                  categorizationResults[category].push(...response.data[category]);
+                }
+              });
+            }
+          }
+        } else {
+          // Small batch, process all at once
+          const response = await chrome.runtime.sendMessage({
+            action: 'categorizeTabs',
+            data: {
+              tabs: tabsNeedingCategorization,
+              apiKey: settings.apiKey,
+              provider: settings.provider,
+              model: settings.model,
+              customPrompt: settings.customPrompt
+            }
+          });
+          
+          if (response && response.success && response.data) {
+            categorizationResults = response.data;
+          }
         }
       } catch (error) {
         console.error('Failed to categorize imported tabs:', error);
@@ -603,17 +638,21 @@ class TabDatabase {
     
     // If categorization succeeded, merge results
     if (categorizationResults) {
-      [2, 3].forEach(category => {
+      // Include all categories, even category 1 (we'll filter it out if needed)
+      [1, 2, 3].forEach(category => {
         if (categorizationResults[category]) {
           categorizationResults[category].forEach(tab => {
-            tabsToImport.push({
-              ...tab,
-              category,
-              metadata: {
-                ...tab.metadata,
-                categorizedDuringImport: true
-              }
-            });
+            // Only import categories 2 and 3 (skip category 1 - "Can Be Closed")
+            if (category === 2 || category === 3) {
+              tabsToImport.push({
+                ...tab,
+                category,
+                metadata: {
+                  ...tab.metadata,
+                  categorizedDuringImport: true
+                }
+              });
+            }
           });
         }
       });
