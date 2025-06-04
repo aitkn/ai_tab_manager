@@ -195,7 +195,8 @@ async function callClaudeAPI(tabs, apiKey, model, customPrompt) {
   }
   
   const content = data.content[0].text;
-  console.log('Claude response text:', content);
+  console.log('Claude response text length:', content.length);
+  console.log('Claude response preview:', content.substring(0, 200) + '...');
 
   // Extract JSON from response
   let categorization;
@@ -204,11 +205,28 @@ async function callClaudeAPI(tabs, apiKey, model, customPrompt) {
     categorization = JSON.parse(content);
   } catch (e) {
     // If that fails, try to extract JSON from the text
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    // Use a more robust regex that handles multiline JSON
+    const jsonMatch = content.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
     if (!jsonMatch) {
-      throw new Error('No JSON found in Claude response');
+      // Try another approach - find first { and last }
+      const firstBrace = content.indexOf('{');
+      const lastBrace = content.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const jsonString = content.substring(firstBrace, lastBrace + 1);
+        try {
+          categorization = JSON.parse(jsonString);
+        } catch (parseError) {
+          console.error('Failed to parse extracted JSON:', parseError);
+          console.error('Extracted string:', jsonString.substring(0, 500) + '...');
+          throw new Error('Invalid JSON in Claude response');
+        }
+      } else {
+        throw new Error('No JSON found in Claude response');
+      }
+    } else {
+      categorization = JSON.parse(jsonMatch[0]);
     }
-    categorization = JSON.parse(jsonMatch[0]);
   }
 
   console.log('Parsed categorization:', categorization);
@@ -268,8 +286,16 @@ async function callOpenAIAPI(tabs, apiKey, model, customPrompt) {
 function organizeTabs(tabs, categorization) {
   const organized = { 1: [], 2: [], 3: [] };
   
-  tabs.forEach(tab => {
-    const category = categorization[tab.id.toString()] || 1;
+  tabs.forEach((tab, index) => {
+    // Check for categorization by tab ID (for regular tabs) or by index (for imported tabs)
+    let category;
+    if (tab.id !== undefined) {
+      category = categorization[tab.id.toString()] || 1;
+    } else {
+      // For imported tabs without IDs, use the index
+      category = categorization[index.toString()] || 1;
+    }
+    
     organized[category].push(tab);
   });
   
