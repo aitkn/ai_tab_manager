@@ -92,39 +92,99 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
   console.log('Using custom prompt:', !!customPrompt);
   
   try {
+    // Deduplicate tabs before sending to LLM
+    const { deduplicatedTabs, urlToOriginalTabs } = deduplicateTabs(tabs);
+    console.log(`Deduplication: ${tabs.length} tabs -> ${deduplicatedTabs.length} unique URLs`);
+    
     let categorized;
     
     switch (provider) {
       case 'Claude':
-        categorized = await callClaudeAPI(tabs, apiKey, model, customPrompt);
+        categorized = await callClaudeAPI(deduplicatedTabs, apiKey, model, customPrompt);
         break;
       case 'OpenAI':
-        categorized = await callOpenAIAPI(tabs, apiKey, model, customPrompt);
+        categorized = await callOpenAIAPI(deduplicatedTabs, apiKey, model, customPrompt);
         break;
       case 'Gemini':
-        categorized = await callGeminiAPI(tabs, apiKey, model, customPrompt);
+        categorized = await callGeminiAPI(deduplicatedTabs, apiKey, model, customPrompt);
         break;
       case 'DeepSeek':
-        categorized = await callDeepSeekAPI(tabs, apiKey, model, customPrompt);
+        categorized = await callDeepSeekAPI(deduplicatedTabs, apiKey, model, customPrompt);
         break;
       case 'Grok':
-        categorized = await callGrokAPI(tabs, apiKey, model, customPrompt);
+        categorized = await callGrokAPI(deduplicatedTabs, apiKey, model, customPrompt);
         break;
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
     
-    console.log('Background: API response received, categories:', Object.keys(categorized));
-    console.log('Background: Tab counts by category:', {
-      category1: categorized[1]?.length || 0,
-      category2: categorized[2]?.length || 0,
-      category3: categorized[3]?.length || 0
+    // Map categorized results back to all original tabs
+    const expandedCategorized = expandCategorizedResults(categorized, urlToOriginalTabs);
+    
+    console.log('Background: Deduplicated API response:', Object.keys(categorized));
+    console.log('Background: Expanded categorized results:', Object.keys(expandedCategorized));
+    console.log('Background: Tab counts by category after expansion:', {
+      category1: expandedCategorized[1]?.length || 0,
+      category2: expandedCategorized[2]?.length || 0,
+      category3: expandedCategorized[3]?.length || 0
     });
-    return { success: true, data: categorized };
+    return { success: true, data: expandedCategorized };
   } catch (error) {
     console.error('Background: API error', error);
     return { success: false, error: error.message };
   }
+}
+
+// Deduplicate tabs by URL, keeping track of all tabs with the same URL
+function deduplicateTabs(tabs) {
+  const urlToOriginalTabs = new Map();
+  const deduplicatedTabs = [];
+  
+  tabs.forEach((tab, index) => {
+    const url = tab.url;
+    if (!urlToOriginalTabs.has(url)) {
+      // First time seeing this URL, add to deduplicated list
+      urlToOriginalTabs.set(url, []);
+      // Create a deduplicated tab with a unique ID for tracking
+      const deduplicatedTab = {
+        ...tab,
+        deduplicatedId: `dedup_${deduplicatedTabs.length}`
+      };
+      deduplicatedTabs.push(deduplicatedTab);
+    }
+    // Track all original tabs with this URL
+    urlToOriginalTabs.get(url).push({ ...tab, originalIndex: index });
+  });
+  
+  console.log('Deduplication map:', Array.from(urlToOriginalTabs.entries()).map(([url, tabs]) => ({
+    url,
+    count: tabs.length,
+    indices: tabs.map(t => t.originalIndex)
+  })));
+  
+  return { deduplicatedTabs, urlToOriginalTabs };
+}
+
+// Expand categorized results to include all original tabs
+function expandCategorizedResults(categorized, urlToOriginalTabs) {
+  const expanded = { 1: [], 2: [], 3: [] };
+  
+  [1, 2, 3].forEach(category => {
+    if (categorized[category]) {
+      categorized[category].forEach(deduplicatedTab => {
+        const originalTabs = urlToOriginalTabs.get(deduplicatedTab.url) || [];
+        originalTabs.forEach(originalTab => {
+          // Remove deduplication artifacts
+          const cleanTab = { ...originalTab };
+          delete cleanTab.deduplicatedId;
+          delete cleanTab.originalIndex;
+          expanded[category].push(cleanTab);
+        });
+      });
+    }
+  });
+  
+  return expanded;
 }
 
 // Common prompt for all LLMs
@@ -144,6 +204,14 @@ async function callClaudeAPI(tabs, apiKey, model, customPrompt) {
   try {
     const prompt = getCategorizationPrompt(tabs, customPrompt);
     console.log('Calling Claude API with', tabs.length, 'tabs');
+    
+    // Log the exact prompt being sent
+    console.log('=== CLAUDE API REQUEST ===');
+    console.log('Model:', model);
+    console.log('Number of tabs:', tabs.length);
+    console.log('Prompt length:', prompt.length);
+    console.log('Full prompt:', prompt);
+    console.log('=== END CLAUDE API REQUEST ===');
 
   const requestHeaders = {
     'Content-Type': 'application/json',
@@ -193,21 +261,20 @@ async function callClaudeAPI(tabs, apiKey, model, customPrompt) {
   }
 
   const data = await response.json();
-  console.log('Claude API raw response:', data);
+  
+  console.log('=== CLAUDE API RESPONSE ===');
+  console.log('Response status:', response.status);
+  console.log('Response headers:', response.headers);
+  console.log('Raw response data structure:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
   
   if (!data.content || !data.content[0] || !data.content[0].text) {
     throw new Error('Invalid response format from Claude');
   }
   
   const content = data.content[0].text;
-  console.log('Claude response text length:', content.length);
-  
-  // Don't log the full content to avoid console truncation issues
-  if (content.length > 1000) {
-    console.log('Claude response preview:', content.substring(0, 100) + '...[truncated]...' + content.substring(content.length - 100));
-  } else {
-    console.log('Claude response text:', content);
-  }
+  console.log('Content length:', content.length);
+  console.log('Full content:', content);
+  console.log('=== END CLAUDE API RESPONSE ===');
 
   // Extract JSON from response
   let categorization;
@@ -328,7 +395,10 @@ function organizeTabs(tabs, categorization) {
     let category;
     
     try {
-      if (tab && tab.id !== undefined && tab.id !== null) {
+      if (tab && tab.deduplicatedId) {
+        // For deduplicated tabs, use the deduplicatedId
+        category = categorization[tab.deduplicatedId] || categorization[index.toString()] || 1;
+      } else if (tab && tab.id !== undefined && tab.id !== null) {
         const idKey = tab.id.toString();
         category = categorization[idKey] || 1;
       } else if (tab && tab.tempId) {

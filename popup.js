@@ -498,11 +498,10 @@ async function handleCategorize() {
     const tabs = await chrome.tabs.query({});
     console.log('Found', tabs.length, 'tabs');
     
-    // Track duplicate URLs and remove duplicates if enabled
+    // Track duplicate URLs for later operations
     urlToDuplicateIds = {}; // Reset the mapping
-    let tabsToProcess = tabs;
     
-    // Always track all tabs by URL (for closing duplicates)
+    // Track all tabs by URL (for closing duplicates)
     tabs.forEach(tab => {
       if (tab.url) {
         if (!urlToDuplicateIds[tab.url]) {
@@ -512,25 +511,15 @@ async function handleCategorize() {
       }
     });
     
-    // Always remove duplicates for display
-    const urlToTab = new Map();
-    tabs.forEach(tab => {
-      if (tab.url) {
-        const existing = urlToTab.get(tab.url);
-        if (!existing || (tab.lastAccessed && (!existing.lastAccessed || tab.lastAccessed > existing.lastAccessed))) {
-          urlToTab.set(tab.url, tab);
-        }
-      }
-    });
-    
-    tabsToProcess = Array.from(urlToTab.values());
-    if (tabs.length > tabsToProcess.length) {
-      console.log(`Removed ${tabs.length - tabsToProcess.length} duplicate URLs`);
-      showStatus(`Found ${tabs.length} tabs (${tabs.length - tabsToProcess.length} duplicates removed)`, 'loading');
+    // Count duplicates for status message
+    const uniqueUrls = Object.keys(urlToDuplicateIds).length;
+    const duplicateCount = tabs.length - uniqueUrls;
+    if (duplicateCount > 0) {
+      showStatus(`Found ${tabs.length} tabs (${duplicateCount} duplicates)`, 'loading');
     }
     
-    // Prepare tabs data for Claude
-    const tabsData = tabsToProcess.map(tab => {
+    // Prepare all tabs data for Claude (deduplication will happen in background script)
+    const tabsData = tabs.map(tab => {
       let domain = 'unknown';
       try {
         if (tab.url && tab.url.startsWith('http')) {
