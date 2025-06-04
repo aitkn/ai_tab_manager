@@ -87,14 +87,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return false;
 });
 
-async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPrompt }) {
+async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPrompt, savedUrls = [] }) {
   console.log('Background: Categorizing tabs with', provider, model, tabs.length, 'tabs');
   console.log('Using custom prompt:', !!customPrompt);
+  console.log('Saved URLs to exclude from LLM:', savedUrls.length);
   
   try {
+    // Convert saved URLs array to Set for faster lookup
+    const savedUrlsSet = new Set(savedUrls);
+    
     // Deduplicate tabs before sending to LLM
-    const { deduplicatedTabs, urlToOriginalTabs } = deduplicateTabs(tabs);
+    const { deduplicatedTabs, urlToOriginalTabs, savedTabsMap } = deduplicateTabs(tabs, savedUrlsSet);
     console.log(`Deduplication: ${tabs.length} tabs -> ${deduplicatedTabs.length} unique URLs`);
+    
+    // If no tabs to categorize after filtering, return empty result
+    if (deduplicatedTabs.length === 0) {
+      console.log('No new tabs to categorize after filtering saved URLs');
+      return { success: true, data: { 1: [], 2: [], 3: [] } };
+    }
     
     let categorized;
     
@@ -121,6 +131,13 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
     // Map categorized results back to all original tabs
     const expandedCategorized = expandCategorizedResults(categorized, urlToOriginalTabs);
     
+    // Add saved tabs to category 1 (can be closed) so they show up in the UI
+    savedTabsMap.forEach((tabs) => {
+      tabs.forEach(tab => {
+        expandedCategorized[1].push(tab);
+      });
+    });
+    
     console.log('Background: Deduplicated API response:', Object.keys(categorized));
     console.log('Background: Expanded categorized results:', Object.keys(expandedCategorized));
     console.log('Background: Tab counts by category after expansion:', {
@@ -128,6 +145,7 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
       category2: expandedCategorized[2]?.length || 0,
       category3: expandedCategorized[3]?.length || 0
     });
+    console.log(`Added ${savedTabsMap.size} saved URLs to category 1 for display`);
     return { success: true, data: expandedCategorized };
   } catch (error) {
     console.error('Background: API error', error);
@@ -136,12 +154,26 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
 }
 
 // Deduplicate tabs by URL, keeping track of all tabs with the same URL
-function deduplicateTabs(tabs) {
+function deduplicateTabs(tabs, savedUrls = new Set()) {
   const urlToOriginalTabs = new Map();
+  const savedTabsMap = new Map(); // Track tabs that match saved URLs
   const deduplicatedTabs = [];
+  let excludedCount = 0;
   
   tabs.forEach((tab, index) => {
     const url = tab.url;
+    
+    // Check if URL is already saved
+    if (savedUrls.has(url)) {
+      excludedCount++;
+      // Track saved tabs separately so we can still display them
+      if (!savedTabsMap.has(url)) {
+        savedTabsMap.set(url, []);
+      }
+      savedTabsMap.get(url).push({ ...tab, originalIndex: index });
+      return; // Don't send to LLM
+    }
+    
     if (!urlToOriginalTabs.has(url)) {
       // First time seeing this URL, add to deduplicated list
       urlToOriginalTabs.set(url, []);
@@ -156,13 +188,14 @@ function deduplicateTabs(tabs) {
     urlToOriginalTabs.get(url).push({ ...tab, originalIndex: index });
   });
   
-  console.log('Deduplication map:', Array.from(urlToOriginalTabs.entries()).map(([url, tabs]) => ({
-    url,
+  console.log(`Deduplication: ${excludedCount} already-saved URLs excluded from LLM`);
+  console.log('Deduplication map:', Array.from(urlToOriginalTabs.entries()).slice(0, 10).map(([url, tabs]) => ({
+    url: url.substring(0, 50) + '...',
     count: tabs.length,
     indices: tabs.map(t => t.originalIndex)
   })));
   
-  return { deduplicatedTabs, urlToOriginalTabs };
+  return { deduplicatedTabs, urlToOriginalTabs, savedTabsMap };
 }
 
 // Expand categorized results to include all original tabs

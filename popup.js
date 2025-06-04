@@ -599,6 +599,17 @@ async function categorizeTabs(tabs, apiKey, provider, model, customPrompt) {
       throw new Error('Chrome runtime not available');
     }
     
+    // Get saved URLs to exclude from LLM submission
+    let savedUrls = [];
+    try {
+      await tabDatabase.init();
+      const savedTabs = await tabDatabase.getAllSavedTabs();
+      savedUrls = [...new Set(savedTabs.map(tab => tab.url))]; // Unique URLs only
+      console.log(`Found ${savedUrls.length} saved URLs to exclude from LLM`);
+    } catch (error) {
+      console.warn('Could not fetch saved URLs:', error);
+    }
+    
     // For very large numbers of tabs, use batch processing
     const BATCH_SIZE = 100;
     
@@ -618,7 +629,7 @@ async function categorizeTabs(tabs, apiKey, provider, model, customPrompt) {
         
         const response = await chrome.runtime.sendMessage({
           action: 'categorizeTabs',
-          data: { tabs: batch, apiKey, provider, model, customPrompt }
+          data: { tabs: batch, apiKey, provider, model, customPrompt, savedUrls }
         });
         
         if (!response || response.error) {
@@ -648,7 +659,7 @@ async function categorizeTabs(tabs, apiKey, provider, model, customPrompt) {
     // For smaller numbers of tabs, process all at once
     const response = await chrome.runtime.sendMessage({
       action: 'categorizeTabs',
-      data: { tabs, apiKey, provider, model, customPrompt }
+      data: { tabs, apiKey, provider, model, customPrompt, savedUrls }
     });
     
     console.log('Received response from background:', response);
