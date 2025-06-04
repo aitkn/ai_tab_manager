@@ -1338,7 +1338,12 @@ function createTabElement(tab, category, isFromSaved = false) {
   
   const title = document.createElement('div');
   title.className = 'tab-title';
-  title.textContent = tab.title;
+  // Add duplicate count to title if there are duplicates
+  if (tab.duplicateCount && tab.duplicateCount > 1) {
+    title.textContent = `${tab.title} (${tab.duplicateCount} tabs)`;
+  } else {
+    title.textContent = tab.title;
+  }
   title.title = tab.title;
   
   const url = document.createElement('div');
@@ -1448,7 +1453,7 @@ async function closeTab(tabId, category) {
     }
     
     // Get all duplicate tab IDs for this URL
-    const tabIdsToClose = urlToDuplicateIds[tab.url] || [tabId];
+    const tabIdsToClose = tab.duplicateIds || [tabId];
     
     // Close all tabs with the same URL
     const { closedCount, missingCount } = await safelyCloseTabs(tabIdsToClose);
@@ -1544,7 +1549,7 @@ async function closeAllInCategory(category) {
   // Collect all tab IDs including duplicates
   const allTabIds = new Set();
   tabs.forEach(tab => {
-    const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
+    const duplicateIds = tab.duplicateIds || [tab.id];
     duplicateIds.forEach(id => allTabIds.add(id));
   });
   
@@ -1602,7 +1607,7 @@ async function saveAndCloseCategory(category) {
     // Collect all tab IDs including duplicates
     const allTabIds = new Set();
     tabs.forEach(tab => {
-      const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
+      const duplicateIds = tab.duplicateIds || [tab.id];
       duplicateIds.forEach(id => allTabIds.add(id));
     });
     
@@ -1661,7 +1666,7 @@ async function saveAndCloseAll() {
     // Collect all tab IDs including duplicates
     const allTabIds = new Set();
     tabsToClose.forEach(tab => {
-      const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
+      const duplicateIds = tab.duplicateIds || [tab.id];
       duplicateIds.forEach(id => allTabIds.add(id));
     });
     
@@ -1720,7 +1725,7 @@ async function saveTabs(closeAfterSave) {
       ];
       
       allTabs.forEach(tab => {
-        const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
+        const duplicateIds = tab.duplicateIds || [tab.id];
         duplicateIds.forEach(id => allTabIds.add(id));
       });
       

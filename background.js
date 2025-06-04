@@ -132,10 +132,22 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
     const expandedCategorized = expandCategorizedResults(categorized, urlToOriginalTabs);
     
     // Add saved tabs to category 1 (can be closed) so they show up in the UI
-    savedTabsMap.forEach((tabs) => {
-      tabs.forEach(tab => {
-        expandedCategorized[1].push(tab);
-      });
+    savedTabsMap.forEach((tabs, url) => {
+      if (tabs.length > 0) {
+        // Use the first tab as the representative, but include all duplicate IDs
+        const representativeTab = { ...tabs[0] };
+        delete representativeTab.originalIndex;
+        
+        // Add array of all tab IDs that have this URL (for closing duplicates)
+        representativeTab.duplicateIds = tabs.map(tab => tab.id);
+        
+        // Add duplicate count to title if there are duplicates
+        if (tabs.length > 1) {
+          representativeTab.duplicateCount = tabs.length;
+        }
+        
+        expandedCategorized[1].push(representativeTab);
+      }
     });
     
     console.log('Background: Deduplicated API response:', Object.keys(categorized));
@@ -198,7 +210,7 @@ function deduplicateTabs(tabs, savedUrls = new Set()) {
   return { deduplicatedTabs, urlToOriginalTabs, savedTabsMap };
 }
 
-// Expand categorized results to include all original tabs
+// Expand categorized results to show deduplicated tabs but track all duplicate IDs
 function expandCategorizedResults(categorized, urlToOriginalTabs) {
   const expanded = { 1: [], 2: [], 3: [] };
   
@@ -206,13 +218,22 @@ function expandCategorizedResults(categorized, urlToOriginalTabs) {
     if (categorized[category]) {
       categorized[category].forEach(deduplicatedTab => {
         const originalTabs = urlToOriginalTabs.get(deduplicatedTab.url) || [];
-        originalTabs.forEach(originalTab => {
-          // Remove deduplication artifacts
-          const cleanTab = { ...originalTab };
-          delete cleanTab.deduplicatedId;
-          delete cleanTab.originalIndex;
-          expanded[category].push(cleanTab);
-        });
+        if (originalTabs.length > 0) {
+          // Use the first tab as the representative, but include all duplicate IDs
+          const representativeTab = { ...originalTabs[0] };
+          delete representativeTab.deduplicatedId;
+          delete representativeTab.originalIndex;
+          
+          // Add array of all tab IDs that have this URL (for closing duplicates)
+          representativeTab.duplicateIds = originalTabs.map(tab => tab.id);
+          
+          // Add duplicate count to title if there are duplicates
+          if (originalTabs.length > 1) {
+            representativeTab.duplicateCount = originalTabs.length;
+          }
+          
+          expanded[category].push(representativeTab);
+        }
       });
     }
   });
