@@ -857,6 +857,17 @@ button svg {
   color: #66bb6a; /* Material green 400 for dark mode */
 }
 
+/* Important tabs - pinkish color */
+.category-section#category3 .tab-item .tab-title,
+.category-section#savedCategory3 .tab-item .tab-title {
+  color: #c2185b; /* Material pink 700 */
+}
+
+[data-theme="dark"] .category-section#category3 .tab-item .tab-title,
+[data-theme="dark"] .category-section#savedCategory3 .tab-item .tab-title {
+  color: #f48fb1; /* Material pink 200 for dark mode */
+}
+
 /* Favicon */
 .favicon {
   width: 20px;

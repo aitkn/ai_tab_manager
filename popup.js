@@ -991,6 +991,16 @@ function extractDateFromGroupName(groupName) {
     return yesterday;
   }
   
+  // Handle "This Week", "Last Week"
+  if (groupName.includes('This Week')) {
+    return new Date(); // Current week
+  }
+  if (groupName.includes('Last Week')) {
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    return lastWeek;
+  }
+  
   // Handle "X days ago"
   const daysAgoMatch = groupName.match(/(\d+) days ago/);
   if (daysAgoMatch) {
@@ -1000,7 +1010,21 @@ function extractDateFromGroupName(groupName) {
     return date;
   }
   
-  // Handle "Week X, YYYY"
+  // Handle "Week of Mon DD" format
+  const weekOfMatch = groupName.match(/Week of (\w+)\s+(\d+)/);
+  if (weekOfMatch) {
+    const monthName = weekOfMatch[1];
+    const day = parseInt(weekOfMatch[2]);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthIndex = monthNames.indexOf(monthName);
+    if (monthIndex !== -1) {
+      // Assume current year, adjust if needed
+      const date = new Date(new Date().getFullYear(), monthIndex, day);
+      return date;
+    }
+  }
+  
+  // Handle "Week X, YYYY" (old format)
   const weekMatch = groupName.match(/Week (\d+), (\d{4})/);
   if (weekMatch) {
     const week = parseInt(weekMatch[1]);
@@ -1158,7 +1182,10 @@ function groupByWeek(tabs) {
     } else if (tabYear === currentYear && tabWeek === currentWeek - 1) {
       groupName = 'Last Week';
     } else {
-      groupName = `Week ${tabWeek}, ${tabYear}`;
+      // Get the Monday of that week
+      const weekStart = getWeekStartDate(tabDate);
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      groupName = `Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
     }
     
     if (!groups[groupName]) {
@@ -1206,6 +1233,16 @@ function getWeekNumber(date) {
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+// Get the Monday of the week for a given date
+function getWeekStartDate(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  const monday = new Date(d.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday;
 }
 
 // Group by saved date
@@ -1258,7 +1295,10 @@ function groupBySavedWeek(tabs) {
     } else if (savedYear === currentYear && savedWeek === currentWeek - 1) {
       groupName = 'Saved Last Week';
     } else {
-      groupName = `Saved Week ${savedWeek}, ${savedYear}`;
+      // Get the Monday of that week
+      const weekStart = getWeekStartDate(savedDate);
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      groupName = `Saved Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
     }
     
     if (!groups[groupName]) {
@@ -1472,7 +1512,10 @@ function groupByLastAccessedWeek(tabs) {
     } else if (tabYear === currentYear && tabWeek === currentWeek - 1) {
       groupName = 'Opened Last Week';
     } else {
-      groupName = `Opened Week ${tabWeek}, ${tabYear}`;
+      // Get the Monday of that week
+      const weekStart = getWeekStartDate(tabDate);
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      groupName = `Opened Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
     }
     
     if (!groups[groupName]) {
@@ -2499,6 +2542,14 @@ function clearSearch() {
   document.getElementById('searchInput').value = '';
   applySearchFilter();
   savePopupState();
+  
+  // Reset category counts
+  [1, 2, 3].forEach(category => {
+    const countElement = document.querySelector(`#category${category} .count`);
+    if (countElement && categorizedTabs[category]) {
+      countElement.textContent = categorizedTabs[category].length;
+    }
+  });
 }
 
 function matchesSearch(tab, query) {
@@ -2511,6 +2562,7 @@ function matchesSearch(tab, query) {
 function applySearchFilter() {
   const allTabs = document.querySelectorAll('.tab-item');
   let visibleCount = 0;
+  const visibleByCategory = { 1: 0, 2: 0, 3: 0 };
   
   allTabs.forEach(tabElement => {
     const tabId = parseInt(tabElement.dataset.tabId);
@@ -2526,9 +2578,22 @@ function applySearchFilter() {
       tabElement.classList.remove('hidden');
       tabElement.classList.add('search-match');
       visibleCount++;
+      visibleByCategory[category]++;
     } else {
       tabElement.classList.add('hidden');
       tabElement.classList.remove('search-match');
+    }
+  });
+  
+  // Update category counts
+  [1, 2, 3].forEach(category => {
+    const countElement = document.querySelector(`#category${category} .count`);
+    if (countElement) {
+      if (searchQuery) {
+        countElement.textContent = `${visibleByCategory[category]} of ${categorizedTabs[category].length}`;
+      } else {
+        countElement.textContent = categorizedTabs[category].length;
+      }
     }
   });
   
