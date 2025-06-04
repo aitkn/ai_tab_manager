@@ -505,8 +505,10 @@ class TabDatabase {
     const domainIdx = headers.findIndex(h => h.includes('domain'));
     const categoryIdx = headers.findIndex(h => h.includes('category'));
     const dateIdx = headers.findIndex(h => h.includes('saved') && h.includes('date'));
+    const savedIdx = headers.findIndex(h => h === 'saved' || (h.includes('saved') && !h.includes('date') && !h.includes('time')));
     const lastAccessedDateIdx = headers.findIndex(h => h.includes('accessed') && h.includes('date'));
     const lastAccessedTimeIdx = headers.findIndex(h => h.includes('accessed') && h.includes('time'));
+    const lastAccessedIdx = headers.findIndex(h => h === 'last accessed' || h === 'lastaccessed' || (h.includes('accessed') && !h.includes('date') && !h.includes('time')));
     
     if (titleIdx === -1 || urlIdx === -1) {
       throw new Error('CSV must contain at least Title and URL columns');
@@ -563,18 +565,32 @@ class TabDatabase {
         }
       }
       
-      // Parse saved date
+      // Parse saved date/timestamp
       let savedAt = Date.now();
-      if (dateIdx !== -1 && row[dateIdx]) {
+      // First check for single "Saved" timestamp column
+      if (savedIdx !== -1 && row[savedIdx]) {
+        const parsedDate = new Date(row[savedIdx]);
+        if (!isNaN(parsedDate.getTime())) {
+          savedAt = parsedDate.getTime();
+        }
+      } else if (dateIdx !== -1 && row[dateIdx]) {
+        // Fall back to separate date column
         const parsedDate = new Date(row[dateIdx]);
         if (!isNaN(parsedDate.getTime())) {
           savedAt = parsedDate.getTime();
         }
       }
       
-      // Parse last accessed date
+      // Parse last accessed date/timestamp
       let lastAccessed = null;
-      if (lastAccessedDateIdx !== -1 && row[lastAccessedDateIdx]) {
+      // First check for single "Last Accessed" timestamp column
+      if (lastAccessedIdx !== -1 && row[lastAccessedIdx]) {
+        const parsedDate = new Date(row[lastAccessedIdx]);
+        if (!isNaN(parsedDate.getTime())) {
+          lastAccessed = parsedDate.getTime();
+        }
+      } else if (lastAccessedDateIdx !== -1 && row[lastAccessedDateIdx]) {
+        // Fall back to separate date/time columns
         let dateTimeStr = row[lastAccessedDateIdx];
         // If we have a separate time column, combine them
         if (lastAccessedTimeIdx !== -1 && row[lastAccessedTimeIdx]) {
