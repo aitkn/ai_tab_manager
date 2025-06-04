@@ -23,7 +23,8 @@ let settings = {
   selectedModels: {}, // Store selected model per provider
   customPrompt: CONFIG.DEFAULT_PROMPT, // Store custom prompt, default to CONFIG prompt
   promptVersion: CONFIG.PROMPT_VERSION, // Track prompt version
-  isPromptCustomized: false // Track if user has customized the prompt
+  isPromptCustomized: false, // Track if user has customized the prompt
+  maxTabsToOpen: 50 // Default max tabs to open at once
 };
 
 // Theme management functions - defined early
@@ -173,6 +174,7 @@ function setupEventListeners() {
   document.getElementById('resetPromptBtn').addEventListener('click', resetPrompt);
   document.getElementById('searchInput').addEventListener('input', onSearchInput);
   document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
+  document.getElementById('maxTabsInput').addEventListener('change', onMaxTabsChange);
   
   // Saved tab controls
   const savedGroupingSelect = document.getElementById('savedGroupingSelect');
@@ -294,6 +296,10 @@ function initializeSettingsUI() {
   // Set custom prompt
   const promptTextarea = document.getElementById('promptTextarea');
   promptTextarea.value = settings.customPrompt || CONFIG.DEFAULT_PROMPT;
+  
+  // Set max tabs to open
+  const maxTabsInput = document.getElementById('maxTabsInput');
+  maxTabsInput.value = settings.maxTabsToOpen || 50;
   
   // Update prompt status
   updatePromptStatus();
@@ -435,6 +441,19 @@ async function saveApiKey() {
 async function saveSettings() {
   await chrome.storage.local.set({ settings });
   console.log('Settings saved:', settings);
+}
+
+function onMaxTabsChange(e) {
+  const value = parseInt(e.target.value);
+  if (!isNaN(value) && value >= 1 && value <= 200) {
+    settings.maxTabsToOpen = value;
+    saveSettings();
+    showStatus(`Max tabs to open set to ${value}`, 'success');
+  } else {
+    // Reset to previous value if invalid
+    e.target.value = settings.maxTabsToOpen || 50;
+    showStatus('Please enter a value between 1 and 200', 'error');
+  }
 }
 
 // Save popup state
@@ -1220,8 +1239,9 @@ async function openAllTabsInGroup(tabs) {
   if (tabs.length === 0) return;
   
   // Skip if too many tabs (safety limit)
-  if (tabs.length > 50) {
-    showStatus('Too many tabs to open at once (limit: 50)', 'warning');
+  const maxTabs = settings.maxTabsToOpen || 50;
+  if (tabs.length > maxTabs) {
+    showStatus(`Too many tabs to open at once (limit: ${maxTabs})`, 'warning');
     return;
   }
   
@@ -1855,8 +1875,9 @@ async function openAllTabsInCategory(category) {
   if (tabs.length === 0) return;
   
   // Skip if too many tabs (safety limit)
-  if (tabs.length > 50) {
-    showStatus('Too many tabs to open at once (limit: 50)', 'warning');
+  const maxTabs = settings.maxTabsToOpen || 50;
+  if (tabs.length > maxTabs) {
+    showStatus(`Too many tabs to open at once (limit: ${maxTabs})`, 'warning');
     return;
   }
   

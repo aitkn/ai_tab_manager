@@ -1203,6 +1203,12 @@ button svg {
   padding: calc(var(--md-spacing-3) - 1px);
 }
 
+/* Number input specific styling */
+.setting-input[type="number"] {
+  max-width: 120px;
+  text-align: center;
+}
+
 /* Material Design 3 Textarea */
 .setting-textarea {
   width: 100%;
