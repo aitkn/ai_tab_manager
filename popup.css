@@ -834,14 +834,12 @@ button svg {
   display: none;
 }
 
-.tab-item.already-saved {
-  background-color: var(--md-sys-color-surface-container);
-  border-left: 3px solid var(--md-sys-color-primary);
-  opacity: 0.9;
+.tab-item.already-saved .tab-title {
+  color: #2e7d32; /* Material green 800 */
 }
 
-.tab-item.already-saved:hover {
-  opacity: 1;
+[data-theme="dark"] .tab-item.already-saved .tab-title {
+  color: #66bb6a; /* Material green 400 for dark mode */
 }
 
 /* Favicon */

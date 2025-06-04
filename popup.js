@@ -805,14 +805,8 @@ function displayCategoryView(isFromSaved = false) {
       section.classList.remove('empty');
     }
     
-    // Count already saved tabs
-    const alreadySavedCount = tabs.filter(tab => tab.alreadySaved).length;
-    
-    if (alreadySavedCount > 0) {
-      countSpan.textContent = `${tabs.length} (${alreadySavedCount} already saved)`;
-    } else {
-      countSpan.textContent = tabs.length;
-    }
+    // Just show the count, no extra info about already saved
+    countSpan.textContent = tabs.length;
     
     listContainer.innerHTML = '';
     
@@ -1347,20 +1341,11 @@ function createTabElement(tab, category, isFromSaved = false) {
   
   const title = document.createElement('div');
   title.className = 'tab-title';
-  // Build title with indicators
+  // Build title with duplicate count only
   let titleText = tab.title;
-  const indicators = [];
   
   if (tab.duplicateCount && tab.duplicateCount > 1) {
-    indicators.push(`${tab.duplicateCount} tabs`);
-  }
-  
-  if (tab.alreadySaved) {
-    indicators.push('already saved');
-  }
-  
-  if (indicators.length > 0) {
-    titleText += ` (${indicators.join(', ')})`;
+    titleText += ` (${tab.duplicateCount} tabs)`;
   }
   
   title.textContent = titleText;
