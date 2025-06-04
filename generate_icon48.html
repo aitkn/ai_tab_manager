@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate icon48.png</title>
+</head>
+<body>
+  <h1>Icon 48x48 Generator</h1>
+  <p>Click the button to download icon48.png with purple background, tab outline, and "AI" text</p>
+  
+  <canvas id="icon48" width="48" height="48" style="border: 1px solid #ddd; width: 192px; height: 192px;"></canvas>
+  <br>
+  <button onclick="downloadIcon()">Download icon48.png</button>
+
+  <script>
+    function drawIcon() {
+      const canvas = document.getElementById('icon48');
+      const ctx = canvas.getContext('2d');
+      
+      // Purple gradient background matching icon128.png
+      const gradient = ctx.createLinearGradient(0, 0, 48, 48);
+      gradient.addColorStop(0, '#8B5CF6');  // Purple
+      gradient.addColorStop(1, '#7C3AED');  // Darker purple
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 48, 48);
+      
+      // Fill the tab "handler" at the top
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.beginPath();
+      ctx.moveTo(9, 9);
+      ctx.lineTo(9, 6);
+      ctx.lineTo(24, 6);
+      ctx.lineTo(24, 9);
+      ctx.lineTo(9, 9);
+      ctx.fill();
+      
+      // Draw a simple tab shape (browser window with tab) as outline
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 2;
+      
+      // Draw browser window with tab (scaled up from 16px version)
+      ctx.beginPath();
+      // Start from bottom left
+      ctx.moveTo(6, 42);
+      // Left side
+      ctx.lineTo(6, 9);
+      // Connect to tab
+      ctx.lineTo(9, 9);
+      // Tab top
+      ctx.lineTo(9, 6);
+      ctx.lineTo(24, 6);
+      ctx.lineTo(24, 9);
+      // Right side of window
+      ctx.lineTo(42, 9);
+      ctx.lineTo(42, 42);
+      // Bottom
+      ctx.lineTo(6, 42);
+      ctx.stroke();
+      
+      // Add a subtle line to separate tab from window content
+      ctx.beginPath();
+      ctx.moveTo(6, 9);
+      ctx.lineTo(42, 9);
+      ctx.stroke();
+      
+      // White "AI" text (scaled up proportionally)
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 36px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('AI', 24, 36);
+    }
+    
+    function downloadIcon() {
+      const canvas = document.getElementById('icon48');
+      const link = document.createElement('a');
+      link.download = 'icon48.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+    
+    // Draw the icon on load
+    drawIcon();
+  </script>
+</body>
+</html>

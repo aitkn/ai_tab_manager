@@ -713,28 +713,30 @@ function displayCategoryView(isFromSaved = false) {
     listContainer.innerHTML = '';
     
     // Add action buttons based on category and context
-    if (!isFromSaved && tabs.length > 0) {
-      const actionBar = document.createElement('div');
-      actionBar.className = 'category-action-bar';
+    const actionsContainer = section.querySelector('.category-header-actions');
+    if (actionsContainer) {
+      actionsContainer.innerHTML = ''; // Clear any existing buttons
       
-      if (category === 1) {
-        // Category 1: Can Be Closed - Add Close button
-        const closeAllBtn = document.createElement('button');
-        closeAllBtn.className = 'action-btn danger-btn';
-        closeAllBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Close All';
-        closeAllBtn.onclick = () => closeAllInCategory(category);
-        actionBar.appendChild(closeAllBtn);
-      } else {
-        // Categories 2 & 3: Add Save and Close button
-        const saveCloseBtn = document.createElement('button');
-        saveCloseBtn.className = 'action-btn primary-btn';
-        saveCloseBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg> Save & Close';
-        saveCloseBtn.onclick = () => saveAndCloseCategory(category);
-        actionBar.appendChild(saveCloseBtn);
+      if (!isFromSaved && tabs.length > 0) {
+        if (category === 1) {
+          // Category 1: Can Be Closed - Add Close button
+          const closeAllBtn = document.createElement('button');
+          closeAllBtn.className = 'inline-action-btn primary-btn';
+          closeAllBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Close All';
+          closeAllBtn.onclick = () => closeAllInCategory(category);
+          actionsContainer.appendChild(closeAllBtn);
+        } else {
+          // Categories 2 & 3: Add Save and Close button
+          const saveCloseBtn = document.createElement('button');
+          saveCloseBtn.className = 'inline-action-btn primary-btn';
+          saveCloseBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg> Save & Close';
+          saveCloseBtn.onclick = () => saveAndCloseCategory(category);
+          actionsContainer.appendChild(saveCloseBtn);
+        }
       }
-      
-      listContainer.appendChild(actionBar);
-    } else if (isFromSaved && tabs.length > 0) {
+    }
+    
+    if (isFromSaved && tabs.length > 0) {
       const openAllBtn = document.createElement('button');
       openAllBtn.className = 'open-all-btn';
       openAllBtn.textContent = `Open All ${tabs.length} tabs`;
@@ -1300,20 +1302,45 @@ async function closeTab(tabId, category) {
 
 // Helper function to safely close tabs, ignoring missing tab IDs
 async function safelyCloseTabs(tabIds) {
-  const existingTabs = await chrome.tabs.query({ currentWindow: true });
-  const existingTabIds = new Set(existingTabs.map(tab => tab.id));
+  // Query ALL tabs from ALL windows
+  const allTabs = await chrome.tabs.query({});
+  const existingTabIds = new Set(allTabs.map(tab => tab.id));
+  
+  // Get the current window ID (where the extension is running)
+  const currentWindow = await chrome.windows.getCurrent();
+  const currentWindowId = currentWindow.id;
   
   // Filter out tab IDs that no longer exist
   const validTabIds = tabIds.filter(id => existingTabIds.has(id));
   const missingCount = tabIds.length - validTabIds.length;
   
   if (validTabIds.length > 0) {
-    // Check if we're about to close all tabs in the window
-    const tabsToKeep = existingTabs.filter(tab => !validTabIds.includes(tab.id));
+    // Group tabs by window
+    const tabsByWindow = {};
+    allTabs.forEach(tab => {
+      if (validTabIds.includes(tab.id)) {
+        if (!tabsByWindow[tab.windowId]) {
+          tabsByWindow[tab.windowId] = [];
+        }
+        tabsByWindow[tab.windowId].push(tab.id);
+      }
+    });
     
-    // If we're closing all tabs, create a new one first
-    if (tabsToKeep.length === 0) {
-      await chrome.tabs.create({ active: true });
+    // Check each window to ensure we don't close all tabs in the current window
+    for (const [windowId, windowTabIds] of Object.entries(tabsByWindow)) {
+      const windowIdInt = parseInt(windowId);
+      
+      // Only protect the current window from being completely closed
+      if (windowIdInt === currentWindowId) {
+        const windowTabs = allTabs.filter(tab => tab.windowId === windowIdInt);
+        const remainingTabs = windowTabs.filter(tab => !windowTabIds.includes(tab.id));
+        
+        // If we're about to close all tabs in the current window, create a new tab
+        if (remainingTabs.length === 0) {
+          await chrome.tabs.create({ windowId: windowIdInt, active: true });
+        }
+      }
+      // Other windows can be closed completely
     }
     
     // Close only the tabs that still exist
@@ -1341,8 +1368,22 @@ async function closeAllInCategory(category) {
     const { closedCount, missingCount } = await safelyCloseTabs(Array.from(allTabIds));
     categorizedTabs[category] = [];
     
-    // Update popup state
-    await savePopupState();
+    // Check if all categories are empty
+    const allEmpty = categorizedTabs[1].length === 0 && 
+                     categorizedTabs[2].length === 0 && 
+                     categorizedTabs[3].length === 0;
+    
+    if (allEmpty) {
+      // Clear popup state since all tabs are closed
+      await chrome.storage.local.remove('popupState');
+      
+      // Hide the tabs container and action buttons
+      document.getElementById('tabsContainer').style.display = 'none';
+      document.querySelector('.action-buttons').style.display = 'none';
+    } else {
+      // Update popup state with remaining tabs
+      await savePopupState();
+    }
     
     displayTabs();
     
@@ -1381,6 +1422,24 @@ async function saveAndCloseCategory(category) {
     
     const { closedCount, missingCount } = await safelyCloseTabs(Array.from(allTabIds));
     categorizedTabs[category] = [];
+    
+    // Check if all categories are empty
+    const allEmpty = categorizedTabs[1].length === 0 && 
+                     categorizedTabs[2].length === 0 && 
+                     categorizedTabs[3].length === 0;
+    
+    if (allEmpty) {
+      // Clear popup state since all tabs are closed
+      await chrome.storage.local.remove('popupState');
+      
+      // Hide the tabs container and action buttons
+      document.getElementById('tabsContainer').style.display = 'none';
+      document.querySelector('.action-buttons').style.display = 'none';
+    } else {
+      // Update popup state with remaining tabs
+      await savePopupState();
+    }
+    
     displayTabs();
     
     let statusMessage = `Saved and closed ${closedCount} tab${closedCount > 1 ? 's' : ''}`;
@@ -1441,6 +1500,10 @@ async function saveAndCloseAll() {
     // Clear popup state since all tabs are closed
     await chrome.storage.local.remove('popupState');
     
+    // Hide the tabs container and action buttons
+    document.getElementById('tabsContainer').style.display = 'none';
+    document.querySelector('.action-buttons').style.display = 'none';
+    
     // Switch to saved tab to show the saved tabs
     setTimeout(() => {
       switchToTab('saved');
@@ -1489,6 +1552,13 @@ async function saveTabs(closeAfterSave) {
       
       // Clear popup state and switch to saved tab
       await chrome.storage.local.remove('popupState');
+      
+      // Clear categorized tabs from UI
+      categorizedTabs = { 1: [], 2: [], 3: [] };
+      
+      // Hide the tabs container and action buttons
+      document.getElementById('tabsContainer').style.display = 'none';
+      document.querySelector('.action-buttons').style.display = 'none';
       
       setTimeout(() => {
         switchToTab('saved');
@@ -1707,7 +1777,12 @@ async function showSavedTabsContent(groupingType) {
         : '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
       
       const categoryName = category === 3 ? 'Important Links' : category === 2 ? 'Save for Later' : 'Can Be Closed';
-      header.innerHTML = `${iconSvg} ${categoryName} (<span class="count">${tabs.length}</span>)`;
+      header.innerHTML = `
+        <div class="category-header-title">
+          ${iconSvg} ${categoryName} (<span class="count">${tabs.length}</span>)
+        </div>
+        <div class="category-header-actions"></div>
+      `;
       
       const listContainer = document.createElement('div');
       listContainer.className = 'tabs-list';

@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
   "name": "AI Tab Manager",
-  "version": "2.1",
-  "description": "Categorize and manage tabs using AI",
+  "version": "2.2.0",
+  "description": "Intelligently categorize and manage your browser tabs using AI. Save important tabs, close unnecessary ones, and keep your browser organized.",
   "permissions": [
     "tabs",
-    "storage",
-    "management"
+    "storage"
   ],
   "host_permissions": [
     "https://api.anthropic.com/*",
-    "*://*/*"
+    "https://api.openai.com/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -27,5 +27,8 @@
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
-  }
+  },
+  "author": "AI Tech Knowledge LLC",
+  "homepage_url": "https://github.com/aitkn/ai_tab_manager",
+  "offline_enabled": false
 }

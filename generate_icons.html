@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Tab Manager - Icon Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .icon-container {
+      background: white;
+      padding: 20px;
+      margin: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: inline-block;
+    }
+    canvas {
+      border: 1px solid #ddd;
+      display: block;
+      margin: 10px 0;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>AI Tab Manager - Icon Generator</h1>
+  <p>Click each button to download the icon in the required size</p>
+  
+  <div class="icon-container">
+    <h3>Icon 16x16</h3>
+    <canvas id="icon16" width="16" height="16"></canvas>
+    <button onclick="downloadIcon('icon16', 16)">Download icon16.png</button>
+  </div>
+  
+  <div class="icon-container">
+    <h3>Icon 48x48</h3>
+    <canvas id="icon48" width="48" height="48"></canvas>
+    <button onclick="downloadIcon('icon48', 48)">Download icon48.png</button>
+  </div>
+  
+  <div class="icon-container">
+    <h3>Icon 128x128</h3>
+    <canvas id="icon128" width="128" height="128"></canvas>
+    <button onclick="downloadIcon('icon128', 128)">Download icon128.png</button>
+  </div>
+  
+  <h2>Store Promotional Images</h2>
+  
+  <div class="icon-container">
+    <h3>Small Promo Tile (440x280)</h3>
+    <canvas id="promo440" width="440" height="280"></canvas>
+    <button onclick="downloadIcon('promo440', 440, 280, 'promo_small_440x280.png')">Download Small Promo</button>
+  </div>
+  
+  <div class="icon-container">
+    <h3>Large Promo Tile (920x680)</h3>
+    <canvas id="promo920" width="920" height="680"></canvas>
+    <button onclick="downloadIcon('promo920', 920, 680, 'promo_large_920x680.png')">Download Large Promo</button>
+  </div>
+  
+  <div class="icon-container">
+    <h3>Marquee Promo Tile (1400x560)</h3>
+    <canvas id="promo1400" width="1400" height="560"></canvas>
+    <button onclick="downloadIcon('promo1400', 1400, 560, 'promo_marquee_1400x560.png')">Download Marquee Promo</button>
+  </div>
+
+  <script>
+    function drawIcon(canvasId, width, height) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const size = Math.min(width, height);
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, width, height);
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, '#2196F3');
+      gradient.addColorStop(1, '#1976D2');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+      
+      // For promotional images, add more design elements
+      if (width > 128) {
+        // Draw tab-like shapes in background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        
+        // Tab 1
+        ctx.beginPath();
+        ctx.roundRect(width * 0.1, height * 0.2, width * 0.25, height * 0.15, 8);
+        ctx.fill();
+        
+        // Tab 2
+        ctx.beginPath();
+        ctx.roundRect(width * 0.4, height * 0.3, width * 0.25, height * 0.15, 8);
+        ctx.fill();
+        
+        // Tab 3
+        ctx.beginPath();
+        ctx.roundRect(width * 0.7, height * 0.25, width * 0.25, height * 0.15, 8);
+        ctx.fill();
+        
+        // Center circle background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.beginPath();
+        ctx.arc(width / 2, height / 2, size * 0.15, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // AI icon in center
+        ctx.fillStyle = '#1976D2';
+        ctx.font = `bold ${size * 0.15}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('AI', width / 2, height / 2);
+        
+        // Title text for promotional images
+        if (width >= 440) {
+          ctx.fillStyle = 'white';
+          ctx.font = `bold ${size * 0.08}px Arial`;
+          ctx.fillText('AI Tab Manager', width / 2, height * 0.8);
+        }
+      } else {
+        // Simple icon design for small sizes
+        // White circle background
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(width / 2, height / 2, size * 0.35, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // AI text
+        ctx.fillStyle = '#1976D2';
+        ctx.font = `bold ${size * 0.4}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('AI', width / 2, height / 2);
+      }
+    }
+    
+    function downloadIcon(canvasId, width, height, filename) {
+      if (typeof height === 'undefined') {
+        height = width;
+        filename = `icon${width}.png`;
+      }
+      
+      const canvas = document.getElementById(canvasId);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+    
+    // Draw all icons
+    drawIcon('icon16', 16, 16);
+    drawIcon('icon48', 48, 48);
+    drawIcon('icon128', 128, 128);
+    drawIcon('promo440', 440, 280);
+    drawIcon('promo920', 920, 680);
+    drawIcon('promo1400', 1400, 560);
+    
+    // Add roundRect polyfill for older browsers
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+      };
+    }
+  </script>
+</body>
+</html>

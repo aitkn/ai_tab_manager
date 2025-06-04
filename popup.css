@@ -485,7 +485,7 @@ body[data-theme="dark"] .status.warning {
   display: flex;
   gap: var(--md-spacing-2);
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 
 /* Material Design 3 Buttons */
@@ -608,14 +608,32 @@ button svg {
 
 /* Action buttons */
 .action-buttons {
-  display: inline-flex;
+  display: flex;
   gap: var(--md-spacing-2);
-  margin-left: var(--md-spacing-2);
+  margin-left: auto;
+}
+
+/* Categorize button should not expand */
+#categorizeBtn {
+  flex-shrink: 0;
+}
+
+/* Inline action button for headers */
+.inline-action-btn {
+  padding: var(--md-spacing-1) var(--md-spacing-2);
+  font-size: var(--md-sys-typescale-label-small);
+  min-height: 28px;
+  z-index: 2;
+}
+
+.inline-action-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Search bar - Material Design 3 */
 .search-controls {
-  padding: var(--md-spacing-3);
+  padding: var(--md-spacing-2) var(--md-spacing-3);
   background-color: var(--md-sys-color-surface);
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
   display: flex;
@@ -699,6 +717,7 @@ button svg {
 .category-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--md-spacing-2);
   margin: 0;
   padding: var(--md-spacing-3) var(--md-spacing-3);
@@ -736,6 +755,19 @@ button svg {
 
 .category-header.not-important {
   color: var(--md-sys-color-on-surface-variant);
+}
+
+.category-header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+  flex: 1;
+}
+
+.category-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-1);
 }
 
 .category-icon {
@@ -895,12 +927,12 @@ button svg {
   opacity: var(--md-sys-state-hover-opacity);
 }
 
-/* Category action bar */
-.category-action-bar {
+/* Category action bar - DEPRECATED: Action buttons now in category header */
+/* .category-action-bar {
   display: flex;
   gap: var(--md-spacing-2);
   margin: var(--md-spacing-2) var(--md-spacing-2) var(--md-spacing-2);
-}
+} */
 
 .action-btn {
   flex: 1;
@@ -983,7 +1015,7 @@ button svg {
 }
 
 .setting-group {
-  margin-bottom: var(--md-spacing-4);
+  margin-bottom: var(--md-spacing-3);
   padding: var(--md-spacing-3);
   background-color: var(--md-sys-color-surface-container);
   border-radius: var(--md-sys-shape-corner-medium);
