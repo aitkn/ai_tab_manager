@@ -511,12 +511,8 @@ async function handleCategorize() {
       }
     });
     
-    // Count duplicates for status message
-    const uniqueUrls = Object.keys(urlToDuplicateIds).length;
-    const duplicateCount = tabs.length - uniqueUrls;
-    if (duplicateCount > 0) {
-      showStatus(`Found ${tabs.length} tabs (${duplicateCount} duplicates)`, 'loading');
-    }
+    // Show loading status
+    showStatus(`Processing ${tabs.length} tabs...`, 'loading');
     
     // Prepare all tabs data for Claude (deduplication will happen in background script)
     const tabsData = tabs.map(tab => {
@@ -581,7 +577,9 @@ async function handleCategorize() {
       groupingSelect.value = 'category';
     }
     
-    showStatus(`Categorized ${tabsToProcess.length} tabs`, 'success');
+    // Count actual categorized tabs
+    const totalCategorized = categorizedTabs[1].length + categorizedTabs[2].length + categorizedTabs[3].length;
+    showStatus(`Categorized ${totalCategorized} tabs`, 'success');
   } catch (error) {
     showStatus('Error: ' + error.message, 'error');
     console.error('Categorization error:', error);
