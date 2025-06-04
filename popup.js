@@ -206,6 +206,9 @@ function setupEventListeners() {
     document.getElementById('csvFileInput').click();
   });
   document.getElementById('csvFileInput').addEventListener('change', handleCSVImport);
+  
+  // Toggle all groups button
+  document.getElementById('toggleAllGroupsBtn').addEventListener('click', toggleAllGroups);
 }
 
 function initializeTabNavigation() {
@@ -843,7 +846,9 @@ function displayCategoryView(isFromSaved = false) {
     }
     
     
-    tabs.forEach(tab => {
+    // Sort tabs within category
+    const sortedTabs = sortTabsInGroup(tabs, 'category');
+    sortedTabs.forEach(tab => {
       const tabElement = createTabElement(tab, category, isFromSaved);
       listContainer.appendChild(tabElement);
     });
@@ -918,9 +923,22 @@ function displayGroupedView(groupBy, isFromSaved = false) {
       break;
   }
   
+  // Sort date/time-based groups chronologically
+  let sortedEntries = Object.entries(groups);
+  if (['savedDate', 'savedWeek', 'savedMonth', 'lastAccessedDate', 'lastAccessedWeek', 'lastAccessedMonth'].includes(groupBy)) {
+    sortedEntries = sortedEntries.sort((a, b) => {
+      // Extract dates from group names for proper chronological sorting
+      const dateA = extractDateFromGroupName(a[0]);
+      const dateB = extractDateFromGroupName(b[0]);
+      return dateB - dateA; // Most recent first
+    });
+  }
+  
   // Display groups
-  Object.entries(groups).forEach(([groupName, tabs]) => {
-    const groupSection = createGroupSection(groupName, tabs, groupBy, isFromSaved);
+  sortedEntries.forEach(([groupName, tabs]) => {
+    // Sort tabs within the group based on grouping type
+    const sortedTabs = sortTabsInGroup(tabs, groupBy);
+    const groupSection = createGroupSection(groupName, sortedTabs, groupBy, isFromSaved);
     groupedView.appendChild(groupSection);
   });
   
@@ -930,20 +948,162 @@ function displayGroupedView(groupBy, isFromSaved = false) {
   }
 }
 
+// Helper function to extract root domain
+function getRootDomain(domain) {
+  if (!domain || domain === 'unknown') return domain;
+  
+  // Handle special cases
+  if (domain.startsWith('chrome://') || domain.startsWith('file://')) {
+    return domain;
+  }
+  
+  // Remove www. prefix
+  let cleaned = domain.replace(/^www\./, '');
+  
+  // Extract root domain (last two parts for most domains)
+  const parts = cleaned.split('.');
+  if (parts.length >= 2) {
+    // Handle special TLDs like co.uk, com.au, etc.
+    const specialTLDs = ['co.uk', 'com.au', 'co.nz', 'co.jp', 'co.in', 'com.br', 'com.cn'];
+    const lastTwo = parts.slice(-2).join('.');
+    if (specialTLDs.includes(lastTwo) && parts.length >= 3) {
+      return parts.slice(-3).join('.');
+    }
+    return parts.slice(-2).join('.');
+  }
+  return cleaned;
+}
+
+// Helper function to get subdomain
+function getSubdomain(fullDomain, rootDomain) {
+  if (!fullDomain || fullDomain === rootDomain) return '';
+  const subdomain = fullDomain.replace(new RegExp(`\\.?${rootDomain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), '');
+  return subdomain || '';
+}
+
+// Extract date from group name for sorting
+function extractDateFromGroupName(groupName) {
+  // Handle "Today", "Yesterday"
+  if (groupName.includes('Today')) return new Date();
+  if (groupName.includes('Yesterday')) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday;
+  }
+  
+  // Handle "X days ago"
+  const daysAgoMatch = groupName.match(/(\d+) days ago/);
+  if (daysAgoMatch) {
+    const daysAgo = parseInt(daysAgoMatch[1]);
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    return date;
+  }
+  
+  // Handle "Week X, YYYY"
+  const weekMatch = groupName.match(/Week (\d+), (\d{4})/);
+  if (weekMatch) {
+    const week = parseInt(weekMatch[1]);
+    const year = parseInt(weekMatch[2]);
+    // Approximate date for week
+    const date = new Date(year, 0, 1);
+    date.setDate(date.getDate() + (week - 1) * 7);
+    return date;
+  }
+  
+  // Handle month names
+  const monthMatch = groupName.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})/);
+  if (monthMatch) {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthIndex = monthNames.indexOf(monthMatch[1]);
+    const year = parseInt(monthMatch[2]);
+    return new Date(year, monthIndex, 1);
+  }
+  
+  // Try to parse any date format
+  const date = new Date(groupName.replace(/^(Saved|Opened) /, ''));
+  if (!isNaN(date.getTime())) {
+    return date;
+  }
+  
+  // Default to current date if unable to parse
+  return new Date();
+}
+
+// Sort tabs within a group based on grouping type
+function sortTabsInGroup(tabs, groupingType) {
+  return tabs.sort((a, b) => {
+    const rootDomainA = getRootDomain(a.domain || '');
+    const rootDomainB = getRootDomain(b.domain || '');
+    const subdomainA = getSubdomain(a.domain || '', rootDomainA);
+    const subdomainB = getSubdomain(b.domain || '', rootDomainB);
+    
+    switch (groupingType) {
+      case 'category':
+        // Sort by root domain, subdomain, datetime opened desc
+        if (rootDomainA !== rootDomainB) {
+          return rootDomainA.localeCompare(rootDomainB);
+        }
+        if (subdomainA !== subdomainB) {
+          return subdomainA.localeCompare(subdomainB);
+        }
+        return (b.lastAccessed || b.savedAt) - (a.lastAccessed || a.savedAt);
+        
+      case 'domain':
+        // Sort by subdomain, datetime opened desc
+        if (subdomainA !== subdomainB) {
+          return subdomainA.localeCompare(subdomainB);
+        }
+        return (b.lastAccessed || b.savedAt) - (a.lastAccessed || a.savedAt);
+        
+      case 'savedDate':
+      case 'savedWeek':
+      case 'savedMonth':
+        // Sort by root domain, subdomain, datetime saved
+        if (rootDomainA !== rootDomainB) {
+          return rootDomainA.localeCompare(rootDomainB);
+        }
+        if (subdomainA !== subdomainB) {
+          return subdomainA.localeCompare(subdomainB);
+        }
+        return b.savedAt - a.savedAt;
+        
+      case 'lastAccessedDate':
+      case 'lastAccessedWeek':
+      case 'lastAccessedMonth':
+        // Sort by root domain, subdomain, datetime opened
+        if (rootDomainA !== rootDomainB) {
+          return rootDomainA.localeCompare(rootDomainB);
+        }
+        if (subdomainA !== subdomainB) {
+          return subdomainA.localeCompare(subdomainB);
+        }
+        return (b.lastAccessed || b.savedAt) - (a.lastAccessed || a.savedAt);
+        
+      default:
+        return 0;
+    }
+  });
+}
+
 function groupByDomain(tabs) {
   const groups = {};
+  
+  // Group by root domain
   tabs.forEach(tab => {
-    const domain = tab.domain || 'unknown';
-    if (!groups[domain]) {
-      groups[domain] = [];
+    const fullDomain = tab.domain || 'unknown';
+    const rootDomain = getRootDomain(fullDomain);
+    
+    if (!groups[rootDomain]) {
+      groups[rootDomain] = [];
     }
-    groups[domain].push(tab);
+    groups[rootDomain].push(tab);
   });
   
-  // Sort domains alphabetically
+  // Sort groups alphabetically by root domain
   const sortedGroups = {};
-  Object.keys(groups).sort().forEach(key => {
-    sortedGroups[key] = groups[key];
+  Object.keys(groups).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).forEach(domain => {
+    sortedGroups[domain] = groups[domain];
   });
   
   return sortedGroups;
@@ -1238,9 +1398,7 @@ function createGroupSection(groupName, tabs, groupType, isFromSaved) {
   const listContainer = document.createElement('div');
   listContainer.className = 'tabs-list';
   
-  // Sort tabs within group by category (important first)
-  tabs.sort((a, b) => b.category - a.category);
-  
+  // Tabs are already sorted by the calling function
   tabs.forEach(tab => {
     const tabElement = createTabElement(tab, tab.category, isFromSaved);
     listContainer.appendChild(tabElement);
@@ -1355,6 +1513,43 @@ function groupByLastAccessedMonth(tabs) {
   });
   
   return groups;
+}
+
+// Toggle all groups collapsed/expanded
+function toggleAllGroups() {
+  const savedContent = document.getElementById('savedContent');
+  if (!savedContent) return;
+  
+  const groupSections = savedContent.querySelectorAll('.group-section, .category-section');
+  if (groupSections.length === 0) return;
+  
+  // Check if any group is expanded
+  const anyExpanded = Array.from(groupSections).some(section => !section.classList.contains('collapsed'));
+  
+  // Toggle all groups
+  groupSections.forEach(section => {
+    const tabsList = section.querySelector('.tabs-list');
+    if (tabsList) {
+      if (anyExpanded) {
+        section.classList.add('collapsed');
+        tabsList.style.display = 'none';
+      } else {
+        section.classList.remove('collapsed');
+        tabsList.style.display = 'block';
+      }
+    }
+  });
+  
+  // Update button icon
+  const btn = document.getElementById('toggleAllGroupsBtn');
+  if (btn) {
+    const svg = btn.querySelector('svg');
+    if (svg) {
+      svg.innerHTML = anyExpanded 
+        ? '<path d="M6 9l6 6 6-6"/>' // Chevron down
+        : '<path d="M18 15l-6-6-6 6"/>'; // Chevron up
+    }
+  }
 }
 
 async function openAllTabsInGroup(tabs) {
@@ -1477,7 +1672,8 @@ function createTabElement(tab, category, isFromSaved = false) {
   
   const url = document.createElement('div');
   url.className = 'tab-url';
-  url.textContent = tab.url;
+  // Remove https:// from display
+  url.textContent = tab.url.replace(/^https?:\/\//, '');
   url.title = tab.url;
   
   info.appendChild(title);
