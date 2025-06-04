@@ -91,6 +91,9 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
   console.log('Background: Categorizing tabs with', provider, model, tabs.length, 'tabs');
   console.log('Using custom prompt:', !!customPrompt);
   console.log('Saved URLs to exclude from LLM:', savedUrls.length);
+  if (savedUrls.length > 0) {
+    console.log('Sample saved URLs:', savedUrls.slice(0, 5));
+  }
   
   try {
     // Convert saved URLs array to Set for faster lookup
@@ -201,11 +204,18 @@ function deduplicateTabs(tabs, savedUrls = new Set()) {
   });
   
   console.log(`Deduplication: ${excludedCount} already-saved URLs excluded from LLM`);
+  console.log(`Deduplication: ${tabs.length} input tabs -> ${deduplicatedTabs.length} unique new tabs (${savedTabsMap.size} saved)`);
   console.log('Deduplication map:', Array.from(urlToOriginalTabs.entries()).slice(0, 10).map(([url, tabs]) => ({
     url: url.substring(0, 50) + '...',
     count: tabs.length,
     indices: tabs.map(t => t.originalIndex)
   })));
+  if (savedTabsMap.size > 0) {
+    console.log('Sample saved tabs excluded:', Array.from(savedTabsMap.entries()).slice(0, 3).map(([url, tabs]) => ({
+      url: url.substring(0, 50) + '...',
+      count: tabs.length
+    })));
+  }
   
   return { deduplicatedTabs, urlToOriginalTabs, savedTabsMap };
 }

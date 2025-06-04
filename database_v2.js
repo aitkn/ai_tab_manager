@@ -517,10 +517,10 @@ class TabDatabase {
       
       if (!url) continue; // Skip rows without URL
       
-      // Check for duplicates
+      // Check for duplicates - skip ALL saved URLs regardless of category
       if (existingUrls.has(url)) {
         duplicates.push({ title, url });
-        continue;
+        continue; // Skip this URL entirely - it's already saved
       }
       
       // Parse domain
@@ -595,6 +595,8 @@ class TabDatabase {
     if (tabsNeedingCategorization.length > 0 && settings.apiKey && settings.provider && settings.model) {
       try {
         console.log(`Categorizing ${tabsNeedingCategorization.length} imported tabs...`);
+        console.log('Tabs needing categorization:', tabsNeedingCategorization.map(t => ({ title: t.title.substring(0, 30) + '...', url: t.url.substring(0, 50) + '...' })));
+        console.log('Existing saved URLs count:', existingUrls.size);
         
         // For very large imports, batch the categorization to avoid timeouts
         const BATCH_SIZE = 100;
@@ -614,7 +616,8 @@ class TabDatabase {
                 apiKey: settings.apiKey,
                 provider: settings.provider,
                 model: settings.model,
-                customPrompt: settings.customPrompt
+                customPrompt: settings.customPrompt,
+                savedUrls: Array.from(existingUrls)
               }
             });
             
@@ -636,7 +639,8 @@ class TabDatabase {
               apiKey: settings.apiKey,
               provider: settings.provider,
               model: settings.model,
-              customPrompt: settings.customPrompt
+              customPrompt: settings.customPrompt,
+              savedUrls: Array.from(existingUrls)
             }
           });
           
