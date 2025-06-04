@@ -414,7 +414,8 @@ h1 {
 
 /* Status bar */
 .status {
-  margin: var(--md-spacing-2);
+  margin: var(--md-spacing-1);
+  margin-bottom: 2px;
   padding: var(--md-spacing-2) var(--md-spacing-3);
   border-radius: var(--md-sys-shape-corner-small);
   font-size: var(--md-sys-typescale-label-medium);
@@ -631,6 +632,32 @@ button svg {
   height: 16px;
 }
 
+/* Grouping controls */
+.grouping-controls {
+  padding: var(--md-spacing-1) var(--md-spacing-3);
+  background-color: var(--md-sys-color-surface);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  display: flex;
+  gap: var(--md-spacing-2);
+  align-items: center;
+}
+
+.grouping-controls label {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-medium);
+  font-weight: 500;
+}
+
+.grouping-select {
+  padding: var(--md-spacing-1) var(--md-spacing-2);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-medium);
+  cursor: pointer;
+}
+
 /* Search bar - Material Design 3 */
 .search-controls {
   padding: var(--md-spacing-2) var(--md-spacing-3);
@@ -691,7 +718,7 @@ button svg {
 .tabs-container {
   flex: 1;
   overflow-y: auto;
-  padding: var(--md-spacing-3);
+  padding: var(--md-spacing-1) var(--md-spacing-2) var(--md-spacing-2) var(--md-spacing-2);
   background-color: var(--md-sys-color-surface);
   display: flex;
   flex-direction: column;
@@ -972,9 +999,86 @@ button svg {
   opacity: var(--md-sys-state-hover-opacity);
 }
 
-/* Open all button */
+/* Group sections in grouped view */
+.group-section {
+  margin-bottom: var(--md-spacing-3);
+  background-color: var(--md-sys-color-surface-container);
+  border-radius: var(--md-sys-shape-corner-medium);
+  overflow: hidden;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--md-spacing-3);
+  background-color: var(--md-sys-color-surface-container-high);
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.group-header:hover {
+  background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-3);
+  margin-left: auto;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+  font-size: var(--md-sys-typescale-body-large);
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+}
+
+.group-title svg {
+  flex-shrink: 0;
+}
+
+.group-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-3);
+  font-size: var(--md-sys-typescale-label-medium);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-1);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.stat-item svg {
+  width: 14px;
+  height: 14px;
+}
+
+.stat-item.important {
+  color: var(--md-sys-color-error);
+}
+
+.stat-item.somewhat {
+  color: var(--md-sys-color-warning);
+}
+
+.stat-item.not-important {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.stat-item.total {
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+}
+
+/* Open all button (deprecated - now using inline-action-btn) */
 .open-all-btn {
-  width: 100%;
   min-height: 32px;
   margin: var(--md-spacing-1);
   margin-bottom: var(--md-spacing-2);

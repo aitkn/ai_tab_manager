@@ -105,9 +105,12 @@ document.addEventListener('DOMContentLoaded', async function() {
       } else if (popupState.categorizedTabs) {
         // Restore categorized tabs
         categorizedTabs = popupState.categorizedTabs;
-        document.getElementById('tabsContainer').style.display = 'block';
-        document.querySelector('.action-buttons').style.display = 'flex';
-        displayTabs();
+        // Only show the container if there are actually tabs
+        if (categorizedTabs[1].length > 0 || categorizedTabs[2].length > 0 || categorizedTabs[3].length > 0) {
+          document.getElementById('tabsContainer').style.display = 'block';
+          document.querySelector('.action-buttons').style.display = 'flex';
+          displayTabs();
+        }
       }
       
       // Restore search
@@ -217,12 +220,35 @@ function switchToTab(tabName) {
     pane.classList.toggle('active', pane.id === `${tabName}Tab`);
   });
   
+  // Clear status message when switching tabs (except saved which sets its own)
+  if (tabName !== 'saved') {
+    clearStatus();
+  }
+  
   // Special handling for each tab
   switch(tabName) {
     case 'categorize':
-      // Show categorized tabs if available
-      if (categorizedTabs[1].length > 0 || categorizedTabs[2].length > 0 || categorizedTabs[3].length > 0) {
+      // Check if we have any categorized tabs
+      const hasCategorizedTabs = categorizedTabs[1].length > 0 || 
+                                 categorizedTabs[2].length > 0 || 
+                                 categorizedTabs[3].length > 0;
+      
+      if (hasCategorizedTabs) {
+        // Show the container and display tabs
         document.getElementById('tabsContainer').style.display = 'block';
+        document.querySelector('.action-buttons').style.display = 'flex';
+        displayTabs();
+      } else {
+        // Hide everything if no tabs
+        document.getElementById('tabsContainer').style.display = 'none';
+        document.querySelector('.action-buttons').style.display = 'none';
+        // Also ensure category sections are marked as empty
+        [1, 2, 3].forEach(category => {
+          const section = document.getElementById(`category${category}`);
+          if (section) {
+            section.classList.add('empty');
+          }
+        });
       }
       break;
     case 'saved':
@@ -1059,19 +1085,29 @@ function createGroupSection(groupName, tabs, groupType, isFromSaved) {
   `;
   
   header.appendChild(titleDiv);
-  header.appendChild(stats);
+  
+  // Add container for stats and button
+  const headerRight = document.createElement('div');
+  headerRight.className = 'header-right';
+  
+  headerRight.appendChild(stats);
+  
+  // Add 'Open All' button for saved collections in header
+  if (isFromSaved && tabs.length > 0) {
+    const openAllBtn = document.createElement('button');
+    openAllBtn.className = 'primary-btn inline-action-btn';
+    openAllBtn.textContent = `Open All ${tabs.length}`;
+    openAllBtn.onclick = (e) => {
+      e.stopPropagation(); // Prevent header click
+      openAllTabsInGroup(tabs);
+    };
+    headerRight.appendChild(openAllBtn);
+  }
+  
+  header.appendChild(headerRight);
   
   const listContainer = document.createElement('div');
   listContainer.className = 'tabs-list';
-  
-  // Add 'Open All' button for saved collections
-  if (isFromSaved && tabs.length > 0) {
-    const openAllBtn = document.createElement('button');
-    openAllBtn.className = 'open-all-btn';
-    openAllBtn.textContent = `Open All ${tabs.length} tabs`;
-    openAllBtn.onclick = () => openAllTabsInGroup(tabs);
-    listContainer.appendChild(openAllBtn);
-  }
   
   // Sort tabs within group by category (important first)
   tabs.sort((a, b) => b.category - a.category);
@@ -1627,6 +1663,14 @@ function showStatus(message, type) {
   statusDiv.className = 'status ' + type;
 }
 
+function clearStatus() {
+  const statusDiv = document.getElementById('status');
+  if (statusDiv) {
+    statusDiv.textContent = '';
+    statusDiv.className = 'status';
+  }
+}
+
 function onPromptChange(e) {
   settings.customPrompt = e.target.value;
   // Mark as customized if different from default
@@ -1740,11 +1784,11 @@ async function showSavedTabsContent(groupingType) {
       groupingType = savedGroupingSelect ? savedGroupingSelect.value : 'category';
     }
     
-    // Store the tabs in the categorized format for compatibility
-    categorizedTabs = { 1: [], 2: [], 3: [] };
+    // Store the saved tabs in a temporary object for display (don't overwrite categorizedTabs)
+    const savedTabsByCategory = { 1: [], 2: [], 3: [] };
     allSavedTabs.forEach(tab => {
-      if (categorizedTabs[tab.category]) {
-        categorizedTabs[tab.category].push(tab);
+      if (savedTabsByCategory[tab.category]) {
+        savedTabsByCategory[tab.category].push(tab);
       }
     });
     
@@ -1760,7 +1804,7 @@ async function showSavedTabsContent(groupingType) {
     
       // Display each category
       [3, 2, 1].forEach(category => {
-        const tabs = categorizedTabs[category] || [];
+        const tabs = savedTabsByCategory[category] || [];
       if (tabs.length === 0) return; // Skip empty categories
       
       const section = document.createElement('div');
@@ -1784,17 +1828,18 @@ async function showSavedTabsContent(groupingType) {
         <div class="category-header-actions"></div>
       `;
       
+      // Add open all button to header
+      if (tabs.length > 0) {
+        const headerActions = header.querySelector('.category-header-actions');
+        const openAllBtn = document.createElement('button');
+        openAllBtn.className = 'primary-btn inline-action-btn';
+        openAllBtn.textContent = `Open All ${tabs.length}`;
+        openAllBtn.onclick = () => openAllTabsInGroup(tabs);
+        headerActions.appendChild(openAllBtn);
+      }
+      
       const listContainer = document.createElement('div');
       listContainer.className = 'tabs-list';
-      
-      // Add open all button
-      if (tabs.length > 0) {
-        const openAllBtn = document.createElement('button');
-        openAllBtn.className = 'open-all-btn';
-        openAllBtn.textContent = `Open All ${tabs.length} tabs`;
-        openAllBtn.onclick = () => openAllTabsInGroup(tabs);
-        listContainer.appendChild(openAllBtn);
-      }
       
       // Add tabs
       tabs.forEach(tab => {
@@ -1823,15 +1868,50 @@ async function showSavedTabsContent(groupingType) {
       savedContent.appendChild(emptyMessage);
     } else {
       savedContent.appendChild(categoryView);
-      showStatus(`Viewing ${allSavedTabs.length} saved tabs`, 'success');
+      // Count non-empty categories
+      const nonEmptyCategories = [1, 2, 3].filter(cat => savedTabsByCategory[cat].length > 0).length;
+      showStatus(`Viewing ${allSavedTabs.length} saved tabs in ${nonEmptyCategories} ${nonEmptyCategories === 1 ? 'category' : 'categories'}`, 'success');
     }
     } else {
+      // For grouped view, we need to temporarily set categorizedTabs and restore it after
+      const originalCategorizedTabs = {
+        1: [...categorizedTabs[1]],
+        2: [...categorizedTabs[2]],
+        3: [...categorizedTabs[3]]
+      };
+      categorizedTabs = savedTabsByCategory;
+      
       // Use the existing displayGroupedView function for other groupings
       isViewingSaved = true;
       const groupedView = displayGroupedView(groupingType, true);
       if (groupedView) {
         savedContent.appendChild(groupedView);
+        
+        // Count groups and update status
+        const groupElements = groupedView.querySelectorAll('.group-section');
+        const groupCount = groupElements.length;
+        let groupTypeLabel = 'groups';
+        
+        switch (groupingType) {
+          case 'domain':
+            groupTypeLabel = groupCount === 1 ? 'domain' : 'domains';
+            break;
+          case 'savedDate':
+            groupTypeLabel = groupCount === 1 ? 'date' : 'dates';
+            break;
+          case 'savedWeek':
+            groupTypeLabel = groupCount === 1 ? 'week' : 'weeks';
+            break;
+          case 'savedMonth':
+            groupTypeLabel = groupCount === 1 ? 'month' : 'months';
+            break;
+        }
+        
+        showStatus(`Viewing ${allSavedTabs.length} saved tabs in ${groupCount} ${groupTypeLabel}`, 'success');
       }
+      
+      // Restore original categorized tabs
+      categorizedTabs = originalCategorizedTabs;
     }
     
   } catch (error) {
@@ -1944,13 +2024,71 @@ function onSavedGroupingChange(e) {
 }
 
 function onSavedSearchInput(e) {
-  // TODO: Implement search for saved tabs
-  console.log('Saved search query:', e.target.value);
+  const searchQuery = e.target.value.toLowerCase().trim();
+  applySavedSearchFilter(searchQuery);
 }
 
 function clearSavedSearch() {
   document.getElementById('savedSearchInput').value = '';
   onSavedSearchInput({ target: { value: '' } });
+}
+
+function applySavedSearchFilter(searchQuery) {
+  const savedContent = document.getElementById('savedContent');
+  if (!savedContent) return;
+  
+  // Get all tab elements in saved content
+  const allTabs = savedContent.querySelectorAll('.tab-item');
+  let visibleCount = 0;
+  let totalCount = 0;
+  
+  allTabs.forEach(tab => {
+    totalCount++;
+    const title = tab.querySelector('.tab-title')?.textContent.toLowerCase() || '';
+    const url = tab.querySelector('.tab-url')?.textContent.toLowerCase() || '';
+    const domain = tab.querySelector('.tab-domain')?.textContent.toLowerCase() || '';
+    
+    // Check if search query matches title, URL, or domain
+    const matches = !searchQuery || 
+                   title.includes(searchQuery) || 
+                   url.includes(searchQuery) || 
+                   domain.includes(searchQuery);
+    
+    if (matches) {
+      tab.style.display = '';
+      visibleCount++;
+    } else {
+      tab.style.display = 'none';
+    }
+  });
+  
+  // Also handle group sections - hide empty groups
+  const groupSections = savedContent.querySelectorAll('.group-section, .category-section');
+  groupSections.forEach(section => {
+    const visibleTabs = section.querySelectorAll('.tab-item:not([style*="display: none"])');
+    if (visibleTabs.length === 0 && searchQuery) {
+      section.style.display = 'none';
+    } else {
+      section.style.display = '';
+      
+      // Update count in header if it exists
+      const countElement = section.querySelector('.count, .group-stats .total');
+      if (countElement && searchQuery) {
+        countElement.textContent = `${visibleTabs.length} of ${section.querySelectorAll('.tab-item').length}`;
+      }
+    }
+  });
+  
+  // Update status
+  if (searchQuery) {
+    showStatus(`Found ${visibleCount} of ${totalCount} saved tabs matching "${searchQuery}"`, 'success');
+  } else {
+    // Restore original status
+    const savedGroupingSelect = document.getElementById('savedGroupingSelect');
+    if (savedGroupingSelect) {
+      showSavedTabsContent(savedGroupingSelect.value);
+    }
+  }
 }
 
 // Check extension integrity
