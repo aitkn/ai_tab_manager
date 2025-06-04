@@ -748,6 +748,7 @@ function displayCategoryView(isFromSaved = false) {
           // Category 1: Can Be Closed - Add Close button
           const closeAllBtn = document.createElement('button');
           closeAllBtn.className = 'inline-action-btn primary-btn';
+          closeAllBtn.title = 'Closes all tabs in this category without saving';
           closeAllBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Close All';
           closeAllBtn.onclick = () => closeAllInCategory(category);
           actionsContainer.appendChild(closeAllBtn);
@@ -755,6 +756,7 @@ function displayCategoryView(isFromSaved = false) {
           // Categories 2 & 3: Add Save and Close button
           const saveCloseBtn = document.createElement('button');
           saveCloseBtn.className = 'inline-action-btn primary-btn';
+          saveCloseBtn.title = 'Saves these tabs to database and closes them';
           saveCloseBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg> Save & Close';
           saveCloseBtn.onclick = () => saveAndCloseCategory(category);
           actionsContainer.appendChild(saveCloseBtn);
@@ -1322,6 +1324,23 @@ async function closeTab(tabId, category) {
     
     // Remove from categorized tabs
     categorizedTabs[category] = categorizedTabs[category].filter(tab => tab.id !== tabId);
+    
+    // Check if all categories are empty
+    const allEmpty = categorizedTabs[1].length === 0 && 
+                     categorizedTabs[2].length === 0 && 
+                     categorizedTabs[3].length === 0;
+    
+    if (allEmpty) {
+      // Clear popup state since all tabs are closed
+      await chrome.storage.local.remove('popupState');
+      
+      // Hide the tabs container and action buttons
+      document.getElementById('tabsContainer').style.display = 'none';
+      document.querySelector('.action-buttons').style.display = 'none';
+    } else {
+      // Update popup state with remaining tabs
+      await savePopupState();
+    }
     
     // Update display
     displayTabs();
@@ -1950,6 +1969,9 @@ function moveTab(tabId, fromCategory, direction) {
   
   // Re-sort the new category by domain
   categorizedTabs[toCategory].sort((a, b) => a.domain.localeCompare(b.domain));
+  
+  // Save the updated state
+  savePopupState();
   
   // Refresh display
   displayTabs(isViewingSaved);
