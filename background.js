@@ -225,10 +225,25 @@ function getCategorizationPrompt(tabs, customPrompt) {
   // Use custom prompt if provided and different from default
   const promptToUse = (customPrompt && customPrompt !== CONFIG.DEFAULT_PROMPT) ? customPrompt : CONFIG.DEFAULT_PROMPT;
   
+  // Prepare minimal tab data for LLM - only what's needed for categorization
+  const minimalTabs = tabs.map(tab => {
+    // Create minimal tab object with only necessary fields
+    const minimalTab = {
+      id: tab.deduplicatedId || tab.id || tab.tempId || tabs.indexOf(tab),
+      title: tab.title,
+      url: tab.url.length > 128 ? tab.url.substring(0, 128) + '...' : tab.url
+    };
+    
+    return minimalTab;
+  });
+  
+  console.log('Minimal tabs for LLM:', minimalTabs.length, 'tabs');
+  console.log('Sample minimal tab:', minimalTabs[0]);
+  
   // Replace placeholders in the prompt
   return promptToUse
     .replace('{FREQUENT_DOMAINS}', CONFIG.FREQUENT_DOMAINS.join(', '))
-    .replace('{TABS_DATA}', JSON.stringify(tabs, null, 2));
+    .replace('{TABS_DATA}', JSON.stringify(minimalTabs, null, 2));
 }
 
 async function callClaudeAPI(tabs, apiKey, model, customPrompt) {
