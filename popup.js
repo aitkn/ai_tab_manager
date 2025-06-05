@@ -58,6 +58,9 @@ import { onSearchInput, clearSearch, matchesSearch, applySearchFilter, filterGro
 // Import import/export module
 import { exportToCSV, handleCSVImport, initializeImportExport } from './src/modules/import-export.js';
 
+// Import settings manager module
+import { initializeSettingsUI, updateModelDropdown, onProviderChange, onModelChange, saveApiKey, onPromptChange, resetPrompt, updatePromptStatus, onMaxTabsChange, initializeSettings } from './src/modules/settings-manager.js';
+
 // Log that modules are loaded
 console.log('Modules loaded:', { 
   constants: !!TAB_CATEGORIES, 
@@ -355,15 +358,12 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async function() {
 function setupEventListeners() {
   on($id(DOM_IDS.CATEGORIZE_BTN), EVENTS.CLICK, handleCategorize);
   on($id(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN), EVENTS.CLICK, () => saveAndCloseAll());
-  on($id(DOM_IDS.SAVE_API_KEY_BTN), EVENTS.CLICK, saveApiKey);
+  // Settings event listeners moved to settings-manager.js
+  initializeSettings();
   on($id(DOM_IDS.OPEN_SETTINGS_BTN), EVENTS.CLICK, () => switchToTab('settings'));
-  on($id(DOM_IDS.PROVIDER_SELECT), EVENTS.CHANGE, onProviderChange);
-  on($id(DOM_IDS.MODEL_SELECT), EVENTS.CHANGE, onModelChange);
-  on($id(DOM_IDS.PROMPT_TEXTAREA), EVENTS.INPUT, onPromptChange);
-  on($id(DOM_IDS.RESET_PROMPT_BTN), EVENTS.CLICK, resetPrompt);
-  on($id(DOM_IDS.SEARCH_INPUT), EVENTS.INPUT, onSearchInput);
-  on($id(DOM_IDS.CLEAR_SEARCH_BTN), EVENTS.CLICK, clearSearch);
-  on($id(DOM_IDS.MAX_TABS_INPUT), EVENTS.CHANGE, onMaxTabsChange);
+  
+  // Search event listeners moved to search-filter.js
+  initializeSearch();
   
   // Saved tab controls
   const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
@@ -532,187 +532,17 @@ function switchToTab(tabName) {
   savePopupState();
 }
 
-function showApiKeyPrompt() {
-  show($id(DOM_IDS.API_KEY_PROMPT));
-}
+// showApiKeyPrompt function moved to ui-manager.js
 
-function initializeSettingsUI() {
-  // Set current provider
-  $id(DOM_IDS.PROVIDER_SELECT).value = settings.provider;
-  
-  // Populate models for current provider
-  updateModelDropdown();
-  
-  // Set current model
-  $id(DOM_IDS.MODEL_SELECT).value = settings.model;
-  
-  // Set API key if exists
-  const apiKeyInput = $id(DOM_IDS.API_KEY_INPUT);
-  apiKeyInput.value = settings.apiKeys[settings.provider] || '';
-  apiKeyInput.placeholder = CONFIG.PROVIDERS[settings.provider].apiKeyPlaceholder;
-  
-  // Set custom prompt
-  const promptTextarea = $id(DOM_IDS.PROMPT_TEXTAREA);
-  promptTextarea.value = settings.customPrompt || CONFIG.DEFAULT_PROMPT;
-  
-  // Set max tabs to open
-  const maxTabsInput = $id(DOM_IDS.MAX_TABS_INPUT);
-  maxTabsInput.value = settings.maxTabsToOpen || 50;
-  
-  // Update prompt status
-  updatePromptStatus();
-}
+// initializeSettingsUI function moved to settings-manager.js
 
-async function updateModelDropdown() {
-  const modelSelect = $id(DOM_IDS.MODEL_SELECT);
-  const provider = CONFIG.PROVIDERS[settings.provider];
-  
-  // Show loading state
-  modelSelect.innerHTML = '<option>Loading models...</option>';
-  modelSelect.disabled = true;
-  
-  try {
-    // Try to fetch models dynamically
-    const apiKey = settings.apiKeys[settings.provider];
-    let models = [];
-    let needsApiKey = false;
-    
-    const response = await chrome.runtime.sendMessage({
-      action: 'fetchModels',
-      data: { provider: settings.provider, apiKey }
-    });
-    
-    if (response && response.success) {
-      models = response.models || [];
-      needsApiKey = response.needsApiKey || false;
-      console.log('Fetched models for', settings.provider, ':', models);
-    }
-    
-    // Clear and populate models
-    modelSelect.innerHTML = '';
-    
-    if (needsApiKey) {
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = 'Please enter API key first';
-      modelSelect.appendChild(option);
-      modelSelect.disabled = true;
-      return;
-    }
-    
-    if (models.length === 0) {
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = 'No models available';
-      modelSelect.appendChild(option);
-      modelSelect.disabled = true;
-      return;
-    }
-    
-    models.forEach(model => {
-      const option = document.createElement('option');
-      option.value = model.id;
-      
-      // Format display text with release date if available
-      let displayText = model.name;
-      if (model.created_at) {
-        const date = new Date(model.created_at);
-        const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-        displayText += ` (${dateStr})`;
-      } else if (model.created) {
-        // OpenAI uses unix timestamp
-        const date = new Date(model.created * 1000);
-        const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-        displayText += ` (${dateStr})`;
-      }
-      
-      option.textContent = displayText;
-      modelSelect.appendChild(option);
-    });
-    
-    // Check if we have a previously selected model for this provider
-    const previouslySelected = settings.selectedModels[settings.provider];
-    
-    if (previouslySelected && models.some(m => m.id === previouslySelected)) {
-      // Use previously selected model
-      modelSelect.value = previouslySelected;
-      settings.model = previouslySelected;
-    } else if (models.some(m => m.id === settings.model)) {
-      // Use current model if available
-      modelSelect.value = settings.model;
-    } else {
-      // Default to first available model
-      settings.model = models[0].id;
-      modelSelect.value = settings.model;
-    }
-    
-    // Save the selected model for this provider
-    settings.selectedModels[settings.provider] = settings.model;
-    await saveSettings();
-  } catch (error) {
-    console.error('Error updating models:', error);
-    modelSelect.innerHTML = '<option value="">Error loading models</option>';
-    modelSelect.disabled = true;
-  } finally {
-    if (modelSelect.options.length > 0 && modelSelect.options[0].value) {
-      modelSelect.disabled = false;
-    }
-  }
-}
+// updateModelDropdown function moved to settings-manager.js
 
-async function onProviderChange(e) {
-  settings.provider = e.target.value;
-  updateModelDropdown();
-  
-  // Update API key placeholder
-  const apiKeyInput = $id(DOM_IDS.API_KEY_INPUT);
-  apiKeyInput.value = settings.apiKeys[settings.provider] || '';
-  apiKeyInput.placeholder = CONFIG.PROVIDERS[settings.provider].apiKeyPlaceholder;
-  
-  await saveSettings();
-}
+// Provider, model and API key functions moved to settings-manager.js
 
-async function onModelChange(e) {
-  settings.model = e.target.value;
-  // Save the selected model for the current provider
-  settings.selectedModels[settings.provider] = settings.model;
-  await saveSettings();
-}
+// saveSettings function moved to settings-manager.js
 
-async function saveApiKey() {
-  const input = $id(DOM_IDS.API_KEY_INPUT);
-  const key = input.value.trim();
-  
-  if (key) {
-    settings.apiKeys[settings.provider] = key;
-    await saveSettings();
-    showStatus(`API key saved for ${settings.provider}!`, 'success');
-    
-    // Hide API prompt if it was showing
-    hide($id(DOM_IDS.API_KEY_PROMPT));
-    
-    // Refresh models with the new API key
-    await updateModelDropdown();
-  }
-}
-
-async function saveSettings() {
-  await chrome.storage.local.set({ settings });
-  console.log('Settings saved:', settings);
-}
-
-function onMaxTabsChange(e) {
-  const value = parseInt(e.target.value);
-  if (!isNaN(value) && value >= 1 && value <= 200) {
-    settings.maxTabsToOpen = value;
-    saveSettings();
-    showStatus(`Max tabs to open set to ${value}`, 'success');
-  } else {
-    // Reset to previous value if invalid
-    e.target.value = settings.maxTabsToOpen || 50;
-    showStatus('Please enter a value between 1 and 200', 'error');
-  }
-}
+// onMaxTabsChange function moved to settings-manager.js
 
 // Save popup state
 async function savePopupState() {
