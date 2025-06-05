@@ -72,38 +72,44 @@
         
         <!-- Middle: Group By controls -->
         <div class="toolbar-section middle-section">
-          <label>Group by:</label>
-          <select id="unifiedGroupingSelect" class="grouping-select">
-            <!-- Options will be populated dynamically based on active tab -->
-          </select>
-          <button id="toggleGroupsBtn" class="icon-btn" title="Collapse/Expand all groups">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 9l6 6 6-6"/>
-            </svg>
-          </button>
+          <div class="control-group grouping-group">
+            <label>Group by:</label>
+            <select id="unifiedGroupingSelect" class="grouping-select">
+              <!-- Options will be populated dynamically based on active tab -->
+            </select>
+            <button id="toggleGroupsBtn" class="icon-btn" title="Collapse/Expand all groups">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+          </div>
         </div>
         
         <!-- Right: Show All/Export/Import (Saved Tab) and Close All button -->
         <div class="toolbar-section right-section">
           <div id="savedTabControls" class="tab-specific-controls" style="display: none;">
-            <label class="checkbox-label" title="Include 'Can Be Closed' category tabs">
-              <input type="checkbox" id="showAllCheckbox">
-              <span>Show All</span>
-            </label>
-            <button id="exportBtn" class="icon-btn" title="Export saved tabs as CSV">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-            </button>
-            <button id="importBtn" class="icon-btn" title="Import tabs from CSV">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-            </button>
+            <div class="control-group show-all-group">
+              <label class="checkbox-label" title="Include 'Can Be Closed' category tabs">
+                <input type="checkbox" id="showAllCheckbox">
+                <span>Show All</span>
+              </label>
+            </div>
+            <div class="control-group export-import-group">
+              <button id="exportBtn" class="icon-btn" title="Export saved tabs as CSV">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </button>
+              <button id="importBtn" class="icon-btn" title="Import tabs from CSV">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </button>
+            </div>
           </div>
           <button id="closeAllBtn2" class="close-all-btn" title="Close all tabs">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

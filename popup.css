@@ -472,9 +472,6 @@ h1 {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: var(--md-spacing-2);
   z-index: 1;
 }
 
@@ -517,15 +514,32 @@ h1 {
 .tab-specific-controls {
   display: flex;
   align-items: center;
-  gap: var(--md-spacing-2);
+  gap: var(--md-spacing-4);
 }
 
-/* Export/Import buttons spacing */
-#savedTabControls {
-  gap: calc(var(--md-spacing-1) / 2);
+/* Control groups for logical grouping */
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-1);
 }
 
-#savedTabControls .icon-btn {
+/* GROUP BY controls group */
+.grouping-group {
+  gap: calc(var(--md-spacing-1) * 0.75);
+}
+
+/* Show All checkbox group */
+.show-all-group {
+  /* No additional styles needed, inherits from control-group */
+}
+
+/* Export/Import buttons group */
+.export-import-group {
+  gap: calc(var(--md-spacing-1) * 0.5);
+}
+
+.export-import-group .icon-btn {
   padding: var(--md-spacing-1) var(--md-spacing-1);
 }
 
