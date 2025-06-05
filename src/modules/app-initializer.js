@@ -81,6 +81,9 @@ export async function initializeApp() {
     // Restore UI state
     await restoreUIState();
     
+    // Load categorized tabs from background
+    await loadCategorizedTabsFromBackground();
+    
     console.log('Loaded settings:', state.settings);
     
     // Set up event listeners
@@ -114,6 +117,37 @@ export async function initializeApp() {
   } catch (error) {
     console.error('Error during initialization:', error);
     showStatus('Error initializing extension', 'error');
+  }
+}
+
+/**
+ * Load categorized tabs from background script
+ */
+async function loadCategorizedTabsFromBackground() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getCategorizedTabs' });
+    if (response && response.categorizedTabs) {
+      const hasTabs = Object.values(response.categorizedTabs).some(tabs => tabs.length > 0);
+      
+      if (hasTabs) {
+        console.log('Loaded categorized tabs from background');
+        state.categorizedTabs = response.categorizedTabs;
+        state.urlToDuplicateIds = response.urlToDuplicateIds || {};
+        
+        // Update UI
+        show($id(DOM_IDS.TABS_CONTAINER));
+        show($id(DOM_IDS.SEARCH_CONTROLS), 'flex');
+        show($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS), 'flex');
+        const actionButtons = document.querySelector('.action-buttons');
+        if (actionButtons) {
+          show(actionButtons, 'flex');
+        }
+        displayTabs();
+        updateCategorizeBadge();
+      }
+    }
+  } catch (error) {
+    console.error('Error loading categorized tabs from background:', error);
   }
 }
 

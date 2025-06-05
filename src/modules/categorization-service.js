@@ -120,6 +120,16 @@ export async function categorizeTabs() {
     
     // Update state with categorized tabs
     updateState('categorizedTabs', result);
+    updateState('urlToDuplicateIds', urlToDuplicateIds);
+    
+    // Sync with background script
+    await chrome.runtime.sendMessage({
+      action: 'storeCategorizedTabs',
+      data: {
+        categorizedTabs: result,
+        urlToDuplicateIds: urlToDuplicateIds
+      }
+    });
     
     // Update UI
     updateCategorizeBadge();

@@ -13,6 +13,14 @@ let currentCategorization = null;
 let isPopupOpen = false;
 let popupPort = null;
 
+// Store categorized tabs in background
+let categorizedTabs = {
+  1: [], // Can close
+  2: [], // Save for later
+  3: []  // Important
+};
+let urlToDuplicateIds = {};
+
 // Listen for connections from popup
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === 'popup') {
@@ -109,6 +117,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return false;
   }
   
+  // Store categorized tabs from popup
+  if (request.action === 'storeCategorizedTabs') {
+    categorizedTabs = request.data.categorizedTabs || categorizedTabs;
+    urlToDuplicateIds = request.data.urlToDuplicateIds || urlToDuplicateIds;
+    console.log('Background: Stored categorized tabs');
+    sendResponse({ status: 'stored' });
+    return false;
+  }
+  
+  // Get categorized tabs for popup
+  if (request.action === 'getCategorizedTabs') {
+    sendResponse({ 
+      categorizedTabs: categorizedTabs,
+      urlToDuplicateIds: urlToDuplicateIds
+    });
+    return false;
+  }
+  
   
   // Default response for unknown actions
   sendResponse({ error: 'Unknown action: ' + request.action });
@@ -123,6 +149,34 @@ chrome.tabs.onCreated.addListener((tab) => {
 
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
   console.log('Background: Tab removed:', tabId, 'Popup open:', isPopupOpen);
+  
+  // Remove from categorized tabs even if popup is closed
+  let removed = false;
+  for (const category of Object.keys(categorizedTabs)) {
+    const index = categorizedTabs[category].findIndex(tab => tab.id === tabId);
+    if (index > -1) {
+      const removedTab = categorizedTabs[category].splice(index, 1)[0];
+      console.log('Background: Removed tab from category', category);
+      removed = true;
+      
+      // Also check for duplicates
+      if (removedTab.url && urlToDuplicateIds[removedTab.url]) {
+        const dupIndex = urlToDuplicateIds[removedTab.url].indexOf(tabId);
+        if (dupIndex > -1) {
+          urlToDuplicateIds[removedTab.url].splice(dupIndex, 1);
+          if (urlToDuplicateIds[removedTab.url].length === 0) {
+            delete urlToDuplicateIds[removedTab.url];
+          }
+        }
+      }
+      break;
+    }
+  }
+  
+  if (removed) {
+    console.log('Background: Updated categorized tabs after removal');
+  }
+  
   notifyPopupOfTabChange('removed', { id: tabId });
 });
 
@@ -236,6 +290,20 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
       category3: expandedCategorized[3]?.length || 0
     });
     console.log(`Added ${savedTabsMap.size} saved URLs to category 1 for display`);
+    
+    // Store the categorized tabs in background
+    categorizedTabs = expandedCategorized;
+    
+    // Update urlToDuplicateIds
+    urlToDuplicateIds = {};
+    urlToOriginalTabs.forEach((tabs, url) => {
+      if (tabs.length > 1) {
+        urlToDuplicateIds[url] = tabs.map(t => t.id);
+      }
+    });
+    
+    console.log('Background: Stored categorized tabs');
+    
     return { success: true, data: expandedCategorized };
   } catch (error) {
     console.error('Background: API error', error);

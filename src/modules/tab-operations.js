@@ -45,6 +45,15 @@ export async function closeTab(tab, category) {
     updateCategorizeBadge();
     await savePopupState();
     
+    // Sync with background
+    await chrome.runtime.sendMessage({
+      action: 'storeCategorizedTabs',
+      data: {
+        categorizedTabs: state.categorizedTabs,
+        urlToDuplicateIds: state.urlToDuplicateIds
+      }
+    });
+    
     // If no more tabs, trigger re-display
     const totalTabs = Object.values(state.categorizedTabs)
       .reduce((sum, tabs) => sum + tabs.length, 0);
