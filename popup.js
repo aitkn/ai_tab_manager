@@ -138,11 +138,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         savedGroupingSelect.value = popupState.groupingSelections.saved;
       }
       
-      // Restore UI based on saved state
-      if (popupState.isViewingSaved) {
-        // Show saved tabs
-        await showSavedTabs(true); // true = restoring state
-      } else if (popupState.categorizedTabs) {
+      // Always restore categorized tabs if they exist
+      if (popupState.categorizedTabs) {
         // Restore categorized tabs - ensure proper structure
         categorizedTabs = {
           1: popupState.categorizedTabs[1] || [],
@@ -154,16 +151,21 @@ document.addEventListener('DOMContentLoaded', async function() {
           category2: categorizedTabs[2].length,
           category3: categorizedTabs[3].length
         });
-        // Only show the container if there are actually tabs
-        if (categorizedTabs[1].length > 0 || categorizedTabs[2].length > 0 || categorizedTabs[3].length > 0) {
-          document.getElementById('tabsContainer').style.display = 'block';
-          document.getElementById('searchControls').style.display = 'flex';
-          document.querySelector('.action-buttons').style.display = 'flex';
-          document.getElementById('categorizeGroupingControls').style.display = 'flex';
-          displayTabs();
-          updateCategorizeBadge();
-          // Scroll restoration is handled centrally after initialization
-        }
+      }
+      
+      // Restore UI based on saved state
+      if (popupState.isViewingSaved) {
+        // Show saved tabs
+        await showSavedTabs(true); // true = restoring state
+      } else if (categorizedTabs[1].length > 0 || categorizedTabs[2].length > 0 || categorizedTabs[3].length > 0) {
+        // Show categorized tabs if they exist
+        document.getElementById('tabsContainer').style.display = 'block';
+        document.getElementById('searchControls').style.display = 'flex';
+        document.querySelector('.action-buttons').style.display = 'flex';
+        document.getElementById('categorizeGroupingControls').style.display = 'flex';
+        displayTabs();
+        updateCategorizeBadge();
+        // Scroll restoration is handled centrally after initialization
       }
       
       // Restore search
@@ -386,6 +388,7 @@ function switchToTab(tabName) {
   // Special handling for each tab
   switch(tabName) {
     case 'categorize':
+      isViewingSaved = false; // We're viewing the categorize tab
       // Check if we have any categorized tabs
       const hasCategorizedTabs = categorizedTabs[1].length > 0 || 
                                  categorizedTabs[2].length > 0 || 
@@ -414,6 +417,7 @@ function switchToTab(tabName) {
       }
       break;
     case 'saved':
+      isViewingSaved = true; // We're viewing the saved tab
       showSavedTabsContent();
       // Re-check and add scroll listener if needed
       setTimeout(() => {
@@ -638,6 +642,15 @@ async function savePopupState() {
     return;
   }
   
+  console.log('savePopupState called with:', {
+    isViewingSaved,
+    categorizedTabsCount: {
+      1: categorizedTabs[1]?.length || 0,
+      2: categorizedTabs[2]?.length || 0,
+      3: categorizedTabs[3]?.length || 0
+    }
+  });
+  
   // Get current scroll positions for ALL tabs
   const scrollPositions = { ...popupState.scrollPositions };
   
@@ -692,6 +705,16 @@ async function savePopupState() {
     scrollPositions: { ...popupState.scrollPositions, ...scrollPositions },
     groupingSelections
   };
+  
+  console.log('Saving popupState with categorizedTabs:', {
+    isViewingSaved,
+    categorizedTabsToSave: popupState.categorizedTabs ? {
+      1: popupState.categorizedTabs[1]?.length || 0,
+      2: popupState.categorizedTabs[2]?.length || 0,
+      3: popupState.categorizedTabs[3]?.length || 0
+    } : 'null'
+  });
+  
   await chrome.storage.local.set({ popupState });
 }
 
@@ -2727,7 +2750,6 @@ async function showSavedTabsContent(groupingType) {
     }
     } else {
       // For grouped view, pass the saved tabs directly without modifying global categorizedTabs
-      isViewingSaved = true;
       const groupedView = displayGroupedView(groupingType, true, savedTabsByCategory);
       if (groupedView) {
         savedContent.appendChild(groupedView);
