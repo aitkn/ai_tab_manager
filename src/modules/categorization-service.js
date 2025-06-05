@@ -1,0 +1,231 @@
+/*
+ * AI Tab Manager - Copyright (c) 2025 AI Tech Knowledge LLC
+ * Categorization Service - handles tab categorization using LLMs
+ */
+
+import { TAB_CATEGORIES, STATUS_MESSAGES } from '../utils/constants.js';
+import { extractDomain, fallbackCategorization } from '../utils/helpers.js';
+import MessageService from '../services/MessageService.js';
+import ChromeAPIService from '../services/ChromeAPIService.js';
+import { state, updateState, clearCategorizedTabs, savePopupState } from './state-manager.js';
+import { showStatus, clearStatus, updateCategorizeBadge, hideApiKeyPrompt } from './ui-manager.js';
+import { tabDatabase } from '../../database_v2.js';
+
+/**
+ * Handle categorize button click
+ */
+export async function handleCategorize() {
+  console.log('Categorize clicked');
+  
+  const apiKey = state.settings.apiKeys[state.settings.provider];
+  const provider = state.settings.provider;
+  const model = state.settings.model || state.settings.selectedModels[provider];
+  const customPrompt = state.settings.customPrompt;
+  
+  if (!apiKey || !provider || !model) {
+    showStatus(STATUS_MESSAGES.ERROR_NO_API_KEY, 'error', 5000);
+    return;
+  }
+  
+  hideApiKeyPrompt();
+  await categorizeTabs();
+}
+
+/**
+ * Categorize all open tabs
+ */
+export async function categorizeTabs() {
+  showStatus(STATUS_MESSAGES.LOADING, 'loading', 0);
+  
+  try {
+    // Get all tabs in current window
+    const tabs = await ChromeAPIService.getCurrentWindowTabs();
+    
+    // Process tabs to add domain info
+    const processedTabs = tabs.map(tab => ({
+      ...tab,
+      domain: extractDomain(tab.url)
+    }));
+    
+    console.log(`Found ${tabs.length} tabs to categorize`);
+    
+    // Track duplicate tabs by URL
+    const urlToTabs = {};
+    processedTabs.forEach(tab => {
+      const url = tab.url;
+      if (!urlToTabs[url]) {
+        urlToTabs[url] = [];
+      }
+      urlToTabs[url].push(tab);
+    });
+    
+    // Store URL to duplicate IDs mapping
+    const urlToDuplicateIds = {};
+    Object.entries(urlToTabs).forEach(([url, tabsWithUrl]) => {
+      if (tabsWithUrl.length > 1) {
+        urlToDuplicateIds[url] = tabsWithUrl.map(t => t.id);
+      }
+    });
+    updateState('urlToDuplicateIds', urlToDuplicateIds);
+    
+    // Get saved URLs to exclude from LLM
+    let savedUrls = [];
+    try {
+      const savedTabs = await tabDatabase.getAllSavedTabs();
+      savedUrls = savedTabs.map(tab => tab.url);
+      console.log(`Found ${savedUrls.length} saved URLs to exclude from LLM`);
+    } catch (error) {
+      console.error('Error getting saved tabs:', error);
+    }
+    
+    const apiKey = state.settings.apiKeys[state.settings.provider];
+    const provider = state.settings.provider;
+    const model = state.settings.model || state.settings.selectedModels[provider];
+    const customPrompt = state.settings.customPrompt;
+    
+    let categorized;
+    
+    try {
+      // Call LLM for categorization
+      categorized = await MessageService.categorizeTabs({
+        tabs: processedTabs,
+        apiKey,
+        provider,
+        model,
+        customPrompt,
+        savedUrls
+      });
+      
+      console.log('Tabs categorized successfully');
+    } catch (error) {
+      console.error('Error calling API:', error);
+      
+      // Use fallback categorization
+      console.log('Using fallback categorization');
+      categorized = fallbackCategorization(processedTabs);
+    }
+    
+    // Ensure all categories exist
+    const result = {
+      [TAB_CATEGORIES.CAN_CLOSE]: categorized[TAB_CATEGORIES.CAN_CLOSE] || [],
+      [TAB_CATEGORIES.SAVE_LATER]: categorized[TAB_CATEGORIES.SAVE_LATER] || [],
+      [TAB_CATEGORIES.IMPORTANT]: categorized[TAB_CATEGORIES.IMPORTANT] || []
+    };
+    
+    console.log('Final categorization:', {
+      category1: result[TAB_CATEGORIES.CAN_CLOSE].length,
+      category2: result[TAB_CATEGORIES.SAVE_LATER].length,
+      category3: result[TAB_CATEGORIES.IMPORTANT].length
+    });
+    
+    // Update state with categorized tabs
+    updateState('categorizedTabs', result);
+    
+    // Update UI
+    updateCategorizeBadge();
+    showStatus(STATUS_MESSAGES.SUCCESS_CATEGORIZED, 'success');
+    
+    // Save state
+    await savePopupState();
+    
+    // Trigger display update (will be handled by display module)
+    return result;
+    
+  } catch (error) {
+    console.error('Error in categorizeTabs:', error);
+    showStatus(`${STATUS_MESSAGES.ERROR_CATEGORIZATION} ${error.message}`, 'error');
+    return null;
+  }
+}
+
+/**
+ * Re-categorize tabs (refresh)
+ */
+export async function refreshCategorization() {
+  // Clear existing categorization
+  clearCategorizedTabs();
+  
+  // Re-categorize
+  return categorizeTabs();
+}
+
+/**
+ * Move a tab to a different category
+ * @param {Object} tab - Tab to move
+ * @param {number} fromCategory - Source category
+ * @param {number} toCategory - Target category
+ */
+export function moveTabToCategory(tab, fromCategory, toCategory) {
+  if (fromCategory === toCategory) return;
+  
+  // Remove from source category
+  const sourceIndex = state.categorizedTabs[fromCategory].findIndex(t => t.id === tab.id);
+  if (sourceIndex > -1) {
+    state.categorizedTabs[fromCategory].splice(sourceIndex, 1);
+  }
+  
+  // Add to target category
+  state.categorizedTabs[toCategory].push(tab);
+  
+  // Update state
+  updateState('categorizedTabs', state.categorizedTabs);
+  updateCategorizeBadge();
+  
+  // Save state
+  savePopupState();
+}
+
+/**
+ * Check if tab is already saved
+ * @param {string} url - Tab URL
+ * @returns {Promise<boolean>}
+ */
+export async function isTabSaved(url) {
+  try {
+    const savedTabs = await tabDatabase.getAllSavedTabs();
+    return savedTabs.some(tab => tab.url === url);
+  } catch (error) {
+    console.error('Error checking if tab is saved:', error);
+    return false;
+  }
+}
+
+/**
+ * Get categorization stats
+ * @returns {Object} Stats object
+ */
+export function getCategorizationStats() {
+  const stats = {
+    total: 0,
+    byCategory: {
+      [TAB_CATEGORIES.CAN_CLOSE]: state.categorizedTabs[TAB_CATEGORIES.CAN_CLOSE].length,
+      [TAB_CATEGORIES.SAVE_LATER]: state.categorizedTabs[TAB_CATEGORIES.SAVE_LATER].length,
+      [TAB_CATEGORIES.IMPORTANT]: state.categorizedTabs[TAB_CATEGORIES.IMPORTANT].length
+    },
+    duplicates: Object.keys(state.urlToDuplicateIds).length,
+    saved: 0
+  };
+  
+  stats.total = stats.byCategory[TAB_CATEGORIES.CAN_CLOSE] + 
+                stats.byCategory[TAB_CATEGORIES.SAVE_LATER] + 
+                stats.byCategory[TAB_CATEGORIES.IMPORTANT];
+  
+  // Count saved tabs
+  Object.values(state.categorizedTabs).forEach(tabs => {
+    tabs.forEach(tab => {
+      if (tab.alreadySaved) stats.saved++;
+    });
+  });
+  
+  return stats;
+}
+
+// Export default object
+export default {
+  handleCategorize,
+  categorizeTabs,
+  refreshCategorization,
+  moveTabToCategory,
+  isTabSaved,
+  getCategorizationStats
+};
