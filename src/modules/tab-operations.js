@@ -478,15 +478,15 @@ export function moveTab(tab, fromCategory, direction) {
 /**
  * Delete a saved tab
  */
-export async function deleteSavedTab(tabId) {
+export async function deleteSavedTab(urlId) {
   try {
-    await window.tabDatabase.deleteTab(tabId);
+    await window.tabDatabase.deleteUrl(urlId);
     
     showStatus('Tab deleted', 'success');
     
     // Update saved tab count
-    const savedTabs = await window.tabDatabase.getAllSavedTabs();
-    updateSavedBadge(savedTabs.length);
+    const savedUrls = await window.tabDatabase.getSavedUrls([2, 3]);
+    updateSavedBadge(savedUrls.length);
     
     // Trigger display update
     window.dispatchEvent(new CustomEvent('savedTabsChanged'));
@@ -537,14 +537,20 @@ export async function deleteTabsInGroup(groupName) {
  */
 export async function restoreSavedTab(tab, deleteAfterRestore = false) {
   try {
-    await ChromeAPIService.createTab({ url: tab.url });
+    const newTab = await ChromeAPIService.createTab({ url: tab.url });
+    
+    // Record open event in database
+    if (window.tabDatabase) {
+      const urlId = await window.tabDatabase.getOrCreateUrl(tab, tab.category);
+      await window.tabDatabase.recordOpenEvent(urlId, newTab.id);
+    }
     
     if (deleteAfterRestore) {
-      await window.tabDatabase.deleteTab(tab.id);
+      await window.tabDatabase.deleteUrl(tab.id);
       
       // Update saved tab count
-      const savedTabs = await window.tabDatabase.getAllSavedTabs();
-      updateSavedBadge(savedTabs.length);
+      const savedUrls = await window.tabDatabase.getSavedUrls([2, 3]);
+      updateSavedBadge(savedUrls.length);
       
       showStatus('Tab restored and removed from saved', 'success');
     } else {

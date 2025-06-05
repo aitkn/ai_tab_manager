@@ -15,7 +15,7 @@ import { openAllTabsInGroup, deleteTabsInGroup } from './tab-operations.js';
 /**
  * Show saved tabs content
  */
-export async function showSavedTabsContent(groupingType) {
+export async function showSavedTabsContent(groupingType, includeCanClose = false) {
   try {
     // Make sure the saved tab pane exists and is ready
     const savedTab = $id('savedTab');
@@ -24,7 +24,21 @@ export async function showSavedTabsContent(groupingType) {
       return;
     }
     
-    const allSavedTabs = await window.tabDatabase.getAllSavedTabs();
+    // Load saved URLs from database (by default only categories 2 and 3)
+    const categories = includeCanClose ? [1, 2, 3] : [2, 3];
+    const savedUrls = await window.tabDatabase.getSavedUrls(categories);
+    
+    // Convert URLs to tab format for display
+    const allSavedTabs = savedUrls.map(urlInfo => ({
+      id: urlInfo.id,
+      url: urlInfo.url,
+      title: urlInfo.title,
+      domain: urlInfo.domain,
+      category: urlInfo.category,
+      savedDate: urlInfo.firstSeen,
+      lastAccessedDate: urlInfo.lastCategorized || urlInfo.firstSeen,
+      favicon: urlInfo.favicon
+    }));
     
     // Get current grouping from dropdown if not passed
     if (!groupingType) {
@@ -282,9 +296,9 @@ export async function showSavedTabs() {
  */
 export async function loadSavedTabsCount() {
   try {
-    const savedTabs = await window.tabDatabase.getAllSavedTabs();
-    updateSavedBadge(savedTabs.length);
-    return savedTabs.length;
+    const savedUrls = await window.tabDatabase.getSavedUrls([2, 3]); // Only count important and save for later
+    updateSavedBadge(savedUrls.length);
+    return savedUrls.length;
   } catch (error) {
     console.error('Error loading saved tabs count:', error);
     return 0;

@@ -6,6 +6,9 @@
 
 // Background service worker for handling API calls
 
+// Import scripts at top level for service worker
+importScripts('database_v3.js');
+
 console.log('Background service worker starting...');
 
 // Track current state
@@ -32,25 +35,65 @@ function extractDomain(url) {
   }
 }
 
-// Initialize uncategorized tabs on startup
-chrome.tabs.query({}, (tabs) => {
-  console.log('Background: Initializing with', tabs.length, 'existing tabs');
-  
-  tabs.forEach(tab => {
-    if (tab.url && !tab.url.startsWith('chrome://')) {
-      // Add to uncategorized
-      categorizedTabs[0].push({
-        id: tab.id,
-        url: tab.url,
-        title: tab.title || 'Loading...',
-        domain: extractDomain(tab.url),
-        windowId: tab.windowId
-      });
+// Initialize with database and track open tabs
+async function initializeTabTracking() {
+  try {
+    // Initialize database
+    await window.tabDatabase.init();
+    console.log('Background: Database initialized');
+    
+    // Migrate from old database if needed
+    await window.tabDatabase.migrateFromOldDatabase();
+    
+    // Query all current tabs
+    const tabs = await chrome.tabs.query({});
+    console.log('Background: Initializing with', tabs.length, 'existing tabs');
+    
+    // Get all known URLs from database
+    const knownUrls = await window.tabDatabase.getAllUrls();
+    const urlCategoryMap = new Map();
+    knownUrls.forEach(urlInfo => {
+      urlCategoryMap.set(urlInfo.url, urlInfo.category);
+    });
+    
+    // Process each tab
+    for (const tab of tabs) {
+      if (tab.url && !tab.url.startsWith('chrome://')) {
+        const category = urlCategoryMap.get(tab.url) || 0; // Default to uncategorized
+        
+        // Add to appropriate category
+        if (!categorizedTabs[category]) {
+          categorizedTabs[category] = [];
+        }
+        
+        categorizedTabs[category].push({
+          id: tab.id,
+          url: tab.url,
+          title: tab.title || 'Loading...',
+          domain: extractDomain(tab.url),
+          windowId: tab.windowId
+        });
+        
+        // Record open event in database
+        const urlId = await window.tabDatabase.getOrCreateUrl(tab, category);
+        await window.tabDatabase.recordOpenEvent(urlId, tab.id);
+      }
     }
-  });
-  
-  console.log('Background: Added', categorizedTabs[0].length, 'tabs to uncategorized on startup');
-});
+    
+    console.log('Background: Categorized tabs on startup:', {
+      uncategorized: categorizedTabs[0].length,
+      canClose: categorizedTabs[1].length,
+      saveLater: categorizedTabs[2].length,
+      important: categorizedTabs[3].length
+    });
+    
+  } catch (error) {
+    console.error('Background: Error initializing tab tracking:', error);
+  }
+}
+
+// Start initialization
+initializeTabTracking();
 
 // Listen for connections from popup
 chrome.runtime.onConnect.addListener((port) => {
@@ -176,37 +219,60 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.tabs.onCreated.addListener(async (tab) => {
   console.log('Background: Tab created:', tab.id, tab.url, 'Popup open:', isPopupOpen);
   
-  // Add new tab to uncategorized unless it's a duplicate
+  // Add new tab to appropriate category based on database
   if (tab.url && tab.url !== 'chrome://newtab/' && !tab.url.startsWith('chrome://')) {
-    // Check if this URL already exists in categorized tabs or saved tabs
-    let isDuplicate = false;
-    
-    // Check all categories for duplicates
-    for (const category of Object.keys(categorizedTabs)) {
-      if (categorizedTabs[category].some(t => t.url === tab.url)) {
-        isDuplicate = true;
-        break;
+    try {
+      // Check if URL is known in database
+      const urlInfo = await window.tabDatabase.getUrlInfo(tab.url);
+      const category = urlInfo ? urlInfo.category : 0; // Default to uncategorized
+      
+      // Check if this URL already exists in current tabs
+      let isDuplicate = false;
+      for (const cat of Object.keys(categorizedTabs)) {
+        if (categorizedTabs[cat].some(t => t.url === tab.url)) {
+          isDuplicate = true;
+          break;
+        }
       }
-    }
-    
-    if (!isDuplicate) {
-      // Add to uncategorized
-      categorizedTabs[0].push({
-        id: tab.id,
-        url: tab.url,
-        title: tab.title || 'Loading...',
-        domain: extractDomain(tab.url),
-        windowId: tab.windowId
-      });
-      console.log('Background: Added tab to uncategorized:', tab.id);
+      
+      if (!isDuplicate) {
+        // Add to appropriate category
+        if (!categorizedTabs[category]) {
+          categorizedTabs[category] = [];
+        }
+        
+        categorizedTabs[category].push({
+          id: tab.id,
+          url: tab.url,
+          title: tab.title || 'Loading...',
+          domain: extractDomain(tab.url),
+          windowId: tab.windowId
+        });
+        
+        console.log('Background: Added tab to category', category, ':', tab.id);
+      }
+      
+      // Record open event in database
+      const urlId = await window.tabDatabase.getOrCreateUrl(tab, category);
+      await window.tabDatabase.recordOpenEvent(urlId, tab.id);
+      
+    } catch (error) {
+      console.error('Background: Error processing new tab:', error);
     }
   }
   
   notifyPopupOfTabChange('created', tab);
 });
 
-chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   console.log('Background: Tab removed:', tabId, 'Popup open:', isPopupOpen);
+  
+  // Record close event in database
+  try {
+    await window.tabDatabase.recordCloseEvent(tabId);
+  } catch (error) {
+    console.error('Background: Error recording close event:', error);
+  }
   
   // Remove from categorized tabs even if popup is closed
   let removed = false;
@@ -238,39 +304,77 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
   notifyPopupOfTabChange('removed', { id: tabId });
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // Handle URL changes (e.g., from chrome://newtab/ to a real URL)
   if (changeInfo.url && tab.url && !tab.url.startsWith('chrome://')) {
-    // Check if this tab is already in any category
-    let found = false;
-    for (const category of Object.keys(categorizedTabs)) {
-      if (categorizedTabs[category].some(t => t.id === tabId)) {
-        found = true;
-        break;
-      }
-    }
-    
-    // If not found in any category, add to uncategorized
-    if (!found) {
-      // Check if URL is a duplicate
-      let isDuplicate = false;
+    try {
+      // Check if this tab is already in any category
+      let currentCategory = null;
+      let currentIndex = -1;
+      
       for (const category of Object.keys(categorizedTabs)) {
-        if (categorizedTabs[category].some(t => t.url === tab.url)) {
-          isDuplicate = true;
+        const index = categorizedTabs[category].findIndex(t => t.id === tabId);
+        if (index > -1) {
+          currentCategory = category;
+          currentIndex = index;
           break;
         }
       }
       
-      if (!isDuplicate) {
-        categorizedTabs[0].push({
-          id: tab.id,
+      // Check if URL is known in database
+      const urlInfo = await window.tabDatabase.getUrlInfo(tab.url);
+      const targetCategory = urlInfo ? urlInfo.category : 0; // Default to uncategorized
+      
+      // If tab is not tracked yet, add it
+      if (currentCategory === null) {
+        // Check if URL is a duplicate in current tabs
+        let isDuplicate = false;
+        for (const category of Object.keys(categorizedTabs)) {
+          if (categorizedTabs[category].some(t => t.url === tab.url)) {
+            isDuplicate = true;
+            break;
+          }
+        }
+        
+        if (!isDuplicate) {
+          if (!categorizedTabs[targetCategory]) {
+            categorizedTabs[targetCategory] = [];
+          }
+          
+          categorizedTabs[targetCategory].push({
+            id: tab.id,
+            url: tab.url,
+            title: tab.title || 'Loading...',
+            domain: extractDomain(tab.url),
+            windowId: tab.windowId
+          });
+          console.log('Background: Added navigated tab to category', targetCategory, ':', tab.id, tab.url);
+        }
+      } else if (currentCategory !== targetCategory.toString()) {
+        // Move tab to correct category if it changed
+        const tabData = categorizedTabs[currentCategory][currentIndex];
+        categorizedTabs[currentCategory].splice(currentIndex, 1);
+        
+        if (!categorizedTabs[targetCategory]) {
+          categorizedTabs[targetCategory] = [];
+        }
+        
+        categorizedTabs[targetCategory].push({
+          ...tabData,
           url: tab.url,
-          title: tab.title || 'Loading...',
-          domain: extractDomain(tab.url),
-          windowId: tab.windowId
+          title: tab.title || tabData.title,
+          domain: extractDomain(tab.url)
         });
-        console.log('Background: Added navigated tab to uncategorized:', tab.id, tab.url);
+        
+        console.log('Background: Moved tab from category', currentCategory, 'to', targetCategory);
       }
+      
+      // Record in database
+      const urlId = await window.tabDatabase.getOrCreateUrl(tab, targetCategory);
+      await window.tabDatabase.recordOpenEvent(urlId, tab.id);
+      
+    } catch (error) {
+      console.error('Background: Error handling URL update:', error);
     }
   }
   
@@ -396,6 +500,14 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
       category3: expandedCategorized[3]?.length || 0
     });
     console.log(`Added ${savedTabsMap.size} saved URLs to category 1 for display`);
+    
+    // Save all categorized tabs to database (including category 1)
+    try {
+      await window.tabDatabase.saveCategorizedTabs(expandedCategorized);
+      console.log('Background: Saved all categorized tabs to database');
+    } catch (error) {
+      console.error('Background: Error saving to database:', error);
+    }
     
     // Store the categorized tabs in background
     categorizedTabs = expandedCategorized;
