@@ -79,11 +79,11 @@ export async function saveAndCloseCategory(category) {
       try {
         // Skip if already saved
         if (!tab.alreadySaved) {
-          await window.tabDatabase.saveTab({
-            ...tab,
-            savedAt: Date.now(),
-            category: category
-          });
+          // Create a categorized tabs object with just this tab
+          const tabsToSave = {
+            [category]: [tab]
+          };
+          await window.tabDatabase.saveTabs(tabsToSave);
           savedCount++;
         }
         
@@ -137,11 +137,11 @@ export async function saveAndCloseAll() {
         try {
           // Skip "Can Be Closed" tabs - just close them
           if (category !== TAB_CATEGORIES.CAN_CLOSE && !tab.alreadySaved) {
-            await window.tabDatabase.saveTab({
-              ...tab,
-              savedAt: Date.now(),
-              category: category
-            });
+            // Create a categorized tabs object with just this tab
+            const tabsToSave = {
+              [category]: [tab]
+            };
+            await window.tabDatabase.saveTabs(tabsToSave);
             totalSaved++;
           }
           
@@ -333,11 +333,12 @@ export async function saveAndCloseTabsInGroup(tabs) {
       try {
         // Skip if already saved
         if (!tab.alreadySaved) {
-          await window.tabDatabase.saveTab({
-            ...tab,
-            savedAt: Date.now(),
-            category: tab.category || TAB_CATEGORIES.SAVE_LATER
-          });
+          // Create a categorized tabs object with just this tab
+          const tabCategory = tab.category || TAB_CATEGORIES.SAVE_LATER;
+          const tabsToSave = {
+            [tabCategory]: [tab]
+          };
+          await window.tabDatabase.saveTabs(tabsToSave);
           savedCount++;
         }
         
