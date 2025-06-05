@@ -5,15 +5,18 @@
  */
 
 let categorizedTabs = { 1: [], 2: [], 3: [] };
-let currentGrouping = 'category';
 let isViewingSaved = false;
 let searchQuery = '';
 let popupState = {
   isViewingSaved: false,
-  currentGrouping: 'category',
   searchQuery: '',
   categorizedTabs: null,
-  activeTab: 'categorize' // Track active tab
+  activeTab: 'categorize', // Track active tab
+  groupingSelections: {
+    categorize: 'category',
+    saved: 'category'
+  },
+  scrollPositions: {}
 };
 let urlToDuplicateIds = {}; // Maps URLs to all tab IDs with that URL
 let settings = {
@@ -94,26 +97,27 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Restore popup state if available
     if (stored.popupState) {
-      popupState = stored.popupState;
+      popupState = { ...popupState, ...stored.popupState };
       isViewingSaved = popupState.isViewingSaved;
-      currentGrouping = popupState.currentGrouping;
       searchQuery = popupState.searchQuery || '';
       
-      // Restore grouping selections first
-      if (popupState.groupingSelections) {
-        if (popupState.groupingSelections.categorize) {
-          const groupingSelect = document.getElementById('groupingSelect');
-          if (groupingSelect) {
-            groupingSelect.value = popupState.groupingSelections.categorize;
-            currentGrouping = popupState.groupingSelections.categorize;
-          }
-        }
-        if (popupState.groupingSelections.saved) {
-          const savedGroupingSelect = document.getElementById('savedGroupingSelect');
-          if (savedGroupingSelect) {
-            savedGroupingSelect.value = popupState.groupingSelections.saved;
-          }
-        }
+      // Ensure we have groupingSelections
+      if (!popupState.groupingSelections) {
+        popupState.groupingSelections = {
+          categorize: 'category',
+          saved: 'category'
+        };
+      }
+      
+      // Restore grouping selections
+      const groupingSelect = document.getElementById('groupingSelect');
+      if (groupingSelect) {
+        groupingSelect.value = popupState.groupingSelections.categorize;
+      }
+      
+      const savedGroupingSelect = document.getElementById('savedGroupingSelect');
+      if (savedGroupingSelect) {
+        savedGroupingSelect.value = popupState.groupingSelections.saved;
       }
       
       // Restore UI based on saved state
@@ -537,11 +541,12 @@ async function savePopupState() {
     saved: document.getElementById('savedGroupingSelect')?.value || 'category'
   };
   
+  // Merge new state with existing state
   popupState = {
+    ...popupState,
     isViewingSaved,
-    currentGrouping,
     searchQuery,
-    categorizedTabs: isViewingSaved ? null : categorizedTabs,
+    categorizedTabs: isViewingSaved ? popupState.categorizedTabs : categorizedTabs,
     activeTab: popupState.activeTab || 'categorize',
     scrollPositions: { ...popupState.scrollPositions, ...scrollPositions },
     groupingSelections
@@ -671,13 +676,6 @@ async function handleCategorize() {
     const existingBackBtn = document.getElementById('backToSaved');
     if (existingBackBtn) {
       existingBackBtn.remove();
-    }
-    
-    // Reset grouping to category
-    currentGrouping = 'category';
-    const groupingSelect = document.getElementById('groupingSelect');
-    if (groupingSelect) {
-      groupingSelect.value = 'category';
     }
     
     // Count actual categorized tabs
@@ -865,6 +863,11 @@ function displayTabs(isFromSaved = false) {
     if (categorizeGroupingControls && !isFromSaved) {
       categorizeGroupingControls.style.display = 'flex';
     }
+    
+    // Get the appropriate grouping for the current tab
+    const currentGrouping = isFromSaved 
+      ? popupState.groupingSelections.saved 
+      : popupState.groupingSelections.categorize;
     
     // Display based on current grouping
     if (currentGrouping === 'category') {
@@ -2780,7 +2783,7 @@ window.addEventListener('beforeunload', () => {
 // Grouping change handler for categorize tab
 function onGroupingChange(e) {
   const newGrouping = e.target.value;
-  currentGrouping = newGrouping;
+  popupState.groupingSelections.categorize = newGrouping;
   savePopupState();
   displayTabs();
 }
