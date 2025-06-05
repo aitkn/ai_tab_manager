@@ -1126,7 +1126,7 @@ button svg {
   gap: var(--md-spacing-2);
   font-size: 13px; /* Slightly smaller than category headers (14px) */
   font-weight: 500;
-  color: var(--md-sys-color-warning); /* Orange color like somewhat-important */
+  color: var(--md-sys-color-on-surface);
 }
 
 .group-title svg {
