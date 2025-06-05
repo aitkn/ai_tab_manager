@@ -110,7 +110,7 @@ export async function initializeApp() {
     
     // Initialize settings UI
     const { initializeSettings } = await import('./settings-manager.js');
-    initializeSettings();
+    await initializeSettings();
     
     // Restore active tab
     await restoreActiveTab();

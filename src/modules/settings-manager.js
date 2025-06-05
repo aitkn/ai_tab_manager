@@ -13,7 +13,7 @@ import MessageService from '../services/MessageService.js';
 /**
  * Initialize settings UI
  */
-export function initializeSettingsUI() {
+export async function initializeSettingsUI() {
   console.log('Initializing settings UI with state:', state.settings);
   
   // Set current provider
@@ -25,12 +25,13 @@ export function initializeSettingsUI() {
     console.error('Provider select not found');
   }
   
-  // Populate models for current provider
-  updateModelDropdown();
+  // Populate models for current provider and wait for it to complete
+  await updateModelDropdown();
   
-  // Set current model
+  // Now set current model after dropdown is populated
   const modelSelect = $id(DOM_IDS.MODEL_SELECT);
-  if (modelSelect) {
+  if (modelSelect && state.settings.model) {
+    console.log('Setting model to:', state.settings.model);
     modelSelect.value = state.settings.model;
   }
   
@@ -95,10 +96,10 @@ export async function updateModelDropdown() {
     // Clear and populate models
     modelSelect.innerHTML = '';
     
-    if (needsApiKey) {
+    if (needsApiKey || (!apiKey && models.length === 0)) {
       const option = document.createElement('option');
       option.value = '';
-      option.textContent = 'Please enter API key first';
+      option.textContent = 'Please add API key to see available models';
       modelSelect.appendChild(option);
       modelSelect.disabled = true;
       return;
@@ -136,23 +137,31 @@ export async function updateModelDropdown() {
     
     // Check if we have a previously selected model for this provider
     const previouslySelected = state.settings.selectedModels[state.settings.provider];
+    console.log('Previously selected model for', state.settings.provider, ':', previouslySelected);
+    console.log('Current model in settings:', state.settings.model);
+    console.log('Available models:', models.map(m => m.id));
     
     if (previouslySelected && models.some(m => m.id === previouslySelected)) {
       // Use previously selected model
+      console.log('Using previously selected model:', previouslySelected);
       modelSelect.value = previouslySelected;
       state.settings.model = previouslySelected;
     } else if (models.some(m => m.id === state.settings.model)) {
       // Use current model if available
+      console.log('Using current model:', state.settings.model);
       modelSelect.value = state.settings.model;
-    } else {
+    } else if (models.length > 0) {
       // Default to first available model
+      console.log('Defaulting to first model:', models[0].id);
       state.settings.model = models[0].id;
       modelSelect.value = state.settings.model;
     }
     
     // Save the selected model for this provider
-    state.settings.selectedModels[state.settings.provider] = state.settings.model;
-    await StorageService.saveSettings(state.settings);
+    if (state.settings.model) {
+      state.settings.selectedModels[state.settings.provider] = state.settings.model;
+      await StorageService.saveSettings(state.settings);
+    }
   } catch (error) {
     console.error('Error updating models:', error);
     modelSelect.innerHTML = '<option value="">Error loading models</option>';
@@ -293,7 +302,7 @@ export function onMaxTabsChange(e) {
 /**
  * Initialize settings event handlers
  */
-export function initializeSettings() {
+export async function initializeSettings() {
   // Provider change
   const providerSelect = $id(DOM_IDS.PROVIDER_SELECT);
   if (providerSelect) {
@@ -330,7 +339,7 @@ export function initializeSettings() {
   }
   
   // Initialize UI with current settings
-  initializeSettingsUI();
+  await initializeSettingsUI();
 }
 
 // Export default object

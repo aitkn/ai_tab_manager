@@ -58,7 +58,11 @@ async function initializeTabTracking() {
     
     // Process each tab
     for (const tab of tabs) {
-      if (tab.url && !tab.url.startsWith('chrome://')) {
+      // Skip empty tabs, chrome:// URLs, and about:blank
+      if (tab.url && 
+          !tab.url.startsWith('chrome://') &&
+          tab.url !== 'about:blank' &&
+          tab.url !== '') {
         const category = urlCategoryMap.get(tab.url) || 0; // Default to uncategorized
         
         // Add to appropriate category
@@ -222,7 +226,12 @@ chrome.tabs.onCreated.addListener(async (tab) => {
   console.log('Background: Tab created:', tab.id, tab.url, 'Popup open:', isPopupOpen);
   
   // Add new tab to appropriate category based on database
-  if (tab.url && tab.url !== 'chrome://newtab/' && !tab.url.startsWith('chrome://')) {
+  // Skip empty tabs, chrome:// URLs, and about:blank
+  if (tab.url && 
+      tab.url !== 'chrome://newtab/' && 
+      !tab.url.startsWith('chrome://') &&
+      tab.url !== 'about:blank' &&
+      tab.url !== '') {
     try {
       // Check if URL is known in database
       const urlInfo = await globalThis.tabDatabase.getUrlInfo(tab.url);
@@ -310,7 +319,11 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // Handle URL changes (e.g., from chrome://newtab/ to a real URL)
-  if (changeInfo.url && tab.url && !tab.url.startsWith('chrome://')) {
+  // Skip empty tabs, chrome:// URLs, and about:blank
+  if (changeInfo.url && tab.url && 
+      !tab.url.startsWith('chrome://') &&
+      tab.url !== 'about:blank' &&
+      tab.url !== '') {
     try {
       // Check if this tab is already in any category
       let currentCategory = null;
