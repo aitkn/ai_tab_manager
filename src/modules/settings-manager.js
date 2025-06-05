@@ -14,10 +14,15 @@ import MessageService from '../services/MessageService.js';
  * Initialize settings UI
  */
 export function initializeSettingsUI() {
+  console.log('Initializing settings UI with state:', state.settings);
+  
   // Set current provider
   const providerSelect = $id(DOM_IDS.PROVIDER_SELECT);
   if (providerSelect) {
+    console.log('Setting provider to:', state.settings.provider);
     providerSelect.value = state.settings.provider;
+  } else {
+    console.error('Provider select not found');
   }
   
   // Populate models for current provider
@@ -32,14 +37,24 @@ export function initializeSettingsUI() {
   // Set API key if exists
   const apiKeyInput = $id(DOM_IDS.API_KEY_INPUT);
   if (apiKeyInput) {
-    apiKeyInput.value = state.settings.apiKeys[state.settings.provider] || '';
-    apiKeyInput.placeholder = CONFIG.PROVIDERS[state.settings.provider].apiKeyPlaceholder;
+    const apiKey = state.settings.apiKeys[state.settings.provider] || '';
+    console.log('Setting API key input for provider:', state.settings.provider, 'Has key:', !!apiKey);
+    apiKeyInput.value = apiKey;
+    if (CONFIG && CONFIG.PROVIDERS && CONFIG.PROVIDERS[state.settings.provider]) {
+      apiKeyInput.placeholder = CONFIG.PROVIDERS[state.settings.provider].apiKeyPlaceholder;
+    }
+  } else {
+    console.error('API key input not found');
   }
   
   // Set custom prompt
   const promptTextarea = $id(DOM_IDS.PROMPT_TEXTAREA);
   if (promptTextarea) {
-    promptTextarea.value = state.settings.customPrompt || CONFIG.DEFAULT_PROMPT;
+    const promptValue = state.settings.customPrompt || (CONFIG ? CONFIG.DEFAULT_PROMPT : '');
+    console.log('Setting prompt textarea, custom:', !!state.settings.customPrompt, 'Using default:', !state.settings.customPrompt);
+    promptTextarea.value = promptValue;
+  } else {
+    console.error('Prompt textarea not found');
   }
   
   // Set max tabs to open

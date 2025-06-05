@@ -95,6 +95,10 @@ export async function initializeApp() {
       await showSavedTabsContent(savedGrouping).catch(console.error);
     }
     
+    // Initialize settings UI
+    const { initializeSettings } = await import('./settings-manager.js');
+    initializeSettings();
+    
     // Restore active tab
     await restoreActiveTab();
     

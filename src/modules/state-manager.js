@@ -29,12 +29,12 @@ export const state = {
   },
   urlToDuplicateIds: {},
   settings: {
-    provider: CONFIG.DEFAULT_PROVIDER || 'Claude',
-    model: CONFIG.DEFAULT_MODEL || '',
+    provider: 'Claude',
+    model: '',
     apiKeys: {},
     selectedModels: {},
-    customPrompt: CONFIG.DEFAULT_PROMPT || '',
-    promptVersion: CONFIG.PROMPT_VERSION || 1,
+    customPrompt: '',
+    promptVersion: 1,
     isPromptCustomized: false,
     maxTabsToOpen: 50
   }
@@ -154,6 +154,22 @@ export async function loadSavedState() {
     const savedSettings = await StorageService.loadSettings();
     if (savedSettings) {
       Object.assign(state.settings, savedSettings);
+    }
+    
+    // Apply defaults from CONFIG if available and not already set
+    if (typeof CONFIG !== 'undefined') {
+      console.log('Applying CONFIG defaults to settings');
+      if (!state.settings.provider || state.settings.provider === '') {
+        state.settings.provider = CONFIG.DEFAULT_PROVIDER || 'Claude';
+      }
+      if (!state.settings.customPrompt || state.settings.customPrompt === '') {
+        state.settings.customPrompt = CONFIG.DEFAULT_PROMPT || '';
+      }
+      if (!state.settings.promptVersion || state.settings.promptVersion === 1) {
+        state.settings.promptVersion = CONFIG.PROMPT_VERSION || 1;
+      }
+    } else {
+      console.warn('CONFIG not available when loading settings');
     }
     
     return true;
