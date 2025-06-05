@@ -2783,10 +2783,10 @@ function findFirstVisibleTab(tabType) {
   
   if (tabType === 'categorize') {
     container = document.getElementById('tabsContainer');
-    tabSelector = '#categoryView .tab-item, #groupedView .tab-item';
+    tabSelector = '#categoryView .tab-item:not(.hidden), #groupedView .tab-item:not(.hidden)';
   } else if (tabType === 'saved') {
     container = document.getElementById('savedContent');
-    tabSelector = '.tab-item';
+    tabSelector = '.tab-item:not(.hidden)';
   }
   
   if (!container) return null;
@@ -2794,34 +2794,49 @@ function findFirstVisibleTab(tabType) {
   const tabs = container.querySelectorAll(tabSelector);
   const containerRect = container.getBoundingClientRect();
   
+  // Find the scroll container's actual content area (accounting for padding)
+  const containerStyles = window.getComputedStyle(container);
+  const paddingTop = parseFloat(containerStyles.paddingTop) || 0;
+  const contentTop = containerRect.top + paddingTop;
+  
+  let closestTab = null;
+  let closestDistance = Infinity;
+  
   for (const tab of tabs) {
     const tabRect = tab.getBoundingClientRect();
-    // Check if tab is at least partially visible at the top of the container
-    if (tabRect.top >= containerRect.top && tabRect.top <= containerRect.bottom) {
-      // Get the URL from the tab element
+    
+    // Calculate distance from the top of the content area
+    const distance = Math.abs(tabRect.top - contentTop);
+    
+    // Find the tab closest to the top of the viewport
+    if (distance < closestDistance && tabRect.bottom > contentTop) {
+      closestDistance = distance;
       const urlElement = tab.querySelector('.tab-url');
       if (urlElement) {
-        return {
+        // Store the exact offset from the container top
+        const offsetFromTop = tab.offsetTop - container.scrollTop;
+        closestTab = {
           url: urlElement.textContent,
-          element: tab
+          element: tab,
+          offsetFromTop: offsetFromTop
         };
       }
     }
   }
   
-  return null;
+  return closestTab;
 }
 
 // Helper function to scroll to a specific tab by URL
-function scrollToTab(url, tabType) {
+function scrollToTab(url, tabType, targetOffset = null) {
   let container, tabSelector;
   
   if (tabType === 'categorize') {
     container = document.getElementById('tabsContainer');
-    tabSelector = '#categoryView .tab-item, #groupedView .tab-item';
+    tabSelector = '#categoryView .tab-item:not(.hidden), #groupedView .tab-item:not(.hidden)';
   } else if (tabType === 'saved') {
     container = document.getElementById('savedContent');
-    tabSelector = '.tab-item';
+    tabSelector = '.tab-item:not(.hidden)';
   }
   
   if (!container) return;
@@ -2831,13 +2846,31 @@ function scrollToTab(url, tabType) {
   for (const tab of tabs) {
     const urlElement = tab.querySelector('.tab-url');
     if (urlElement && urlElement.textContent === url) {
-      // Calculate the scroll position to put this tab at the top
-      const containerRect = container.getBoundingClientRect();
-      const tabRect = tab.getBoundingClientRect();
-      const scrollTop = container.scrollTop + (tabRect.top - containerRect.top);
+      // Get container padding
+      const containerStyles = window.getComputedStyle(container);
+      const paddingTop = parseFloat(containerStyles.paddingTop) || 0;
       
-      container.scrollTop = scrollTop;
-      console.log(`Scrolled to tab with URL: ${url}`);
+      // Calculate the exact scroll position
+      // offsetTop gives us the position relative to the container's content
+      const targetScrollTop = tab.offsetTop - paddingTop;
+      
+      // Apply the scroll
+      container.scrollTop = targetScrollTop;
+      
+      console.log(`Scrolled to tab with URL: ${url} at position ${targetScrollTop}`);
+      
+      // Double-check and adjust if needed
+      setTimeout(() => {
+        const newTabRect = tab.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const actualTop = newTabRect.top - containerRect.top - paddingTop;
+        
+        if (Math.abs(actualTop) > 2) { // If off by more than 2 pixels
+          container.scrollTop += actualTop;
+          console.log(`Adjusted scroll by ${actualTop}px`);
+        }
+      }, 10);
+      
       break;
     }
   }
@@ -3004,20 +3037,24 @@ window.addEventListener('beforeunload', () => {
 
 // Grouping change handler for categorize tab
 function onGroupingChange(e) {
-  // Find the first visible tab before changing grouping
-  const firstVisibleTab = findFirstVisibleTab('categorize');
-  
-  const newGrouping = e.target.value;
-  popupState.groupingSelections.categorize = newGrouping;
-  savePopupState();
-  displayTabs();
-  
-  // Restore scroll to the same tab after regrouping
-  if (firstVisibleTab) {
-    setTimeout(() => {
-      scrollToTab(firstVisibleTab.url, 'categorize');
-    }, 100);
-  }
+  // Wait a moment for any pending scroll to settle
+  setTimeout(() => {
+    // Find the first visible tab before changing grouping
+    const firstVisibleTab = findFirstVisibleTab('categorize');
+    console.log('First visible tab before grouping change:', firstVisibleTab);
+    
+    const newGrouping = e.target.value;
+    popupState.groupingSelections.categorize = newGrouping;
+    savePopupState();
+    displayTabs();
+    
+    // Restore scroll to the same tab after regrouping
+    if (firstVisibleTab) {
+      setTimeout(() => {
+        scrollToTab(firstVisibleTab.url, 'categorize');
+      }, 150);
+    }
+  }, 50);
 }
 
 // Toggle all groups in categorize tab
@@ -3059,19 +3096,23 @@ function toggleCategorizeGroups() {
 
 // Saved tab event handlers
 function onSavedGroupingChange(e) {
-  // Find the first visible tab before changing grouping
-  const firstVisibleTab = findFirstVisibleTab('saved');
-  
-  const newGrouping = e.target.value;
-  // Update the grouping and refresh the saved tabs display
-  showSavedTabsContent(newGrouping).then(() => {
-    // Restore scroll to the same tab after regrouping
-    if (firstVisibleTab) {
-      setTimeout(() => {
-        scrollToTab(firstVisibleTab.url, 'saved');
-      }, 100);
-    }
-  });
+  // Wait a moment for any pending scroll to settle
+  setTimeout(() => {
+    // Find the first visible tab before changing grouping
+    const firstVisibleTab = findFirstVisibleTab('saved');
+    console.log('First visible saved tab before grouping change:', firstVisibleTab);
+    
+    const newGrouping = e.target.value;
+    // Update the grouping and refresh the saved tabs display
+    showSavedTabsContent(newGrouping).then(() => {
+      // Restore scroll to the same tab after regrouping
+      if (firstVisibleTab) {
+        setTimeout(() => {
+          scrollToTab(firstVisibleTab.url, 'saved');
+        }, 150);
+      }
+    });
+  }, 50);
 }
 
 function onSavedSearchInput(e) {
