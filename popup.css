@@ -1109,7 +1109,7 @@ button svg {
 .header-right {
   display: flex;
   align-items: center;
-  gap: var(--md-spacing-3);
+  gap: var(--md-spacing-2); /* Reduced gap */
   margin-left: auto;
 }
 
@@ -1131,13 +1131,15 @@ button svg {
 
 .group-title svg {
   flex-shrink: 0;
+  width: 16px;
+  height: 16px;
 }
 
 .group-stats {
   display: flex;
   align-items: center;
-  gap: var(--md-spacing-3);
-  font-size: var(--md-sys-typescale-label-medium);
+  gap: var(--md-spacing-2); /* Reduced gap */
+  font-size: var(--md-sys-typescale-label-small); /* Smaller font */
 }
 
 .stat-item {
@@ -1148,8 +1150,8 @@ button svg {
 }
 
 .stat-item svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .stat-item.important {
