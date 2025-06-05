@@ -165,7 +165,7 @@ export function displayGroupedView(groupingType, isFromSaved = false, tabsToDisp
   
   // Flatten all tabs from all categories
   const allTabs = [];
-  [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
+  [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
     if (tabs[category]) {
       tabs[category].forEach(tab => {
         allTabs.push({ ...tab, category });
@@ -250,6 +250,7 @@ export function createGroupSection(groupName, tabs, groupingType) {
   
   // Count tabs by category
   const categoryCounts = { 
+    [TAB_CATEGORIES.UNCATEGORIZED]: 0,
     [TAB_CATEGORIES.CAN_CLOSE]: 0, 
     [TAB_CATEGORIES.SAVE_LATER]: 0, 
     [TAB_CATEGORIES.IMPORTANT]: 0 
@@ -292,6 +293,14 @@ export function createGroupSection(groupName, tabs, groupingType) {
   const stats = createElement('div', { className: CSS_CLASSES.GROUP_STATS });
   
   // Show counts with icons for each category
+  if (categoryCounts[TAB_CATEGORIES.UNCATEGORIZED] > 0) {
+    const uncategorizedStat = createElement('span', {
+      className: 'stat-item uncategorized',
+      innerHTML: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12" y2="16"></line></svg> ${categoryCounts[TAB_CATEGORIES.UNCATEGORIZED]}`
+    });
+    stats.appendChild(uncategorizedStat);
+  }
+  
   if (categoryCounts[TAB_CATEGORIES.IMPORTANT] > 0) {
     const importantStat = createElement('span', {
       className: 'stat-item important',
