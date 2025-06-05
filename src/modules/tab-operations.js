@@ -16,14 +16,20 @@ import { moveTabToCategory } from './categorization-service.js';
  */
 export async function closeTab(tab, category) {
   try {
-    // Get all duplicate tabs - check both sources
-    const duplicateIds = tab.duplicateIds || state.urlToDuplicateIds[tab.url] || [tab.id];
+    // Get the latest tab data from state in case duplicates were added after element creation
+    const categoryTabs = state.categorizedTabs[category];
+    const currentTab = categoryTabs.find(t => t.id === tab.id);
     
-    console.log('Closing tab with duplicates:', tab.url, 'duplicateIds:', duplicateIds);
+    // Use current tab data if available, otherwise fall back to passed tab
+    const tabToClose = currentTab || tab;
+    
+    // Get all duplicate tabs - check both sources
+    const duplicateIds = tabToClose.duplicateIds || state.urlToDuplicateIds[tabToClose.url] || [tabToClose.id];
+    
+    console.log('Closing tab with duplicates:', tabToClose.url, 'duplicateIds:', duplicateIds, 'from currentTab:', !!currentTab);
     
     // Remove from UI state
-    const categoryTabs = state.categorizedTabs[category];
-    const index = categoryTabs.findIndex(t => t.id === tab.id);
+    const index = categoryTabs.findIndex(t => t.id === tabToClose.id);
     
     if (index > -1) {
       categoryTabs.splice(index, 1);
@@ -40,8 +46,8 @@ export async function closeTab(tab, category) {
     }
     
     // Clean up duplicate tracking
-    if (state.urlToDuplicateIds[tab.url]) {
-      delete state.urlToDuplicateIds[tab.url];
+    if (state.urlToDuplicateIds[tabToClose.url]) {
+      delete state.urlToDuplicateIds[tabToClose.url];
     }
     
     updateCategorizeBadge();
