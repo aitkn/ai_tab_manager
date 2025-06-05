@@ -9,7 +9,7 @@ import ChromeAPIService from '../services/ChromeAPIService.js';
 import { state, updateState, savePopupState } from './state-manager.js';
 import { showStatus, updateCategorizeBadge, updateSavedBadge } from './ui-manager.js';
 import { moveTabToCategory } from './categorization-service.js';
-import { tabDatabase } from '../../database_v2.js';
+// Import database - using window.window.tabDatabase since it's a global
 
 /**
  * Close a single tab
@@ -79,7 +79,7 @@ export async function saveAndCloseCategory(category) {
       try {
         // Skip if already saved
         if (!tab.alreadySaved) {
-          await tabDatabase.saveTab({
+          await window.tabDatabase.saveTab({
             ...tab,
             savedAt: Date.now(),
             category: category
@@ -137,7 +137,7 @@ export async function saveAndCloseAll() {
         try {
           // Skip "Can Be Closed" tabs - just close them
           if (category !== TAB_CATEGORIES.CAN_CLOSE && !tab.alreadySaved) {
-            await tabDatabase.saveTab({
+            await window.tabDatabase.saveTab({
               ...tab,
               savedAt: Date.now(),
               category: category
@@ -333,12 +333,12 @@ export function moveTab(tab, fromCategory, direction) {
  */
 export async function deleteSavedTab(tabId) {
   try {
-    await tabDatabase.deleteTab(tabId);
+    await window.tabDatabase.deleteTab(tabId);
     
     showStatus('Tab deleted', 'success');
     
     // Update saved tab count
-    const savedTabs = await tabDatabase.getAllSavedTabs();
+    const savedTabs = await window.tabDatabase.getAllSavedTabs();
     updateSavedBadge(savedTabs.length);
     
     // Trigger display update
@@ -360,13 +360,13 @@ export async function deleteTabsInGroup(groupName) {
     
     showStatus('Deleting tabs...', 'loading');
     
-    const savedTabs = await tabDatabase.getAllSavedTabs();
+    const savedTabs = await window.tabDatabase.getAllSavedTabs();
     let deletedCount = 0;
     
     for (const tab of savedTabs) {
       const domain = getRootDomain(tab.domain);
       if (domain === groupName) {
-        await tabDatabase.deleteTab(tab.id);
+        await window.tabDatabase.deleteTab(tab.id);
         deletedCount++;
       }
     }
@@ -374,7 +374,7 @@ export async function deleteTabsInGroup(groupName) {
     showStatus(`Deleted ${deletedCount} tabs`, 'success');
     
     // Update saved tab count
-    const remainingTabs = await tabDatabase.getAllSavedTabs();
+    const remainingTabs = await window.tabDatabase.getAllSavedTabs();
     updateSavedBadge(remainingTabs.length);
     
     // Trigger display update
@@ -393,10 +393,10 @@ export async function restoreSavedTab(tab, deleteAfterRestore = false) {
     await ChromeAPIService.createTab({ url: tab.url });
     
     if (deleteAfterRestore) {
-      await tabDatabase.deleteTab(tab.id);
+      await window.tabDatabase.deleteTab(tab.id);
       
       // Update saved tab count
-      const savedTabs = await tabDatabase.getAllSavedTabs();
+      const savedTabs = await window.tabDatabase.getAllSavedTabs();
       updateSavedBadge(savedTabs.length);
       
       showStatus('Tab restored and removed from saved', 'success');

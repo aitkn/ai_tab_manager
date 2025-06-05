@@ -11,7 +11,7 @@ import { setupEventListeners } from './event-handlers.js';
 import { displayTabs } from './tab-display.js';
 import { applySearchFilter } from './search-filter.js';
 import { showSavedTabsContent, loadSavedTabsCount } from './saved-tabs-manager.js';
-import { tabDatabase } from '../../database_v2.js';
+// Database is available as window.window.tabDatabase
 import StorageService from '../services/StorageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
 
@@ -29,7 +29,7 @@ export async function initializeApp() {
     initializeTheme();
     
     // Initialize database
-    await tabDatabase.init();
+    await window.tabDatabase.init();
     console.log('Database initialized');
     
     // Load saved state

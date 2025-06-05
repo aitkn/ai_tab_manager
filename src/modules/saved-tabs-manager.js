@@ -9,7 +9,7 @@ import { showStatus, updateSavedBadge, switchToTab } from './ui-manager.js';
 import { state, restoreScrollPosition } from './state-manager.js';
 import { displayGroupedView, createTabElement } from './tab-display.js';
 import { openAllTabsInGroup, deleteTabsInGroup } from './tab-operations.js';
-import { tabDatabase } from '../../database_v2.js';
+// Database is available as window.window.tabDatabase
 
 /**
  * Show saved tabs content
@@ -23,7 +23,7 @@ export async function showSavedTabsContent(groupingType) {
       return;
     }
     
-    const allSavedTabs = await tabDatabase.getAllSavedTabs();
+    const allSavedTabs = await window.tabDatabase.getAllSavedTabs();
     
     // Get current grouping from dropdown if not passed
     if (!groupingType) {
@@ -274,7 +274,7 @@ export async function showSavedTabs() {
  */
 export async function loadSavedTabsCount() {
   try {
-    const savedTabs = await tabDatabase.getAllSavedTabs();
+    const savedTabs = await window.tabDatabase.getAllSavedTabs();
     updateSavedBadge(savedTabs.length);
     return savedTabs.length;
   } catch (error) {

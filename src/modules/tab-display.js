@@ -567,38 +567,8 @@ function extractDateFromGroupName(groupName) {
   return extractDateFromGroupName(groupName);
 }
 
-// Placeholder functions - these will be imported from tab-operations module
-function saveAndCloseCategory(category) {
-  console.log('saveAndCloseCategory - to be implemented', category);
-}
-
-function openAllInCategory(category) {
-  console.log('openAllInCategory - to be implemented', category);
-}
-
-function closeAllInCategory(category) {
-  console.log('closeAllInCategory - to be implemented', category);
-}
-
-function openAllTabsInGroup(groupName) {
-  console.log('openAllTabsInGroup - to be implemented', groupName);
-}
-
-function deleteTabsInGroup(groupName) {
-  console.log('deleteTabsInGroup - to be implemented', groupName);
-}
-
-function moveTab(tab, category, direction) {
-  console.log('moveTab - to be implemented', tab, category, direction);
-}
-
-function closeTab(tab, category) {
-  console.log('closeTab - to be implemented', tab, category);
-}
-
-function deleteSavedTab(tabId) {
-  console.log('deleteSavedTab - to be implemented', tabId);
-}
+// Import tab operations
+import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, deleteTabsInGroup, moveTab, closeTab, deleteSavedTab } from './tab-operations.js';
 
 // Export functions
 export default {

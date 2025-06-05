@@ -8,7 +8,7 @@ import { $id } from '../utils/dom-helpers.js';
 import { showStatus, switchToTab } from './ui-manager.js';
 import { state } from './state-manager.js';
 import { showSavedTabsContent } from './saved-tabs-manager.js';
-import { tabDatabase } from '../../database_v2.js';
+// Database is available as window.window.tabDatabase
 
 /**
  * Export tabs to CSV file
@@ -17,7 +17,7 @@ export async function exportToCSV() {
   try {
     showStatus('Exporting tabs to CSV...', 'loading');
     
-    const csvContent = await tabDatabase.exportAsCSV();
+    const csvContent = await window.tabDatabase.exportAsCSV();
     
     // Create blob and download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -64,7 +64,7 @@ export async function handleCSVImport(event) {
         customPrompt: state.settings.customPrompt
       };
       
-      const result = await tabDatabase.importFromCSV(csvContent, importSettings);
+      const result = await window.tabDatabase.importFromCSV(csvContent, importSettings);
       
       // Build status message
       let statusMessage;
