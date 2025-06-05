@@ -22,6 +22,36 @@ let categorizedTabs = {
 };
 let urlToDuplicateIds = {};
 
+// Helper function to extract domain (defined early for startup use)
+function extractDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname;
+  } catch {
+    return '';
+  }
+}
+
+// Initialize uncategorized tabs on startup
+chrome.tabs.query({}, (tabs) => {
+  console.log('Background: Initializing with', tabs.length, 'existing tabs');
+  
+  tabs.forEach(tab => {
+    if (tab.url && !tab.url.startsWith('chrome://')) {
+      // Add to uncategorized
+      categorizedTabs[0].push({
+        id: tab.id,
+        url: tab.url,
+        title: tab.title || 'Loading...',
+        domain: extractDomain(tab.url),
+        windowId: tab.windowId
+      });
+    }
+  });
+  
+  console.log('Background: Added', categorizedTabs[0].length, 'tabs to uncategorized on startup');
+});
+
 // Listen for connections from popup
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === 'popup') {
@@ -175,16 +205,6 @@ chrome.tabs.onCreated.addListener(async (tab) => {
   notifyPopupOfTabChange('created', tab);
 });
 
-// Helper function to extract domain
-function extractDomain(url) {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname;
-  } catch {
-    return '';
-  }
-}
-
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
   console.log('Background: Tab removed:', tabId, 'Popup open:', isPopupOpen);
   
@@ -219,12 +239,51 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Handle URL changes (e.g., from chrome://newtab/ to a real URL)
+  if (changeInfo.url && tab.url && !tab.url.startsWith('chrome://')) {
+    // Check if this tab is already in any category
+    let found = false;
+    for (const category of Object.keys(categorizedTabs)) {
+      if (categorizedTabs[category].some(t => t.id === tabId)) {
+        found = true;
+        break;
+      }
+    }
+    
+    // If not found in any category, add to uncategorized
+    if (!found) {
+      // Check if URL is a duplicate
+      let isDuplicate = false;
+      for (const category of Object.keys(categorizedTabs)) {
+        if (categorizedTabs[category].some(t => t.url === tab.url)) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      
+      if (!isDuplicate) {
+        categorizedTabs[0].push({
+          id: tab.id,
+          url: tab.url,
+          title: tab.title || 'Loading...',
+          domain: extractDomain(tab.url),
+          windowId: tab.windowId
+        });
+        console.log('Background: Added navigated tab to uncategorized:', tab.id, tab.url);
+      }
+    }
+  }
+  
   // Update title when it becomes available
-  if (changeInfo.title && categorizedTabs[0]) {
-    const uncategorizedTab = categorizedTabs[0].find(t => t.id === tabId);
-    if (uncategorizedTab) {
-      uncategorizedTab.title = changeInfo.title;
-      console.log('Background: Updated uncategorized tab title:', tabId, changeInfo.title);
+  if (changeInfo.title) {
+    // Update in all categories
+    for (const category of Object.keys(categorizedTabs)) {
+      const categoryTab = categorizedTabs[category].find(t => t.id === tabId);
+      if (categoryTab) {
+        categoryTab.title = changeInfo.title;
+        console.log('Background: Updated tab title in category', category, ':', tabId, changeInfo.title);
+        break;
+      }
     }
   }
   
