@@ -547,22 +547,23 @@ function onMaxTabsChange(e) {
 
 // Save popup state
 async function savePopupState() {
-  // Get current scroll positions
-  const scrollPositions = {};
+  // Get current scroll positions for ALL tabs
+  const scrollPositions = { ...popupState.scrollPositions };
   
-  // Save scroll position for current tab
-  const activeTabName = popupState.activeTab || 'categorize';
-  if (activeTabName === 'categorize') {
-    const tabsContainer = document.getElementById('tabsContainer');
-    if (tabsContainer) {
-      scrollPositions.categorize = tabsContainer.scrollTop;
-    }
-  } else if (activeTabName === 'saved') {
-    const savedContent = document.getElementById('savedContent');
-    if (savedContent) {
-      scrollPositions.saved = savedContent.scrollTop;
-    }
+  // Always try to get both scroll positions
+  const tabsContainer = document.getElementById('tabsContainer');
+  if (tabsContainer) {
+    scrollPositions.categorize = tabsContainer.scrollTop || 0;
+    console.log('Saving categorize scroll position:', scrollPositions.categorize);
   }
+  
+  const savedContent = document.getElementById('savedContent');
+  if (savedContent) {
+    scrollPositions.saved = savedContent.scrollTop || 0;
+    console.log('Saving saved scroll position:', scrollPositions.saved);
+  }
+  
+  console.log('All scroll positions to save:', scrollPositions);
   
   // Get current grouping selections
   const groupingSelections = {
