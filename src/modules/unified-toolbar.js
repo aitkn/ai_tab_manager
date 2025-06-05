@@ -106,7 +106,7 @@ export function updateToolbarVisibility(tabType) {
   if (tabType === 'categorize') {
     show(currentTabControls, 'flex');
     hide(savedTabControls);
-    searchInput.placeholder = 'Search tabs by title or URL...';
+    searchInput.placeholder = 'Search tabs...';
     populateGroupingOptions(CURRENT_TAB_GROUPING_OPTIONS);
     
     // Show the close all button for categorize tab
@@ -134,7 +134,7 @@ export function updateToolbarVisibility(tabType) {
   } else if (tabType === 'saved') {
     hide(currentTabControls);
     show(savedTabControls, 'flex');
-    searchInput.placeholder = 'Search saved tabs...';
+    searchInput.placeholder = 'Search tabs...';
     populateGroupingOptions(SAVED_TAB_GROUPING_OPTIONS);
     
     // Hide the close all button for saved tabs
