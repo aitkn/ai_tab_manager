@@ -3,7 +3,7 @@
  * Saved Tabs Manager - handles all saved tabs functionality
  */
 
-import { TAB_CATEGORIES, DOM_IDS, CSS_CLASSES, DISPLAY, GROUPING_OPTIONS } from '../utils/constants.js';
+import { TAB_CATEGORIES, DOM_IDS, CSS_CLASSES, DISPLAY, GROUPING_OPTIONS, EVENTS } from '../utils/constants.js';
 import { $id, show, hide, classes, createElement, on } from '../utils/dom-helpers.js';
 import { extractDateFromGroupName } from '../utils/helpers.js';
 import { showStatus, updateSavedBadge, switchToTab } from './ui-manager.js';
