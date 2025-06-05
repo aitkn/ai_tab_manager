@@ -402,6 +402,11 @@ export function createGroupSection(groupName, tabs, groupingType) {
  * Create a tab element
  */
 export function createTabElement(tab, category) {
+  // Log duplicate info for debugging
+  if (tab.duplicateIds || tab.duplicateCount) {
+    console.log('Creating tab element with duplicates:', tab.url, 'duplicateIds:', tab.duplicateIds, 'count:', tab.duplicateCount);
+  }
+  
   const tabElement = createElement('div', {
     className: CSS_CLASSES.TAB_ITEM,
     dataset: { 

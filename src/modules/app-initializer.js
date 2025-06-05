@@ -371,8 +371,8 @@ async function handleTabChange(data) {
   const hasCategorizedTabs = Object.values(state.categorizedTabs)
     .some(tabs => tabs.length > 0);
   
-  if (!hasCategorizedTabs) {
-    console.log('Popup: Skipping - no categorized tabs');
+  if (!hasCategorizedTabs && changeType !== 'created') {
+    console.log('Popup: Skipping - no categorized tabs and not a create event');
     return;
   }
   
@@ -396,6 +396,19 @@ async function handleTabChange(data) {
     try {
       const response = await chrome.runtime.sendMessage({ action: 'getCategorizedTabs' });
       if (response && response.categorizedTabs) {
+        console.log('Popup: Received updated tabs from background:', response);
+        
+        // Check for duplicate changes
+        let duplicatesChanged = false;
+        for (const category of Object.keys(response.categorizedTabs)) {
+          for (const tab of response.categorizedTabs[category]) {
+            if (tab.duplicateIds && tab.duplicateIds.length > 1) {
+              console.log('Popup: Tab has duplicates:', tab.url, 'count:', tab.duplicateCount);
+              duplicatesChanged = true;
+            }
+          }
+        }
+        
         state.categorizedTabs = response.categorizedTabs;
         state.urlToDuplicateIds = response.urlToDuplicateIds || {};
         
@@ -411,7 +424,9 @@ async function handleTabChange(data) {
           categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
         }
         
-        if (hasUncategorized) {
+        if (duplicatesChanged) {
+          showStatus('Duplicate tab detected', 'success', 2000);
+        } else if (hasUncategorized) {
           showStatus('New uncategorized tab detected', 'success', 2000);
         }
       }

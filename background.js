@@ -271,6 +271,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
   
   // Add new tab to appropriate category based on database
   // Skip empty tabs, chrome:// URLs, and about:blank
+  let isDuplicate = false;
   if (tab.url && 
       tab.url !== 'chrome://newtab/' && 
       !tab.url.startsWith('chrome://') &&
@@ -282,10 +283,11 @@ chrome.tabs.onCreated.addListener(async (tab) => {
       const category = urlInfo ? urlInfo.category : 0; // Default to uncategorized
       
       // Check if this URL already exists in current tabs
-      let isDuplicate = false;
+      isDuplicate = false;
       for (const cat of Object.keys(categorizedTabs)) {
         if (categorizedTabs[cat].some(t => t.url === tab.url)) {
           isDuplicate = true;
+          console.log('Background: Detected duplicate URL:', tab.url, 'in category', cat);
           break;
         }
       }
@@ -333,6 +335,11 @@ chrome.tabs.onCreated.addListener(async (tab) => {
           urlToDuplicateIds[tab.url] = existingTab.duplicateIds;
           
           console.log('Background: Added duplicate tab', tab.id, 'to existing entry. Total duplicates:', existingTab.duplicateCount);
+          
+          // Notify popup with a slight delay to ensure state is fully updated
+          setTimeout(() => {
+            notifyPopupOfTabChange('created', tab);
+          }, 100);
         }
       }
       
@@ -345,7 +352,10 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     }
   }
   
-  notifyPopupOfTabChange('created', tab);
+  // Only notify if not a duplicate (duplicates are notified above with delay)
+  if (!isDuplicate) {
+    notifyPopupOfTabChange('created', tab);
+  }
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
