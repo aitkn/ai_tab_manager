@@ -3,8 +3,8 @@
  * UI Utilities - helper functions for UI operations
  */
 
-import { DOM_IDS, CSS_CLASSES, DISPLAY } from '../utils/constants.js';
-import { $id } from '../utils/dom-helpers.js';
+import { DOM_IDS, CSS_CLASSES, DISPLAY, TAB_CATEGORIES } from '../utils/constants.js';
+import { $id, classes } from '../utils/dom-helpers.js';
 import { state, savePopupState } from './state-manager.js';
 import { displayTabs } from './tab-display.js';
 import { showSavedTabsContent } from './saved-tabs-manager.js';
@@ -254,6 +254,25 @@ export function downloadFile(filename, content) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Update Close All button color based on uncategorized tabs
+ */
+export function updateCloseAllButtonColor() {
+  const closeAllBtn = $id(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN);
+  if (!closeAllBtn) return;
+  
+  const hasUncategorized = state.categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED] && 
+                          state.categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED].length > 0;
+  
+  if (hasUncategorized) {
+    classes.add(closeAllBtn, 'has-uncategorized');
+    closeAllBtn.title = 'Close all tabs (WARNING: Includes uncategorized tabs)';
+  } else {
+    classes.remove(closeAllBtn, 'has-uncategorized');
+    closeAllBtn.title = 'Close all categorized tabs';
+  }
+}
+
 // Export default object
 export default {
   findFirstVisibleTab,
@@ -262,5 +281,6 @@ export default {
   toggleAllGroups,
   onSavedGroupingChange,
   createMarkdownContent,
-  downloadFile
+  downloadFile,
+  updateCloseAllButtonColor
 };

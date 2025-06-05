@@ -943,9 +943,23 @@ button svg {
 }
 
 /* Make uncategorized tab titles slightly blue */
-#category0 .tab-title {
+#category0 .tab-title,
+.tab-item.category-uncategorized .tab-title {
   color: var(--md-sys-color-primary);
   opacity: 0.9;
+}
+
+/* Preserve category colors in grouped views */
+.tab-item.category-important .tab-title {
+  color: var(--md-sys-color-error);
+}
+
+.tab-item.category-save-later .tab-title {
+  color: var(--md-sys-color-warning);
+}
+
+.tab-item.category-can-close .tab-title {
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .category-header-title {
@@ -1119,6 +1133,70 @@ button svg {
   justify-content: center;
   position: relative;
   overflow: hidden;
+}
+
+/* Close All button - round with dynamic background */
+.close-all-btn {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--success-color, #4CAF50); /* Default green */
+  color: white;
+}
+
+.close-all-btn.has-uncategorized {
+  background-color: var(--warning-color, #FF9800); /* Orange when uncategorized */
+}
+
+.close-all-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.close-all-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Group close button - similar to close-all-btn but smaller */
+.group-close-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--success-color, #4CAF50); /* Default green */
+  color: white;
+}
+
+.group-close-btn.has-uncategorized {
+  background-color: var(--warning-color, #FF9800); /* Orange when uncategorized */
+}
+
+.group-close-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.group-close-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .close-btn::before,

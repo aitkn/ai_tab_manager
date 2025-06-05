@@ -12,7 +12,7 @@ import { showStatus } from './ui-manager.js';
 /**
  * Display tabs based on current state and grouping
  */
-export function displayTabs(isFromSaved = false) {
+export async function displayTabs(isFromSaved = false) {
   try {
     state.isViewingSaved = isFromSaved;
     
@@ -27,6 +27,10 @@ export function displayTabs(isFromSaved = false) {
       } else {
         displayGroupedView(groupingType, false);
       }
+      
+      // Update Close All button color
+      const { updateCloseAllButtonColor } = await import('./ui-utilities.js');
+      updateCloseAllButtonColor();
     }
   } catch (error) {
     console.error('Error displaying tabs:', error);
@@ -269,7 +273,14 @@ export function createGroupSection(groupName, tabs, groupingType) {
   // Create header
   const header = createElement('div', {
     className: 'group-header',
-    onclick: () => classes.toggle(section, CSS_CLASSES.GROUP_COLLAPSED)
+    onclick: () => {
+      classes.toggle(section, CSS_CLASSES.GROUP_COLLAPSED);
+      const tabsList = section.querySelector('.tabs-list');
+      if (tabsList) {
+        const isCollapsed = classes.contains(section, CSS_CLASSES.GROUP_COLLAPSED);
+        tabsList.style.display = isCollapsed ? 'none' : 'block';
+      }
+    }
   });
   
   // Group title with icon
@@ -337,31 +348,33 @@ export function createGroupSection(groupName, tabs, groupingType) {
   // Group actions
   const groupActions = createElement('div', { className: 'group-actions' });
   
-  // Save all button (only for current tabs, not saved)
-  if (!state.isViewingSaved) {
-    const saveBtn = createElement('button', {
+  // Save all button removed - tabs are auto-saved during categorization
+  // if (!state.isViewingSaved) {
+  //   const saveBtn = createElement('button', {
+  //     className: CSS_CLASSES.ICON_BTN_SMALL,
+  //     title: 'Save all tabs in this group',
+  //     innerHTML: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>',
+  //     onclick: (e) => {
+  //       e.stopPropagation();
+  //       saveAndCloseTabsInGroup(tabs);
+  //     }
+  //   });
+  //   groupActions.appendChild(saveBtn);
+  // }
+  
+  // Open all button - only show for saved tabs
+  if (state.isViewingSaved) {
+    const openAllBtn = createElement('button', {
       className: CSS_CLASSES.ICON_BTN_SMALL,
-      title: 'Save all tabs in this group',
-      innerHTML: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>',
+      title: 'Open all tabs in this group',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
       onclick: (e) => {
         e.stopPropagation();
-        saveAndCloseTabsInGroup(tabs);
+        openAllTabsInGroup(groupName);
       }
     });
-    groupActions.appendChild(saveBtn);
+    groupActions.appendChild(openAllBtn);
   }
-  
-  // Open all button
-  const openAllBtn = createElement('button', {
-    className: CSS_CLASSES.ICON_BTN_SMALL,
-    title: 'Open all tabs in this group',
-    innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
-    onclick: (e) => {
-      e.stopPropagation();
-      openAllTabsInGroup(groupName);
-    }
-  });
-  groupActions.appendChild(openAllBtn);
   
   // Delete/Close group button
   if (state.isViewingSaved) {
@@ -377,10 +390,13 @@ export function createGroupSection(groupName, tabs, groupingType) {
     groupActions.appendChild(deleteBtn);
   } else {
     // Close all button for current tabs
+    const hasUncategorizedInGroup = tabs.some(tab => tab.category === TAB_CATEGORIES.UNCATEGORIZED);
     const closeBtn = createElement('button', {
-      className: CSS_CLASSES.ICON_BTN_SMALL + ' ' + CSS_CLASSES.DANGER_BTN,
-      title: 'Close all tabs in this group',
-      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+      className: 'group-close-btn' + (hasUncategorizedInGroup ? ' has-uncategorized' : ''),
+      title: hasUncategorizedInGroup ? 
+        'Close all tabs in this group (WARNING: Includes uncategorized tabs)' : 
+        'Close all tabs in this group',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
       onclick: (e) => {
         e.stopPropagation();
         closeTabsInGroup(tabs);
@@ -423,7 +439,10 @@ export function createTabElement(tab, category) {
   }
   
   const tabElement = createElement('div', {
-    className: CSS_CLASSES.TAB_ITEM,
+    className: CSS_CLASSES.TAB_ITEM + (category === TAB_CATEGORIES.UNCATEGORIZED ? ' category-uncategorized' : 
+                                      category === TAB_CATEGORIES.IMPORTANT ? ' category-important' : 
+                                      category === TAB_CATEGORIES.SAVE_LATER ? ' category-save-later' : 
+                                      category === TAB_CATEGORIES.CAN_CLOSE ? ' category-can-close' : ''),
     dataset: { 
       tabId: tab.id,
       category: category
