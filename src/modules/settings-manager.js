@@ -73,7 +73,11 @@ export async function initializeSettingsUI() {
  */
 export async function updateModelDropdown() {
   const modelSelect = $id(DOM_IDS.MODEL_SELECT);
-  if (!modelSelect) return;
+  console.log('updateModelDropdown called, modelSelect element:', modelSelect);
+  if (!modelSelect) {
+    console.error('Model select element not found!');
+    return;
+  }
   
   // Show loading state
   modelSelect.innerHTML = '<option>Loading models...</option>';
@@ -95,8 +99,10 @@ export async function updateModelDropdown() {
     
     // Clear and populate models
     modelSelect.innerHTML = '';
+    console.log('Clearing dropdown, about to populate with', models.length, 'models');
     
     if (needsApiKey || (!apiKey && models.length === 0)) {
+      console.log('No API key or no models, showing message');
       const option = document.createElement('option');
       option.value = '';
       option.textContent = 'Please add API key to see available models';
@@ -106,6 +112,7 @@ export async function updateModelDropdown() {
     }
     
     if (models.length === 0) {
+      console.log('No models available');
       const option = document.createElement('option');
       option.value = '';
       option.textContent = 'No models available';
@@ -114,6 +121,7 @@ export async function updateModelDropdown() {
       return;
     }
     
+    console.log('Populating dropdown with models');
     models.forEach(model => {
       const option = document.createElement('option');
       option.value = model.id;
@@ -134,6 +142,8 @@ export async function updateModelDropdown() {
       option.textContent = displayText;
       modelSelect.appendChild(option);
     });
+    
+    console.log('Dropdown populated, total options:', modelSelect.options.length);
     
     // Check if we have a previously selected model for this provider
     const previouslySelected = state.settings.selectedModels[state.settings.provider];
