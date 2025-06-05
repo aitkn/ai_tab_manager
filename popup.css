@@ -893,6 +893,12 @@ button svg {
   transform: rotate(-90deg);
 }
 
+/* Hide tabs list when collapsed */
+.category-section.collapsed .tabs-list,
+.group-section.collapsed .tabs-list {
+  display: none !important;
+}
+
 .category-header {
   display: flex;
   align-items: center;

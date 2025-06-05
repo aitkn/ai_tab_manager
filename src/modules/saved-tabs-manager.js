@@ -213,8 +213,6 @@ function createCategorySection(category, tabs) {
     if (e.target.closest('.category-header-actions')) return;
     
     section.classList.toggle(CSS_CLASSES.CATEGORY_COLLAPSED);
-    const isCollapsed = section.classList.contains('collapsed');
-    listContainer.style.display = isCollapsed ? 'none' : 'block';
   };
   
   return section;

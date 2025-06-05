@@ -134,8 +134,6 @@ export function displayCategoryView() {
         if (e.target.closest('.category-header-actions')) return;
         
         classes.toggle(categorySection, CSS_CLASSES.CATEGORY_COLLAPSED);
-        const isCollapsed = classes.contains(categorySection, CSS_CLASSES.CATEGORY_COLLAPSED);
-        tabsList.style.display = isCollapsed ? 'none' : 'block';
       };
     }
   });
@@ -274,13 +272,11 @@ export function createGroupSection(groupName, tabs, groupingType) {
   // Create header
   const header = createElement('div', {
     className: 'group-header',
-    onclick: () => {
+    onclick: (e) => {
+      // Don't collapse if clicking on action buttons
+      if (e.target.closest('.group-actions')) return;
+      
       classes.toggle(section, CSS_CLASSES.GROUP_COLLAPSED);
-      const tabsList = section.querySelector('.tabs-list');
-      if (tabsList) {
-        const isCollapsed = classes.contains(section, CSS_CLASSES.GROUP_COLLAPSED);
-        tabsList.style.display = isCollapsed ? 'none' : 'block';
-      }
     }
   });
   
