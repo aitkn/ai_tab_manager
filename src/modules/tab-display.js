@@ -103,15 +103,16 @@ export function displayCategoryView() {
     const headerActions = categorySection.querySelector('.category-header-actions');
     if (headerActions && headerActions.children.length === 0 && tabs.length > 0) {
       // Add close button for all categories with tabs
+      const hasUncategorized = category === TAB_CATEGORIES.UNCATEGORIZED;
       const closeBtn = createElement('button', {
-        className: CSS_CLASSES.ICON_BTN_SMALL,
-        title: category === TAB_CATEGORIES.UNCATEGORIZED ? 
+        className: 'category-close-btn' + (hasUncategorized ? ' has-uncategorized' : ''),
+        title: hasUncategorized ? 
           'Close all uncategorized tabs (WARNING: These tabs have not been saved)' : 
           'Close all tabs in this category',
         innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
         onclick: (e) => {
           e.stopPropagation();
-          if (category === TAB_CATEGORIES.UNCATEGORIZED) {
+          if (hasUncategorized) {
             // Show warning for uncategorized tabs
             if (confirm(STATUS_MESSAGES.WARNING_CLOSE_UNCATEGORIZED)) {
               closeAllInCategory(category);
@@ -396,7 +397,7 @@ export function createGroupSection(groupName, tabs, groupingType) {
       title: hasUncategorizedInGroup ? 
         'Close all tabs in this group (WARNING: Includes uncategorized tabs)' : 
         'Close all tabs in this group',
-      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
       onclick: (e) => {
         e.stopPropagation();
         closeTabsInGroup(tabs);
