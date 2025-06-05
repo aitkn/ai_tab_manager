@@ -1137,7 +1137,7 @@ function displayCategoryView(isFromSaved = false) {
   });
 }
 
-function displayGroupedView(groupBy, isFromSaved = false) {
+function displayGroupedView(groupBy, isFromSaved = false, tabsToDisplay = null) {
   let groupedView;
   
   if (isFromSaved) {
@@ -1154,12 +1154,17 @@ function displayGroupedView(groupBy, isFromSaved = false) {
   
   groupedView.innerHTML = '';
   
+  // Use provided tabs or fall back to global categorizedTabs
+  const tabsSource = tabsToDisplay || categorizedTabs;
+  
   // Combine all tabs
   const allTabs = [];
   [1, 2, 3].forEach(category => {
-    categorizedTabs[category].forEach(tab => {
-      allTabs.push({ ...tab, category });
-    });
+    if (tabsSource[category]) {
+      tabsSource[category].forEach(tab => {
+        allTabs.push({ ...tab, category });
+      });
+    }
   });
   
   // Group tabs based on criteria
@@ -2721,17 +2726,9 @@ async function showSavedTabsContent(groupingType) {
       showStatus(`Viewing ${allSavedTabs.length} saved tabs in ${nonEmptyCategories} ${nonEmptyCategories === 1 ? 'category' : 'categories'}`, 'success');
     }
     } else {
-      // For grouped view, we need to temporarily set categorizedTabs and restore it after
-      const originalCategorizedTabs = {
-        1: [...categorizedTabs[1]],
-        2: [...categorizedTabs[2]],
-        3: [...categorizedTabs[3]]
-      };
-      categorizedTabs = savedTabsByCategory;
-      
-      // Use the existing displayGroupedView function for other groupings
+      // For grouped view, pass the saved tabs directly without modifying global categorizedTabs
       isViewingSaved = true;
-      const groupedView = displayGroupedView(groupingType, true);
+      const groupedView = displayGroupedView(groupingType, true, savedTabsByCategory);
       if (groupedView) {
         savedContent.appendChild(groupedView);
         
@@ -2766,9 +2763,6 @@ async function showSavedTabsContent(groupingType) {
         
         showStatus(`Viewing ${allSavedTabs.length} saved tabs in ${groupCount} ${groupTypeLabel}`, 'success');
       }
-      
-      // Restore original categorized tabs
-      categorizedTabs = originalCategorizedTabs;
     }
     
     // Don't restore scroll during initialization - it's handled centrally
