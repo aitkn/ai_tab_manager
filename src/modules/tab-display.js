@@ -3,7 +3,7 @@
  * Tab Display Module - handles rendering of tabs in various views
  */
 
-import { DOM_IDS, CSS_CLASSES, TAB_CATEGORIES, CATEGORY_NAMES, GROUPING_OPTIONS, URLS } from '../utils/constants.js';
+import { DOM_IDS, CSS_CLASSES, TAB_CATEGORIES, CATEGORY_NAMES, GROUPING_OPTIONS, URLS, STATUS_MESSAGES } from '../utils/constants.js';
 import { $, $id, show, hide, classes, createElement } from '../utils/dom-helpers.js';
 import { getRootDomain, getSubdomain, sortTabsInGroup, getWeekNumber, getWeekStartDate, formatDate, extractDateFromGroupName } from '../utils/helpers.js';
 import { state } from './state-manager.js';
@@ -118,6 +118,20 @@ export function displayCategoryView() {
         }
       });
       headerActions.appendChild(closeBtn);
+    }
+    
+    // Make category header clickable to collapse/expand
+    const categoryHeader = categorySection.querySelector('.category-header');
+    if (categoryHeader) {
+      categoryHeader.style.cursor = 'pointer';
+      categoryHeader.onclick = (e) => {
+        // Don't collapse if clicking on action buttons
+        if (e.target.closest('.category-header-actions')) return;
+        
+        classes.toggle(categorySection, CSS_CLASSES.CATEGORY_COLLAPSED);
+        const isCollapsed = classes.contains(categorySection, CSS_CLASSES.CATEGORY_COLLAPSED);
+        tabsList.style.display = isCollapsed ? 'none' : 'block';
+      };
     }
   });
 }
