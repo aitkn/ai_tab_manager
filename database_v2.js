@@ -779,3 +779,6 @@ class TabDatabase {
 
 // Export a singleton instance
 const tabDatabase = new TabDatabase();
+
+// Make it available globally for the extension
+window.tabDatabase = tabDatabase;
