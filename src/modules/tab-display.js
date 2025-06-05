@@ -578,11 +578,7 @@ function groupByLastAccessedMonth(tabs) {
   })));
 }
 
-// Extract date helper (imported from helpers but adding here for clarity)
-function extractDateFromGroupName(groupName) {
-  // This is imported from helpers.js
-  return extractDateFromGroupName(groupName);
-}
+// Note: extractDateFromGroupName is already imported from helpers.js at the top of the file
 
 // Import tab operations
 import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, deleteTabsInGroup, moveTab, closeTab, deleteSavedTab } from './tab-operations.js';
