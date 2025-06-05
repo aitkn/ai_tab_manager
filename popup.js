@@ -138,22 +138,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         applySearchFilter();
       }
       
-      // Restore scroll positions after content is loaded
-      if (popupState.scrollPositions) {
-        setTimeout(() => {
-          if (popupState.activeTab === 'categorize' && popupState.scrollPositions.categorize) {
-            const tabsContainer = document.getElementById('tabsContainer');
-            if (tabsContainer) {
-              tabsContainer.scrollTop = popupState.scrollPositions.categorize;
-            }
-          } else if (popupState.activeTab === 'saved' && popupState.scrollPositions.saved) {
-            const savedTabsContainer = document.getElementById('savedTabsContainer');
-            if (savedTabsContainer) {
-              savedTabsContainer.scrollTop = popupState.scrollPositions.saved;
-            }
-          }
-        }, 100); // Small delay to ensure content is rendered
-      }
+      // Don't restore scroll positions here - they'll be restored after content is loaded
     }
     
     console.log('Loaded settings:', settings);
@@ -167,6 +152,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Restore active tab if available
     if (stored.popupState && stored.popupState.activeTab) {
       switchToTab(stored.popupState.activeTab);
+      // Restore scroll position after switching tabs
+      restoreScrollPosition(stored.popupState.activeTab, 300);
     }
     
     
@@ -248,6 +235,33 @@ function setupEventListeners() {
     groupingSelect.addEventListener('change', onGroupingChange);
   }
   document.getElementById('toggleCategorizeGroupsBtn').addEventListener('click', toggleCategorizeGroups);
+  
+  // Add scroll event listeners to save scroll position
+  const tabsContainer = document.getElementById('tabsContainer');
+  if (tabsContainer) {
+    let scrollSaveTimeout;
+    tabsContainer.addEventListener('scroll', () => {
+      clearTimeout(scrollSaveTimeout);
+      scrollSaveTimeout = setTimeout(() => {
+        if (popupState.activeTab === 'categorize') {
+          savePopupState();
+        }
+      }, 300); // Debounce scroll saving
+    });
+  }
+  
+  const savedContent = document.getElementById('savedContent');
+  if (savedContent) {
+    let scrollSaveTimeout;
+    savedContent.addEventListener('scroll', () => {
+      clearTimeout(scrollSaveTimeout);
+      scrollSaveTimeout = setTimeout(() => {
+        if (popupState.activeTab === 'saved') {
+          savePopupState();
+        }
+      }, 300); // Debounce scroll saving
+    });
+  }
 }
 
 function initializeTabNavigation() {
@@ -511,9 +525,9 @@ async function savePopupState() {
       scrollPositions.categorize = tabsContainer.scrollTop;
     }
   } else if (activeTabName === 'saved') {
-    const savedTabsContainer = document.getElementById('savedTabsContainer');
-    if (savedTabsContainer) {
-      scrollPositions.saved = savedTabsContainer.scrollTop;
+    const savedContent = document.getElementById('savedContent');
+    if (savedContent) {
+      scrollPositions.saved = savedContent.scrollTop;
     }
   }
   
@@ -533,6 +547,25 @@ async function savePopupState() {
     groupingSelections
   };
   await chrome.storage.local.set({ popupState });
+}
+
+// Restore scroll position after content is loaded
+function restoreScrollPosition(tabName, delay = 100) {
+  if (!popupState.scrollPositions) return;
+  
+  setTimeout(() => {
+    if (tabName === 'categorize' && popupState.scrollPositions.categorize) {
+      const tabsContainer = document.getElementById('tabsContainer');
+      if (tabsContainer) {
+        tabsContainer.scrollTop = popupState.scrollPositions.categorize;
+      }
+    } else if (tabName === 'saved' && popupState.scrollPositions.saved) {
+      const savedContent = document.getElementById('savedContent');
+      if (savedContent) {
+        savedContent.scrollTop = popupState.scrollPositions.saved;
+      }
+    }
+  }, delay);
 }
 
 async function handleCategorize() {
@@ -838,6 +871,11 @@ function displayTabs(isFromSaved = false) {
       displayCategoryView(isFromSaved);
     } else {
       displayGroupedView(currentGrouping, isFromSaved);
+    }
+    
+    // Restore scroll position after content is rendered
+    if (!isFromSaved) {
+      restoreScrollPosition('categorize');
     }
   } catch (error) {
     console.error('Error in displayTabs:', error);
@@ -2565,6 +2603,9 @@ async function showSavedTabsContent(groupingType) {
       // Restore original categorized tabs
       categorizedTabs = originalCategorizedTabs;
     }
+    
+    // Restore scroll position after content is loaded
+    restoreScrollPosition('saved', 200); // Slightly longer delay for saved tabs
     
   } catch (error) {
     showStatus('Error loading saved tabs: ' + error.message, 'error');
