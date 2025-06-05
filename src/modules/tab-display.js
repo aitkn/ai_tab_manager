@@ -25,7 +25,7 @@ export function displayTabs(isFromSaved = false) {
       if (groupingType === 'category') {
         displayCategoryView();
       } else {
-        displayGroupedView(state.categorizedTabs, groupingType);
+        displayGroupedView(groupingType, false);
       }
     }
   } catch (error) {
@@ -126,18 +126,30 @@ export function displayCategoryView() {
 
 /**
  * Display tabs in grouped view
+ * @param {string} groupingType - Type of grouping
+ * @param {boolean} isFromSaved - Whether displaying saved tabs
+ * @param {Object} tabsToDisplay - Optional tabs to display (for saved tabs)
  */
-export function displayGroupedView(tabs, groupingType) {
-  const container = $id(DOM_IDS.TABS_CONTAINER);
+export function displayGroupedView(groupingType, isFromSaved = false, tabsToDisplay = null) {
+  const tabs = tabsToDisplay || state.categorizedTabs;
+  const container = isFromSaved ? $id(DOM_IDS.SAVED_CONTENT) : $id(DOM_IDS.TABS_CONTAINER);
   if (!container) return;
   
-  // Hide category view, show grouped view
-  hide($id(DOM_IDS.CATEGORY_VIEW));
-  const groupedView = $id(DOM_IDS.GROUPED_VIEW);
-  show(groupedView);
-  
-  // Clear existing content
-  groupedView.innerHTML = '';
+  // For saved tabs, we create a new grouped view element
+  let groupedView;
+  if (isFromSaved) {
+    groupedView = createElement('div', {
+      className: 'grouping-view',
+      id: 'savedGroupedView'
+    });
+  } else {
+    // Hide category view, show grouped view
+    hide($id(DOM_IDS.CATEGORY_VIEW));
+    groupedView = $id(DOM_IDS.GROUPED_VIEW);
+    show(groupedView);
+    // Clear existing content
+    groupedView.innerHTML = '';
+  }
   
   // Flatten all tabs from all categories
   const allTabs = [];
@@ -195,6 +207,11 @@ export function displayGroupedView(tabs, groupingType) {
       groupedView.appendChild(section);
     }
   });
+  
+  // Return the grouped view for saved tabs
+  if (isFromSaved) {
+    return groupedView;
+  }
 }
 
 /**
