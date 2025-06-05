@@ -2777,6 +2777,72 @@ async function showSavedTabs() {
 }
 
 
+// Helper function to find the first visible tab in the viewport
+function findFirstVisibleTab(tabType) {
+  let container, tabSelector;
+  
+  if (tabType === 'categorize') {
+    container = document.getElementById('tabsContainer');
+    tabSelector = '#categoryView .tab-item, #groupedView .tab-item';
+  } else if (tabType === 'saved') {
+    container = document.getElementById('savedContent');
+    tabSelector = '.tab-item';
+  }
+  
+  if (!container) return null;
+  
+  const tabs = container.querySelectorAll(tabSelector);
+  const containerRect = container.getBoundingClientRect();
+  
+  for (const tab of tabs) {
+    const tabRect = tab.getBoundingClientRect();
+    // Check if tab is at least partially visible at the top of the container
+    if (tabRect.top >= containerRect.top && tabRect.top <= containerRect.bottom) {
+      // Get the URL from the tab element
+      const urlElement = tab.querySelector('.tab-url');
+      if (urlElement) {
+        return {
+          url: urlElement.textContent,
+          element: tab
+        };
+      }
+    }
+  }
+  
+  return null;
+}
+
+// Helper function to scroll to a specific tab by URL
+function scrollToTab(url, tabType) {
+  let container, tabSelector;
+  
+  if (tabType === 'categorize') {
+    container = document.getElementById('tabsContainer');
+    tabSelector = '#categoryView .tab-item, #groupedView .tab-item';
+  } else if (tabType === 'saved') {
+    container = document.getElementById('savedContent');
+    tabSelector = '.tab-item';
+  }
+  
+  if (!container) return;
+  
+  const tabs = container.querySelectorAll(tabSelector);
+  
+  for (const tab of tabs) {
+    const urlElement = tab.querySelector('.tab-url');
+    if (urlElement && urlElement.textContent === url) {
+      // Calculate the scroll position to put this tab at the top
+      const containerRect = container.getBoundingClientRect();
+      const tabRect = tab.getBoundingClientRect();
+      const scrollTop = container.scrollTop + (tabRect.top - containerRect.top);
+      
+      container.scrollTop = scrollTop;
+      console.log(`Scrolled to tab with URL: ${url}`);
+      break;
+    }
+  }
+}
+
 // Additional functions to append to popup.js
 
 // Move tab between categories
@@ -2938,10 +3004,20 @@ window.addEventListener('beforeunload', () => {
 
 // Grouping change handler for categorize tab
 function onGroupingChange(e) {
+  // Find the first visible tab before changing grouping
+  const firstVisibleTab = findFirstVisibleTab('categorize');
+  
   const newGrouping = e.target.value;
   popupState.groupingSelections.categorize = newGrouping;
   savePopupState();
   displayTabs();
+  
+  // Restore scroll to the same tab after regrouping
+  if (firstVisibleTab) {
+    setTimeout(() => {
+      scrollToTab(firstVisibleTab.url, 'categorize');
+    }, 100);
+  }
 }
 
 // Toggle all groups in categorize tab
@@ -2983,9 +3059,19 @@ function toggleCategorizeGroups() {
 
 // Saved tab event handlers
 function onSavedGroupingChange(e) {
+  // Find the first visible tab before changing grouping
+  const firstVisibleTab = findFirstVisibleTab('saved');
+  
   const newGrouping = e.target.value;
   // Update the grouping and refresh the saved tabs display
-  showSavedTabsContent(newGrouping);
+  showSavedTabsContent(newGrouping).then(() => {
+    // Restore scroll to the same tab after regrouping
+    if (firstVisibleTab) {
+      setTimeout(() => {
+        scrollToTab(firstVisibleTab.url, 'saved');
+      }, 100);
+    }
+  });
 }
 
 function onSavedSearchInput(e) {
