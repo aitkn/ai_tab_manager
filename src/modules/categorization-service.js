@@ -9,7 +9,7 @@ import MessageService from '../services/MessageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
 import { state, updateState, clearCategorizedTabs, savePopupState } from './state-manager.js';
 import { showStatus, clearStatus, updateCategorizeBadge, hideApiKeyPrompt } from './ui-manager.js';
-import { tabDatabase } from '../../database_v2.js';
+// Database is available as window.window.tabDatabase
 
 /**
  * Handle categorize button click
@@ -71,7 +71,7 @@ export async function categorizeTabs() {
     // Get saved URLs to exclude from LLM
     let savedUrls = [];
     try {
-      const savedTabs = await tabDatabase.getAllSavedTabs();
+      const savedTabs = await window.tabDatabase.getAllSavedTabs();
       savedUrls = savedTabs.map(tab => tab.url);
       console.log(`Found ${savedUrls.length} saved URLs to exclude from LLM`);
     } catch (error) {
@@ -182,7 +182,7 @@ export function moveTabToCategory(tab, fromCategory, toCategory) {
  */
 export async function isTabSaved(url) {
   try {
-    const savedTabs = await tabDatabase.getAllSavedTabs();
+    const savedTabs = await window.tabDatabase.getAllSavedTabs();
     return savedTabs.some(tab => tab.url === url);
   } catch (error) {
     console.error('Error checking if tab is saved:', error);
