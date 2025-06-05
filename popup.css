@@ -644,15 +644,7 @@ button svg {
   font-weight: 500;
 }
 
-.grouping-controls-inline .grouping-select {
-  padding: var(--md-spacing-1) var(--md-spacing-2);
-  border: 1px solid var(--md-sys-color-outline);
-  border-radius: var(--md-sys-shape-corner-extra-small);
-  background-color: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
-  font-size: var(--md-sys-typescale-body-medium);
-  cursor: pointer;
-}
+/* Removed - using global .grouping-select style */
 
 /* Categorize button should not expand */
 #categorizeBtn {
@@ -688,14 +680,32 @@ button svg {
   font-weight: 500;
 }
 
+/* Global grouping select style used in both tabs */
 .grouping-select {
   padding: var(--md-spacing-1) var(--md-spacing-2);
+  padding-right: 30px;
   border: 1px solid var(--md-sys-color-outline);
-  border-radius: var(--md-sys-shape-corner-extra-small);
+  border-radius: var(--md-sys-shape-corner-small);
   background-color: var(--md-sys-color-surface);
   color: var(--md-sys-color-on-surface);
-  font-size: var(--md-sys-typescale-body-medium);
+  font-size: var(--md-sys-typescale-body-small);
   cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2341484d" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+}
+
+.grouping-select:hover {
+  border-color: var(--md-sys-color-on-surface);
+  background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.grouping-select:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
 }
 
 /* Search bar - Material Design 3 */
@@ -1425,22 +1435,7 @@ input[type="checkbox"] {
   letter-spacing: 0.5px;
 }
 
-.grouping-select {
-  padding: var(--md-spacing-1) var(--md-spacing-2);
-  padding-right: 28px;
-  border: 1px solid var(--md-sys-color-outline);
-  border-radius: var(--md-sys-shape-corner-small);
-  font-size: var(--md-sys-typescale-body-small);
-  background-color: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
-  cursor: pointer;
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  appearance: none;
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2341484d" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>');
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  background-size: 14px;
-}
+/* Removed duplicate - using global .grouping-select style defined earlier */
 
 /* Saved tab specific */
 #savedTabsContainer {
