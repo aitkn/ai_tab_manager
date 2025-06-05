@@ -7,6 +7,7 @@
 let categorizedTabs = { 1: [], 2: [], 3: [] };
 let isViewingSaved = false;
 let searchQuery = '';
+let isInitializing = true; // Flag to prevent saving during initialization
 let popupState = {
   isViewingSaved: false,
   searchQuery: '',
@@ -69,7 +70,7 @@ function updateThemeButtons(activeTheme) {
 
 // Save state when window loses focus or visibility changes
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
+  if (document.hidden && !isInitializing) {
     console.log('Window hidden, saving state');
     savePopupState();
   }
@@ -77,8 +78,10 @@ document.addEventListener('visibilitychange', () => {
 
 // Also save when window loses focus
 window.addEventListener('blur', () => {
-  console.log('Window blur, saving state');
-  savePopupState();
+  if (!isInitializing) {
+    console.log('Window blur, saving state');
+    savePopupState();
+  }
 });
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -212,6 +215,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     
   } catch (error) {
     console.error('Error during initialization:', error);
+  } finally {
+    // Mark initialization as complete after a delay to ensure scroll restoration is done
+    setTimeout(() => {
+      isInitializing = false;
+      console.log('Initialization complete, saving enabled');
+    }, 1500); // Wait for all scroll restoration attempts to complete
   }
 });
 
@@ -274,12 +283,14 @@ function setupEventListeners() {
   if (tabsContainer) {
     let scrollSaveTimeout;
     tabsContainer.addEventListener('scroll', () => {
-      clearTimeout(scrollSaveTimeout);
-      scrollSaveTimeout = setTimeout(() => {
-        if (popupState.activeTab === 'categorize') {
-          savePopupState();
-        }
-      }, 300); // Debounce scroll saving
+      if (!isInitializing) {
+        clearTimeout(scrollSaveTimeout);
+        scrollSaveTimeout = setTimeout(() => {
+          if (popupState.activeTab === 'categorize') {
+            savePopupState();
+          }
+        }, 300); // Debounce scroll saving
+      }
     });
   }
   
@@ -287,12 +298,14 @@ function setupEventListeners() {
   if (savedContent) {
     let scrollSaveTimeout;
     savedContent.addEventListener('scroll', () => {
-      clearTimeout(scrollSaveTimeout);
-      scrollSaveTimeout = setTimeout(() => {
-        if (popupState.activeTab === 'saved') {
-          savePopupState();
-        }
-      }, 300); // Debounce scroll saving
+      if (!isInitializing) {
+        clearTimeout(scrollSaveTimeout);
+        scrollSaveTimeout = setTimeout(() => {
+          if (popupState.activeTab === 'saved') {
+            savePopupState();
+          }
+        }, 300); // Debounce scroll saving
+      }
     });
   }
 }
@@ -547,6 +560,12 @@ function onMaxTabsChange(e) {
 
 // Save popup state
 async function savePopupState() {
+  // Don't save during initialization
+  if (isInitializing) {
+    console.log('Skipping save during initialization');
+    return;
+  }
+  
   // Get current scroll positions for ALL tabs
   const scrollPositions = { ...popupState.scrollPositions };
   
