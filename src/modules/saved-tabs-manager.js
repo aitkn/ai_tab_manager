@@ -344,7 +344,7 @@ export function handleSavedTabSearch(searchQuery) {
 /**
  * Display recent sessions
  */
-async function displayRecentSessions() {
+export async function displayRecentSessions() {
   try {
     const sessionsContainer = $id('recentSessions');
     const sessionsList = $id('sessionsList');
@@ -448,5 +448,6 @@ export default {
   showSavedTabsContent,
   showSavedTabs,
   loadSavedTabsCount,
-  handleSavedTabSearch
+  handleSavedTabSearch,
+  displayRecentSessions
 };

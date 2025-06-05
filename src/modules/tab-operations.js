@@ -84,18 +84,19 @@ export async function saveAndCloseCategory(category) {
     let savedCount = 0;
     let closedCount = 0;
     
+    // Save all tabs in category at once
+    const tabsToSave = {
+      [category]: tabs.filter(tab => !tab.alreadySaved)
+    };
+    
+    if (tabsToSave[category].length > 0) {
+      await window.tabDatabase.saveCategorizedTabs(tabsToSave);
+      savedCount = tabsToSave[category].length;
+    }
+    
+    // Close all tabs in category
     for (const tab of tabs) {
       try {
-        // Skip if already saved
-        if (!tab.alreadySaved) {
-          // Create a categorized tabs object with just this tab
-          const tabsToSave = {
-            [category]: [tab]
-          };
-          await window.tabDatabase.saveTabs(tabsToSave);
-          savedCount++;
-        }
-        
         // Close all duplicate tabs
         const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
         for (const tabId of duplicateIds) {
@@ -107,7 +108,7 @@ export async function saveAndCloseCategory(category) {
           }
         }
       } catch (error) {
-        console.error('Error saving tab:', error);
+        console.error('Error processing tab:', error);
       }
     }
     
@@ -138,22 +139,36 @@ export async function saveAndCloseAll() {
     let totalSaved = 0;
     let totalClosed = 0;
     
-    // Process each category
+    // Prepare tabs to save (all categories including CAN_CLOSE)
+    const tabsToSave = {
+      [TAB_CATEGORIES.CAN_CLOSE]: [],
+      [TAB_CATEGORIES.SAVE_LATER]: [],
+      [TAB_CATEGORIES.IMPORTANT]: []
+    };
+    
+    // Collect tabs to save from each category
+    for (const category of [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE]) {
+      const tabs = state.categorizedTabs[category] || [];
+      
+      for (const tab of tabs) {
+        if (!tab.alreadySaved) {
+          tabsToSave[category].push(tab);
+          totalSaved++;
+        }
+      }
+    }
+    
+    // Save all tabs at once
+    if (totalSaved > 0) {
+      await window.tabDatabase.saveCategorizedTabs(tabsToSave);
+    }
+    
+    // Close all tabs
     for (const category of [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE]) {
       const tabs = state.categorizedTabs[category] || [];
       
       for (const tab of tabs) {
         try {
-          // Skip "Can Be Closed" tabs - just close them
-          if (category !== TAB_CATEGORIES.CAN_CLOSE && !tab.alreadySaved) {
-            // Create a categorized tabs object with just this tab
-            const tabsToSave = {
-              [category]: [tab]
-            };
-            await window.tabDatabase.saveTabs(tabsToSave);
-            totalSaved++;
-          }
-          
           // Close all duplicate tabs
           const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
           for (const tabId of duplicateIds) {
@@ -338,29 +353,30 @@ export async function saveAndCloseTabsInGroup(tabs) {
     let closedCount = 0;
     const allTabIds = [];
     
-    // Save each tab
+    // Group tabs by category for saving
+    const tabsByCategory = {};
+    
     for (const tab of tabs) {
-      try {
-        // Skip if already saved
-        if (!tab.alreadySaved) {
-          // Create a categorized tabs object with just this tab
-          const tabCategory = tab.category || TAB_CATEGORIES.SAVE_LATER;
-          const tabsToSave = {
-            [tabCategory]: [tab]
-          };
-          await window.tabDatabase.saveTabs(tabsToSave);
-          savedCount++;
+      if (!tab.alreadySaved) {
+        const tabCategory = tab.category || TAB_CATEGORIES.SAVE_LATER;
+        if (!tabsByCategory[tabCategory]) {
+          tabsByCategory[tabCategory] = [];
         }
-        
-        // Collect all tab IDs including duplicates
-        if (tab.duplicateIds && tab.duplicateIds.length > 0) {
-          allTabIds.push(...tab.duplicateIds);
-        } else {
-          allTabIds.push(tab.id);
-        }
-      } catch (error) {
-        console.error('Error saving tab:', error);
+        tabsByCategory[tabCategory].push(tab);
+        savedCount++;
       }
+      
+      // Collect all tab IDs including duplicates
+      if (tab.duplicateIds && tab.duplicateIds.length > 0) {
+        allTabIds.push(...tab.duplicateIds);
+      } else {
+        allTabIds.push(tab.id);
+      }
+    }
+    
+    // Save all tabs at once
+    if (savedCount > 0) {
+      await window.tabDatabase.saveCategorizedTabs(tabsByCategory);
     }
     
     // Close all tabs

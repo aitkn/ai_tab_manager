@@ -60,6 +60,9 @@ export async function initializeApp() {
     await window.tabDatabase.init();
     console.log('Database initialized');
     
+    // Migrate from old database if needed
+    await window.tabDatabase.migrateFromOldDatabase();
+    
     // Load saved state
     await loadSavedState();
     
