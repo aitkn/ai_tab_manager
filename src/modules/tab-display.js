@@ -301,6 +301,20 @@ export function createGroupSection(groupName, tabs, groupingType) {
   // Group actions
   const groupActions = createElement('div', { className: 'group-actions' });
   
+  // Save all button (only for current tabs, not saved)
+  if (!state.isViewingSaved) {
+    const saveBtn = createElement('button', {
+      className: CSS_CLASSES.ICON_BTN_SMALL,
+      title: 'Save all tabs in this group',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>',
+      onclick: (e) => {
+        e.stopPropagation();
+        saveAndCloseTabsInGroup(tabs);
+      }
+    });
+    groupActions.appendChild(saveBtn);
+  }
+  
   // Open all button
   const openAllBtn = createElement('button', {
     className: CSS_CLASSES.ICON_BTN_SMALL,
@@ -601,7 +615,7 @@ function groupByLastAccessedMonth(tabs) {
 // Note: extractDateFromGroupName is already imported from helpers.js at the top of the file
 
 // Import tab operations
-import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, closeTabsInGroup, deleteTabsInGroup, moveTab, closeTab, deleteSavedTab } from './tab-operations.js';
+import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, closeTabsInGroup, saveAndCloseTabsInGroup, deleteTabsInGroup, moveTab, closeTab, deleteSavedTab } from './tab-operations.js';
 
 // Export functions
 export default {

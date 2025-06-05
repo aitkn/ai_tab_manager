@@ -316,6 +316,80 @@ export async function closeTabsInGroup(tabs) {
 }
 
 /**
+ * Save and close all tabs in a group
+ */
+export async function saveAndCloseTabsInGroup(tabs) {
+  try {
+    if (!tabs || tabs.length === 0) return;
+    
+    showStatus('Saving tabs...', 'loading');
+    
+    let savedCount = 0;
+    let closedCount = 0;
+    const allTabIds = [];
+    
+    // Save each tab
+    for (const tab of tabs) {
+      try {
+        // Skip if already saved
+        if (!tab.alreadySaved) {
+          await window.tabDatabase.saveTab({
+            ...tab,
+            savedAt: Date.now(),
+            category: tab.category || TAB_CATEGORIES.SAVE_LATER
+          });
+          savedCount++;
+        }
+        
+        // Collect all tab IDs including duplicates
+        if (tab.duplicateIds && tab.duplicateIds.length > 0) {
+          allTabIds.push(...tab.duplicateIds);
+        } else {
+          allTabIds.push(tab.id);
+        }
+      } catch (error) {
+        console.error('Error saving tab:', error);
+      }
+    }
+    
+    // Close all tabs
+    for (const tabId of allTabIds) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        closedCount++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
+      }
+    }
+    
+    // Remove tabs from state
+    for (const tab of tabs) {
+      for (const category of Object.keys(state.categorizedTabs)) {
+        state.categorizedTabs[category] = state.categorizedTabs[category]
+          .filter(t => t.id !== tab.id);
+      }
+    }
+    
+    updateState('categorizedTabs', state.categorizedTabs);
+    updateCategorizeBadge();
+    await savePopupState();
+    
+    showStatus(`Saved ${savedCount} tabs, closed ${closedCount} tabs`, 'success');
+    
+    // Update saved tabs badge
+    updateSavedBadge();
+    
+    // Trigger display update
+    const { displayTabs } = await import('./tab-display.js');
+    displayTabs();
+    
+  } catch (error) {
+    console.error('Error saving group tabs:', error);
+    showStatus('Error saving tabs', 'error');
+  }
+}
+
+/**
  * Open all tabs in a group
  */
 export async function openAllTabsInGroup(groupName) {
