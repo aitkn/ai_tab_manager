@@ -524,7 +524,7 @@ h1 {
 
 /* GROUP BY controls group */
 .grouping-group {
-  gap: calc(var(--md-spacing-1) * 0.75);
+  gap: 4px;
 }
 
 /* Show All checkbox group */
@@ -534,11 +534,26 @@ h1 {
 
 /* Export/Import buttons group */
 .export-import-group {
-  gap: calc(var(--md-spacing-1) * 0.5);
+  gap: 3px;
+}
+
+/* Compact icon buttons for toolbar */
+.toolbar-row .icon-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  min-width: 28px;
 }
 
 .export-import-group .icon-btn {
-  padding: var(--md-spacing-1) var(--md-spacing-1);
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+}
+
+.export-import-group .icon-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Hide old control containers */
@@ -879,6 +894,12 @@ button svg {
   font-size: var(--md-sys-typescale-label-medium);
   color: var(--md-sys-color-on-surface);
   margin-left: auto;
+}
+
+/* Tighter checkbox for toolbar */
+.toolbar-row .checkbox-label {
+  gap: 4px;
+  margin-left: 0;
 }
 
 .checkbox-label input[type="checkbox"] {
