@@ -16,8 +16,10 @@ import { moveTabToCategory } from './categorization-service.js';
  */
 export async function closeTab(tab, category) {
   try {
-    // Get all duplicate tabs for this URL
-    const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
+    // Get all duplicate tabs - check both sources
+    const duplicateIds = tab.duplicateIds || state.urlToDuplicateIds[tab.url] || [tab.id];
+    
+    console.log('Closing tab with duplicates:', tab.url, 'duplicateIds:', duplicateIds);
     
     // Remove from UI state
     const categoryTabs = state.categorizedTabs[category];
