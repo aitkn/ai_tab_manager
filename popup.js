@@ -1718,11 +1718,6 @@ function createGroupSection(groupName, tabs, groupType, isFromSaved) {
   return section;
 }
 
-function onGroupingChange(e) {
-  currentGrouping = e.target.value;
-  displayTabs(isViewingSaved);
-  savePopupState();
-}
 
 // Group by last accessed date
 function groupByLastAccessedDate(tabs) {
@@ -3044,17 +3039,23 @@ window.addEventListener('beforeunload', () => {
 function onGroupingChange(e) {
   // Wait a moment for any pending scroll to settle
   setTimeout(() => {
-    // Find the first visible tab before changing grouping
-    const firstVisibleTab = findFirstVisibleTab('categorize');
-    console.log('First visible tab before grouping change:', firstVisibleTab);
+    const tabsContainer = document.getElementById('tabsContainer');
+    const currentScrollTop = tabsContainer ? tabsContainer.scrollTop : 0;
+    
+    // Only find first visible tab if not at top
+    let firstVisibleTab = null;
+    if (currentScrollTop > 0) {
+      firstVisibleTab = findFirstVisibleTab('categorize');
+      console.log('First visible tab before grouping change:', firstVisibleTab);
+    }
     
     const newGrouping = e.target.value;
     popupState.groupingSelections.categorize = newGrouping;
     savePopupState();
     displayTabs();
     
-    // Restore scroll to the same tab after regrouping
-    if (firstVisibleTab) {
+    // Only restore scroll if we weren't at the top
+    if (firstVisibleTab && currentScrollTop > 0) {
       setTimeout(() => {
         scrollToTab(firstVisibleTab.url, 'categorize');
       }, 150);
@@ -3103,15 +3104,21 @@ function toggleCategorizeGroups() {
 function onSavedGroupingChange(e) {
   // Wait a moment for any pending scroll to settle
   setTimeout(() => {
-    // Find the first visible tab before changing grouping
-    const firstVisibleTab = findFirstVisibleTab('saved');
-    console.log('First visible saved tab before grouping change:', firstVisibleTab);
+    const savedContent = document.getElementById('savedContent');
+    const currentScrollTop = savedContent ? savedContent.scrollTop : 0;
+    
+    // Only find first visible tab if not at top
+    let firstVisibleTab = null;
+    if (currentScrollTop > 0) {
+      firstVisibleTab = findFirstVisibleTab('saved');
+      console.log('First visible saved tab before grouping change:', firstVisibleTab);
+    }
     
     const newGrouping = e.target.value;
     // Update the grouping and refresh the saved tabs display
     showSavedTabsContent(newGrouping).then(() => {
-      // Restore scroll to the same tab after regrouping
-      if (firstVisibleTab) {
+      // Only restore scroll if we weren't at the top
+      if (firstVisibleTab && currentScrollTop > 0) {
         setTimeout(() => {
           scrollToTab(firstVisibleTab.url, 'saved');
         }, 150);

@@ -854,7 +854,7 @@ button svg {
   justify-content: space-between;
   gap: var(--md-spacing-2);
   margin: 0;
-  padding: var(--md-spacing-3) var(--md-spacing-3);
+  padding: var(--md-spacing-2) var(--md-spacing-3); /* Match group-header padding */
   font-size: var(--md-sys-typescale-title-small);
   font-weight: 500;
   cursor: pointer;
