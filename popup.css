@@ -1086,7 +1086,7 @@ button svg {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--md-spacing-3);
+  padding: var(--md-spacing-2) var(--md-spacing-3); /* Reduced vertical padding */
   background-color: var(--md-sys-color-surface-container-high);
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -1114,7 +1114,7 @@ button svg {
   display: flex;
   align-items: center;
   gap: var(--md-spacing-2);
-  font-size: var(--md-sys-typescale-body-large);
+  font-size: 13px; /* Slightly smaller than category headers (14px) */
   font-weight: 500;
   color: var(--md-sys-color-on-surface);
 }
