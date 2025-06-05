@@ -216,13 +216,29 @@ async function restoreActiveTab() {
 function initializeTabNavigation() {
   // Tab button event listeners
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    on(btn, EVENTS.CLICK, () => {
+    on(btn, EVENTS.CLICK, async () => {
       const tabName = btn.dataset.tab;
       switchToTab(tabName);
       
       if (tabName === TAB_TYPES.SAVED) {
         const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
         showSavedTabsContent(savedGroupingSelect?.value);
+      } else if (tabName === TAB_TYPES.CATEGORIZE) {
+        // Check if we have categorized tabs to display
+        const hasCategories = Object.values(state.categorizedTabs)
+          .some(tabs => tabs.length > 0);
+        
+        if (hasCategories) {
+          show($id(DOM_IDS.TABS_CONTAINER));
+          show($id(DOM_IDS.SEARCH_CONTROLS), 'flex');
+          show($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS), 'flex');
+          const actionButtons = document.querySelector('.action-buttons');
+          if (actionButtons) {
+            show(actionButtons, 'flex');
+          }
+          displayTabs();
+          updateCategorizeBadge();
+        }
       }
     });
   });
