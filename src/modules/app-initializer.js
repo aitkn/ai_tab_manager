@@ -16,12 +16,35 @@ import StorageService from '../services/StorageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
 
 /**
+ * Wait for database to be loaded
+ */
+async function waitForDatabase() {
+  const maxAttempts = 50; // 5 seconds max
+  let attempts = 0;
+  
+  while (!window.tabDatabase && attempts < maxAttempts) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    attempts++;
+  }
+  
+  if (!window.tabDatabase) {
+    throw new Error('Database failed to load after 5 seconds');
+  }
+}
+
+/**
  * Main initialization function
  */
 export async function initializeApp() {
   console.log('Popup loaded, initializing...');
   
   try {
+    // Wait for database to be available
+    if (!window.tabDatabase) {
+      console.log('Waiting for database to load...');
+      await waitForDatabase();
+    }
+    
     // Check for unauthorized copies
     checkExtensionIntegrity();
     
