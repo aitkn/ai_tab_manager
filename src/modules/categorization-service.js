@@ -128,7 +128,22 @@ export async function categorizeTabs() {
     // Save state
     await savePopupState();
     
-    // Trigger display update (will be handled by display module)
+    // Trigger display update
+    const { displayTabs } = await import('./tab-display.js');
+    displayTabs();
+    
+    // Show the tabs container and controls
+    const { show } = await import('../utils/dom-helpers.js');
+    const { DOM_IDS } = await import('../utils/constants.js');
+    const { $id } = await import('../utils/dom-helpers.js');
+    show($id(DOM_IDS.TABS_CONTAINER));
+    show($id(DOM_IDS.SEARCH_CONTROLS), 'flex');
+    show($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS), 'flex');
+    const actionButtons = document.querySelector('.action-buttons');
+    if (actionButtons) {
+      show(actionButtons, 'flex');
+    }
+    
     return result;
     
   } catch (error) {

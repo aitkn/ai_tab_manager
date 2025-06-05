@@ -29,12 +29,12 @@ export const state = {
   },
   urlToDuplicateIds: {},
   settings: {
-    provider: null,
-    model: null,
+    provider: CONFIG.DEFAULT_PROVIDER || 'Claude',
+    model: CONFIG.DEFAULT_MODEL || '',
     apiKeys: {},
     selectedModels: {},
-    customPrompt: null,
-    promptVersion: null,
+    customPrompt: CONFIG.DEFAULT_PROMPT || '',
+    promptVersion: CONFIG.PROMPT_VERSION || 1,
     isPromptCustomized: false,
     maxTabsToOpen: 50
   }
