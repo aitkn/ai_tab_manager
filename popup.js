@@ -384,11 +384,13 @@ function switchToTab(tabName) {
       if (hasCategorizedTabs) {
         // Show the container and display tabs
         document.getElementById('tabsContainer').style.display = 'block';
+        document.getElementById('searchControls').style.display = 'flex';
         document.querySelector('.action-buttons').style.display = 'flex';
         displayTabs();
       } else {
         // Hide everything if no tabs
         document.getElementById('tabsContainer').style.display = 'none';
+        document.getElementById('searchControls').style.display = 'none';
         document.querySelector('.action-buttons').style.display = 'none';
         // Also ensure category sections are marked as empty
         [1, 2, 3].forEach(category => {
@@ -812,6 +814,7 @@ async function handleCategorize() {
     document.querySelector('.action-buttons').style.display = 'flex';
     document.getElementById('categorizeGroupingControls').style.display = 'flex';
     document.getElementById('tabsContainer').style.display = 'block';
+    document.getElementById('searchControls').style.display = 'flex';
     
     // Update badge
     updateCategorizeBadge();
