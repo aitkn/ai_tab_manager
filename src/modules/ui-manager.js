@@ -113,7 +113,7 @@ export function switchToTab(tabName) {
  * @param {string} type - Message type (success, error, warning, loading)
  * @param {number} duration - Duration in ms (0 = permanent)
  */
-export function showStatus(message, type = 'success', duration = 3000) {
+export function showStatus(message, type = 'success', duration = 5000) {
   const statusEl = $id(DOM_IDS.STATUS);
   if (!statusEl) return;
   
@@ -250,7 +250,7 @@ export function generateMarkdown(tabs, categoryName) {
 export async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
-    showStatus('Copied to clipboard!', 'success', 2000);
+    showStatus('Copied to clipboard!', 'success', 3000);
   } catch (error) {
     console.error('Failed to copy:', error);
     showStatus('Failed to copy to clipboard', 'error');
