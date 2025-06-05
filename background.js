@@ -112,38 +112,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Tab event listeners
 chrome.tabs.onCreated.addListener((tab) => {
-  console.log('Tab created:', tab.id, tab.url);
+  console.log('Background: Tab created:', tab.id, tab.url, 'Popup open:', isPopupOpen);
   notifyPopupOfTabChange('created', tab);
 });
 
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
-  console.log('Tab removed:', tabId);
+  console.log('Background: Tab removed:', tabId, 'Popup open:', isPopupOpen);
   notifyPopupOfTabChange('removed', { id: tabId });
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // Only notify on complete navigation to avoid too many updates
   if (changeInfo.status === 'complete') {
-    console.log('Tab updated:', tabId, tab.url);
+    console.log('Background: Tab updated:', tabId, tab.url, 'Popup open:', isPopupOpen);
     notifyPopupOfTabChange('updated', tab);
   }
 });
 
 // Function to notify popup of tab changes
 function notifyPopupOfTabChange(action, tabInfo) {
-  if (!isPopupOpen) return;
+  if (!isPopupOpen) {
+    console.log('Background: Skipping notification - popup not open');
+    return;
+  }
   
-  // Send message to popup
-  chrome.runtime.sendMessage({
-    action: 'tabChanged',
-    data: {
-      changeType: action,
-      tab: tabInfo,
-      timestamp: Date.now()
+  // Try to get all views (including popup)
+  const views = chrome.extension.getViews({ type: 'popup' });
+  console.log('Background: Found', views.length, 'popup views');
+  
+  views.forEach(view => {
+    // Check if the popup has our handler function
+    if (view.handleTabChangeFromBackground) {
+      console.log('Background: Calling popup handler for', action);
+      view.handleTabChangeFromBackground({
+        changeType: action,
+        tab: tabInfo,
+        timestamp: Date.now()
+      });
+    } else {
+      console.log('Background: Popup handler not found in view');
     }
-  }).catch(error => {
-    // Popup might be closed, which is fine
-    console.log('Could not notify popup:', error.message);
   });
 }
 

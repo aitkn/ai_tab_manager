@@ -315,11 +315,10 @@ export function setupAutoSave() {
  * Set up listener for tab changes from background script
  */
 function setupTabChangeListener() {
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'tabChanged') {
-      handleTabChange(message.data);
-    }
-  });
+  // Expose handler to window for background script to call
+  window.handleTabChangeFromBackground = (data) => {
+    handleTabChange(data);
+  };
 }
 
 /**
