@@ -184,17 +184,23 @@ document.addEventListener('DOMContentLoaded', async function() {
       // Set the active tab in popupState before switching
       popupState.activeTab = stored.popupState.activeTab;
       
-      // Directly set scroll positions before making tabs visible
+      // Set scroll positions with both panes temporarily visible
       if (popupState.scrollPositions) {
+        // Make both tab panes temporarily active to allow scroll setting
+        const categorizeTab = document.getElementById('categorizeTab');
+        const savedTab = document.getElementById('savedTab');
+        
+        if (categorizeTab) categorizeTab.classList.add('active');
+        if (savedTab) savedTab.classList.add('active');
+        
         // Use requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
           // Set scroll for categorize tab
           if (popupState.scrollPositions.categorize) {
             const tabsContainer = document.getElementById('tabsContainer');
             if (tabsContainer) {
-              tabsContainer.style.scrollBehavior = 'auto'; // Disable smooth scrolling
               tabsContainer.scrollTop = popupState.scrollPositions.categorize;
-              console.log('Set categorize scroll to:', popupState.scrollPositions.categorize);
+              console.log('Force set categorize scroll to:', popupState.scrollPositions.categorize);
             }
           }
           
@@ -202,14 +208,15 @@ document.addEventListener('DOMContentLoaded', async function() {
           if (popupState.scrollPositions.saved) {
             const savedContent = document.getElementById('savedContent');
             if (savedContent) {
-              savedContent.style.scrollBehavior = 'auto'; // Disable smooth scrolling
               savedContent.scrollTop = popupState.scrollPositions.saved;
-              console.log('Set saved scroll to:', popupState.scrollPositions.saved);
+              console.log('Force set saved scroll to:', popupState.scrollPositions.saved);
             }
           }
           
-          // Now switch to the active tab
-          switchToTab(stored.popupState.activeTab);
+          // Now switch to the correct active tab (this will hide the inactive one)
+          requestAnimationFrame(() => {
+            switchToTab(stored.popupState.activeTab);
+          });
         });
       } else {
         switchToTab(stored.popupState.activeTab);
