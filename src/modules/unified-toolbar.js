@@ -109,6 +109,12 @@ export function updateToolbarVisibility(tabType) {
     searchInput.placeholder = 'Search tabs by title or URL...';
     populateGroupingOptions(CURRENT_TAB_GROUPING_OPTIONS);
     
+    // Show the close all button for categorize tab
+    const closeAllBtn = $id(DOM_IDS.CLOSE_ALL_BTN2);
+    if (closeAllBtn) {
+      show(closeAllBtn, 'inline-block');
+    }
+    
     // Restore grouping selection
     if (state.popupState.groupingSelections?.categorize) {
       groupingSelect.value = state.popupState.groupingSelections.categorize;
@@ -130,6 +136,12 @@ export function updateToolbarVisibility(tabType) {
     show(savedTabControls, 'flex');
     searchInput.placeholder = 'Search saved tabs...';
     populateGroupingOptions(SAVED_TAB_GROUPING_OPTIONS);
+    
+    // Hide the close all button for saved tabs
+    const closeAllBtn = $id(DOM_IDS.CLOSE_ALL_BTN2);
+    if (closeAllBtn) {
+      hide(closeAllBtn);
+    }
     
     // Restore grouping selection and checkbox
     if (state.popupState.groupingSelections?.saved) {

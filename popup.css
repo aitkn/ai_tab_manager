@@ -449,10 +449,11 @@ h1 {
 .toolbar-row.first-row {
   padding-bottom: 0;
   min-height: 48px;
+  position: relative;
 }
 
 .toolbar-row.second-row {
-  padding-top: var(--md-spacing-1);
+  padding-top: var(--md-spacing-2);
 }
 
 /* Toolbar sections */
@@ -468,8 +469,12 @@ h1 {
 }
 
 .middle-section {
-  flex: 1 1 auto;
-  justify-content: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
 }
 
 .middle-section label {
@@ -483,8 +488,10 @@ h1 {
 
 .right-section {
   flex: 0 0 auto;
-  justify-content: flex-end;
-  gap: var(--md-spacing-2);
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-1);
 }
 
 /* Search section (second row) */
@@ -500,7 +507,7 @@ h1 {
 
 .search-section .clear-search-btn {
   position: absolute;
-  right: 4px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
 }
@@ -510,6 +517,11 @@ h1 {
   display: flex;
   align-items: center;
   gap: var(--md-spacing-2);
+}
+
+/* Export/Import buttons spacing */
+#savedTabControls .icon-btn {
+  padding: var(--md-spacing-1) var(--md-spacing-1);
 }
 
 /* Hide old control containers */
@@ -1250,6 +1262,7 @@ button svg {
   background-color: var(--success-color, #4CAF50); /* Default green */
   color: white;
   flex-shrink: 0;
+  margin-right: 8px;
 }
 
 .close-all-btn.has-uncategorized {
