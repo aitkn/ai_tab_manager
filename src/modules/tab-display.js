@@ -436,16 +436,29 @@ export function createTabElement(tab, category) {
   // Tab info
   const tabInfo = createElement('div', {
     className: 'tab-info',
-    onclick: () => {
-      // First switch to the tab's window, then activate the tab
-      if (tab.windowId) {
-        chrome.windows.update(tab.windowId, { focused: true }, () => {
+    onclick: async () => {
+      if (state.isViewingSaved) {
+        // For saved tabs, open in current window
+        try {
+          await chrome.tabs.create({ 
+            url: tab.url,
+            active: true 
+          });
+          // Don't close the popup
+        } catch (error) {
+          console.error('Error opening saved tab:', error);
+        }
+      } else {
+        // For active tabs, switch to the existing tab
+        if (tab.windowId) {
+          chrome.windows.update(tab.windowId, { focused: true }, () => {
+            chrome.tabs.update(tab.id, { active: true });
+            window.close();
+          });
+        } else {
           chrome.tabs.update(tab.id, { active: true });
           window.close();
-        });
-      } else {
-        chrome.tabs.update(tab.id, { active: true });
-        window.close();
+        }
       }
     }
   });
