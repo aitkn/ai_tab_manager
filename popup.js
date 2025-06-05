@@ -4,6 +4,25 @@
  * support@aitkn.com
  */
 
+// Import constants - REFACTORING STEP 1.1
+import { 
+  TAB_CATEGORIES, 
+  DOM_IDS, 
+  CSS_CLASSES, 
+  DISPLAY,
+  EVENTS,
+  GROUPING_OPTIONS,
+  TAB_TYPES,
+  LIMITS,
+  URLS,
+  STORAGE_KEYS,
+  STATUS_MESSAGES,
+  CATEGORY_NAMES
+} from './src/utils/constants.js';
+
+// Log that constants are loaded
+console.log('Constants loaded:', { TAB_CATEGORIES, DOM_IDS });
+
 let categorizedTabs = { 1: [], 2: [], 3: [] };
 let isViewingSaved = false;
 let searchQuery = '';
