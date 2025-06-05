@@ -327,17 +327,22 @@ function setupEventListeners() {
   
   const savedContent = document.getElementById('savedContent');
   if (savedContent) {
+    console.log('Adding scroll listener to savedContent');
     let scrollSaveTimeout;
-    savedContent.addEventListener('scroll', () => {
+    savedContent.addEventListener('scroll', (e) => {
+      console.log('Saved content scrolled to:', e.target.scrollTop);
       if (!isInitializing) {
         clearTimeout(scrollSaveTimeout);
         scrollSaveTimeout = setTimeout(() => {
           if (popupState.activeTab === 'saved') {
+            console.log('Saving state from scroll event');
             savePopupState();
           }
         }, 300); // Debounce scroll saving
       }
     });
+  } else {
+    console.log('savedContent not found during initialization');
   }
 }
 
@@ -395,6 +400,27 @@ function switchToTab(tabName) {
       break;
     case 'saved':
       showSavedTabsContent();
+      // Re-check and add scroll listener if needed
+      setTimeout(() => {
+        const savedContent = document.getElementById('savedContent');
+        if (savedContent && !savedContent.hasAttribute('data-scroll-listener')) {
+          savedContent.setAttribute('data-scroll-listener', 'true');
+          console.log('Adding delayed scroll listener to savedContent');
+          let scrollSaveTimeout;
+          savedContent.addEventListener('scroll', (e) => {
+            console.log('Saved content scrolled (delayed) to:', e.target.scrollTop);
+            if (!isInitializing) {
+              clearTimeout(scrollSaveTimeout);
+              scrollSaveTimeout = setTimeout(() => {
+                if (popupState.activeTab === 'saved') {
+                  console.log('Saving state from delayed scroll event');
+                  savePopupState();
+                }
+              }, 300);
+            }
+          });
+        }
+      }, 100);
       break;
     case 'settings':
       // Hide API key prompt when showing settings
