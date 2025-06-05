@@ -70,12 +70,14 @@ function updateThemeButtons(activeTheme) {
 // Save state when window loses focus or visibility changes
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
+    console.log('Window hidden, saving state');
     savePopupState();
   }
 });
 
 // Also save when window loses focus
 window.addEventListener('blur', () => {
+  console.log('Window blur, saving state');
   savePopupState();
 });
 
@@ -109,6 +111,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Restore popup state if available
     if (stored.popupState) {
+      console.log('Loaded popup state:', stored.popupState);
       popupState = { ...popupState, ...stored.popupState };
       isViewingSaved = popupState.isViewingSaved;
       searchQuery = popupState.searchQuery || '';
@@ -147,7 +150,10 @@ document.addEventListener('DOMContentLoaded', async function() {
           updateCategorizeBadge();
           // Restore scroll position for categorize tab after content is displayed
           if (!popupState.isViewingSaved) {
-            restoreScrollPosition('categorize', 200);
+            // Try multiple times to ensure content is fully rendered
+            restoreScrollPosition('categorize', 100);
+            restoreScrollPosition('categorize', 500);
+            restoreScrollPosition('categorize', 1000);
           }
         }
       }
@@ -171,11 +177,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Restore active tab if available
     if (stored.popupState && stored.popupState.activeTab) {
+      // Set the active tab in popupState before switching
+      popupState.activeTab = stored.popupState.activeTab;
       switchToTab(stored.popupState.activeTab);
       // For saved tab, scroll restoration happens in showSavedTabsContent
       // For categorize tab, restore scroll after a delay
-      if (stored.popupState.activeTab === 'categorize') {
+      if (stored.popupState.activeTab === 'categorize' && stored.popupState.categorizedTabs) {
+        // Additional scroll restoration attempts for categorize tab
         restoreScrollPosition('categorize', 300);
+        restoreScrollPosition('categorize', 800);
       }
     }
     
@@ -575,18 +585,37 @@ async function savePopupState() {
 
 // Restore scroll position after content is loaded
 function restoreScrollPosition(tabName, delay = 100) {
-  if (!popupState.scrollPositions) return;
+  if (!popupState.scrollPositions) {
+    console.log('No scroll positions to restore');
+    return;
+  }
+  
+  console.log('Restoring scroll position for', tabName, 'with positions:', popupState.scrollPositions);
   
   setTimeout(() => {
     if (tabName === 'categorize' && popupState.scrollPositions.categorize) {
       const tabsContainer = document.getElementById('tabsContainer');
       if (tabsContainer) {
+        console.log('Setting categorize scroll to:', popupState.scrollPositions.categorize);
         tabsContainer.scrollTop = popupState.scrollPositions.categorize;
+        // Verify it was set
+        setTimeout(() => {
+          console.log('Actual scroll position after setting:', tabsContainer.scrollTop);
+        }, 50);
+      } else {
+        console.log('tabsContainer not found');
       }
     } else if (tabName === 'saved' && popupState.scrollPositions.saved) {
       const savedContent = document.getElementById('savedContent');
       if (savedContent) {
+        console.log('Setting saved scroll to:', popupState.scrollPositions.saved);
         savedContent.scrollTop = popupState.scrollPositions.saved;
+        // Verify it was set
+        setTimeout(() => {
+          console.log('Actual scroll position after setting:', savedContent.scrollTop);
+        }, 50);
+      } else {
+        console.log('savedContent not found');
       }
     }
   }, delay);
@@ -2626,8 +2655,10 @@ async function showSavedTabsContent(groupingType) {
       categorizedTabs = originalCategorizedTabs;
     }
     
-    // Restore scroll position after content is loaded
-    restoreScrollPosition('saved', 200); // Slightly longer delay for saved tabs
+    // Restore scroll position after content is loaded - try multiple times
+    restoreScrollPosition('saved', 100);
+    restoreScrollPosition('saved', 500);
+    restoreScrollPosition('saved', 1000);
     
   } catch (error) {
     showStatus('Error loading saved tabs: ' + error.message, 'error');
