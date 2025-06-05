@@ -603,14 +603,34 @@ async function savePopupState() {
   // Always try to get both scroll positions
   const tabsContainer = document.getElementById('tabsContainer');
   if (tabsContainer) {
-    scrollPositions.categorize = tabsContainer.scrollTop || 0;
-    console.log('Saving categorize scroll position:', scrollPositions.categorize);
+    // Check if categorize tab is active
+    const categorizeTab = document.getElementById('categorizeTab');
+    const isActive = categorizeTab && categorizeTab.classList.contains('active');
+    
+    if (isActive) {
+      scrollPositions.categorize = tabsContainer.scrollTop || 0;
+      console.log('Saving categorize scroll position (active):', scrollPositions.categorize);
+    } else {
+      scrollPositions.categorize = popupState.scrollPositions?.categorize || 0;
+      console.log('Preserving categorize scroll position (inactive):', scrollPositions.categorize);
+    }
   }
   
   const savedContent = document.getElementById('savedContent');
   if (savedContent) {
-    scrollPositions.saved = savedContent.scrollTop || 0;
-    console.log('Saving saved scroll position:', scrollPositions.saved);
+    // Check if saved tab is active
+    const savedTab = document.getElementById('savedTab');
+    const isActive = savedTab && savedTab.classList.contains('active');
+    
+    if (isActive) {
+      // If active, get current scroll position
+      scrollPositions.saved = savedContent.scrollTop || 0;
+      console.log('Saving saved scroll position (active):', scrollPositions.saved);
+    } else {
+      // If not active, preserve existing scroll position
+      scrollPositions.saved = popupState.scrollPositions?.saved || 0;
+      console.log('Preserving saved scroll position (inactive):', scrollPositions.saved);
+    }
   }
   
   console.log('All scroll positions to save:', scrollPositions);
