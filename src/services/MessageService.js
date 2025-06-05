@@ -61,13 +61,8 @@ export class MessageService {
       data: { provider, apiKey }
     });
     
-    if (!response.success) {
-      // Return empty array on error (non-critical)
-      console.warn('Failed to fetch models:', response.error);
-      return [];
-    }
-    
-    return response.models || [];
+    // Return the full response object so the caller can handle it
+    return response;
   }
   
   /**

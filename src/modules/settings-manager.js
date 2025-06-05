@@ -87,6 +87,7 @@ export async function updateModelDropdown() {
     // Try to fetch models dynamically
     const apiKey = state.settings.apiKeys[state.settings.provider];
     const response = await MessageService.fetchModels(state.settings.provider, apiKey);
+    console.log('Response from fetchModels:', response);
     
     let models = [];
     let needsApiKey = false;
@@ -95,6 +96,10 @@ export async function updateModelDropdown() {
       models = response.models || [];
       needsApiKey = response.needsApiKey || false;
       console.log('Fetched models for', state.settings.provider, ':', models);
+    } else if (response && response.models) {
+      // Handle case where success flag might be missing
+      models = response.models;
+      console.log('Models found without success flag:', models);
     }
     
     // Clear and populate models
