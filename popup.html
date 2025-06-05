@@ -53,38 +53,58 @@
     
     <!-- Unified Toolbar -->
     <div id="unifiedToolbar" class="unified-toolbar">
-      <!-- Search Controls -->
-      <div class="toolbar-section search-section">
-        <input type="text" id="unifiedSearchInput" class="search-input" placeholder="Search tabs...">
-        <button id="clearUnifiedSearchBtn" class="clear-search-btn" title="Clear search">×</button>
-      </div>
-      
-      <!-- Grouping Controls -->
-      <div class="toolbar-section grouping-section">
-        <label>Group by:</label>
-        <select id="unifiedGroupingSelect" class="grouping-select">
-          <!-- Options will be populated dynamically based on active tab -->
-        </select>
-        <button id="toggleGroupsBtn" class="icon-btn" title="Collapse/Expand all groups">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M6 9l6 6 6-6"/>
-          </svg>
-        </button>
-      </div>
-      
-      <!-- Additional Controls (changes based on active tab) -->
-      <div class="toolbar-section additional-controls">
-        <!-- Current Tab specific controls -->
-        <div id="currentTabControls" class="tab-specific-controls">
-          <button id="categorizeBtn2" class="primary-btn" title="Categorize & Save tabs">
+      <!-- First Row -->
+      <div class="toolbar-row first-row">
+        <!-- Left: Categorize button (Current Tab) -->
+        <div class="toolbar-section left-section">
+          <div id="currentTabControls" class="tab-specific-controls">
+            <button id="categorizeBtn2" class="primary-btn" title="Categorize & Save tabs">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+              </svg>
+              Categorize & Save
+            </button>
+          </div>
+        </div>
+        
+        <!-- Middle: Group By controls -->
+        <div class="toolbar-section middle-section">
+          <label>Group by:</label>
+          <select id="unifiedGroupingSelect" class="grouping-select">
+            <!-- Options will be populated dynamically based on active tab -->
+          </select>
+          <button id="toggleGroupsBtn" class="icon-btn" title="Collapse/Expand all groups">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-              <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-              <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-              <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+              <path d="M6 9l6 6 6-6"/>
             </svg>
-            Categorize & Save
           </button>
+        </div>
+        
+        <!-- Right: Show All/Export/Import (Saved Tab) and Close All button -->
+        <div class="toolbar-section right-section">
+          <div id="savedTabControls" class="tab-specific-controls" style="display: none;">
+            <label class="checkbox-label" title="Include 'Can Be Closed' category tabs">
+              <input type="checkbox" id="showAllCheckbox">
+              <span>Show All</span>
+            </label>
+            <button id="exportBtn" class="icon-btn" title="Export saved tabs as CSV">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </button>
+            <button id="importBtn" class="icon-btn" title="Import tabs from CSV">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </button>
+          </div>
           <button id="closeAllBtn2" class="close-all-btn" title="Close all tabs">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -92,27 +112,13 @@
             </svg>
           </button>
         </div>
-        
-        <!-- Saved Tab specific controls -->
-        <div id="savedTabControls" class="tab-specific-controls" style="display: none;">
-          <label class="checkbox-label" title="Include 'Can Be Closed' category tabs">
-            <input type="checkbox" id="showAllCheckbox">
-            <span>Show All</span>
-          </label>
-          <button id="exportBtn" class="icon-btn" title="Export saved tabs as CSV">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-          </button>
-          <button id="importBtn" class="icon-btn" title="Import tabs from CSV">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-          </button>
+      </div>
+      
+      <!-- Second Row: Search -->
+      <div class="toolbar-row second-row">
+        <div class="toolbar-section search-section">
+          <input type="text" id="unifiedSearchInput" class="search-input" placeholder="Search tabs...">
+          <button id="clearUnifiedSearchBtn" class="clear-search-btn" title="Clear search">×</button>
         </div>
       </div>
     </div>

@@ -434,30 +434,68 @@ h1 {
 /* Unified Toolbar */
 .unified-toolbar {
   display: flex;
-  align-items: center;
-  gap: var(--md-spacing-3);
-  padding: var(--md-spacing-3);
+  flex-direction: column;
   background-color: var(--md-sys-color-surface-container);
   border-bottom: 1px solid var(--md-sys-color-surface-variant);
-  min-height: 56px;
-  flex-wrap: wrap;
 }
 
+/* Toolbar rows */
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  padding: var(--md-spacing-2) var(--md-spacing-3);
+}
+
+.toolbar-row.first-row {
+  padding-bottom: 0;
+  min-height: 48px;
+}
+
+.toolbar-row.second-row {
+  padding-top: var(--md-spacing-1);
+}
+
+/* Toolbar sections */
 .toolbar-section {
   display: flex;
   align-items: center;
   gap: var(--md-spacing-2);
 }
 
+/* First row sections */
+.left-section {
+  flex: 0 0 auto;
+}
+
+.middle-section {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.middle-section label {
+  font-size: var(--md-sys-typescale-label-medium);
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.right-section {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: var(--md-spacing-2);
+}
+
+/* Search section (second row) */
 .search-section {
   flex: 1;
-  min-width: 200px;
   position: relative;
 }
 
 .search-section .search-input {
   width: 100%;
-  padding-right: 32px;
+  padding-right: 36px;
 }
 
 .search-section .clear-search-btn {
@@ -467,25 +505,7 @@ h1 {
   transform: translateY(-50%);
 }
 
-.grouping-section {
-  display: flex;
-  align-items: center;
-  gap: var(--md-spacing-2);
-}
-
-.grouping-section label {
-  font-size: var(--md-sys-typescale-label-medium);
-  color: var(--md-sys-color-on-surface-variant);
-  white-space: nowrap;
-}
-
-.additional-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--md-spacing-2);
-  margin-left: auto;
-}
-
+/* Tab specific controls */
 .tab-specific-controls {
   display: flex;
   align-items: center;
