@@ -46,6 +46,9 @@ import MessageService from './src/services/MessageService.js';
 // Import DOM helpers - REFACTORING STEP 1.4
 import { $, $id, show, hide, toggle, on, createElement, classes, animate } from './src/utils/dom-helpers.js';
 
+// Import tab operations module
+import { closeTab, saveAndCloseCategory, saveAndCloseAll, closeAllInCategory, openAllInCategory, openAllTabsInGroup, moveTab, deleteSavedTab, deleteTabsInGroup, restoreSavedTab, markDuplicateTabs } from './src/modules/tab-operations.js';
+
 // Log that modules are loaded
 console.log('Modules loaded:', { 
   constants: !!TAB_CATEGORIES, 
@@ -1726,65 +1729,10 @@ function toggleAllGroups() {
   }
 }
 
-async function openAllTabsInGroup(tabs) {
-  console.log('openAllTabsInGroup called:', { tabCount: tabs.length });
-  
-  if (tabs.length === 0) return;
-  
-  // Skip if too many tabs (safety limit)
-  const maxTabs = settings.maxTabsToOpen || 50;
-  if (tabs.length > maxTabs) {
-    showStatus(`Too many tabs to open at once (limit: ${maxTabs})`, 'warning');
-    return;
-  }
-  
-  try {
-    // Use background script to open tabs (won't be interrupted when popup closes)
-    const urls = tabs.map(tab => tab.url).filter(url => url && url.length > 0);
-    console.log('URLs to open:', urls);
-    
-    if (urls.length === 0) {
-      showStatus('No valid URLs to open', 'warning');
-      return;
-    }
-    
-    // Try to use background script first
-    try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'openMultipleTabs',
-        data: { urls }
-      });
-      
-      console.log('Background script response:', response);
-      
-      if (response && response.success) {
-        showStatus(`Opening ${urls.length} tabs...`, 'success');
-        return;
-      }
-    } catch (bgError) {
-      console.warn('Background script communication failed:', bgError);
-    }
-    
-    // Fallback: Open tabs directly (at least the first one will open)
-    console.log('Using fallback method to open tabs');
-    urls.forEach((url, index) => {
-      chrome.tabs.create({ url }, (tab) => {
-        if (chrome.runtime.lastError) {
-          console.error('Error opening tab:', chrome.runtime.lastError);
-        }
-      });
-    });
-    showStatus(`Opening ${urls.length} tabs...`, 'success');
-  } catch (error) {
-    console.error('Error opening tabs:', error);
-    showStatus('Error opening tabs: ' + error.message, 'error');
-  }
-}
+// openAllTabsInGroup function moved to tab-operations.js
 
-async function deleteTabsInGroup(tabs, groupName) {
-  console.log('deleteTabsInGroup called:', { tabCount: tabs.length, groupName });
-  
-  if (tabs.length === 0) return;
+// deleteTabsInGroup function moved to tab-operations.js
+// Rest of the function is in the saved-tabs-manager module
   
   // Ask for confirmation
   const message = `Delete all ${tabs.length} tabs in "${groupName}"?\n\nThis action cannot be undone.`;
@@ -1943,339 +1891,17 @@ function createTabElement(tab, category, isFromSaved = false) {
   return div;
 }
 
-async function closeTab(tabId, category) {
-  try {
-    // Find the tab to get its URL
-    const tab = categorizedTabs[category].find(t => t.id === tabId);
-    if (!tab) {
-      throw new Error('Tab not found');
-    }
-    
-    // Get all duplicate tab IDs for this URL
-    const tabIdsToClose = tab.duplicateIds || [tabId];
-    
-    // Close all tabs with the same URL
-    const { closedCount, missingCount } = await safelyCloseTabs(tabIdsToClose);
-    
-    // Remove from categorized tabs
-    categorizedTabs[category] = categorizedTabs[category].filter(tab => tab.id !== tabId);
-    
-    // Check if all categories are empty
-    const allEmpty = categorizedTabs[1].length === 0 && 
-                     categorizedTabs[2].length === 0 && 
-                     categorizedTabs[3].length === 0;
-    
-    if (allEmpty) {
-      // Clear popup state since all tabs are closed
-      await chrome.storage.local.remove('popupState');
-      
-      // Hide the tabs container, action buttons, and grouping controls
-      hide($id(DOM_IDS.TABS_CONTAINER));
-      document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-      hide($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS));
-    } else {
-      // Update popup state with remaining tabs
-      await savePopupState();
-    }
-    
-    // Update display
-    displayTabs();
-    
-    let statusMessage = `${closedCount} tab${closedCount > 1 ? 's' : ''} closed`;
-    if (missingCount > 0) {
-      statusMessage += ` (${missingCount} already closed)`;
-    }
-    showStatus(statusMessage, 'success');
-  } catch (error) {
-    showStatus('Error closing tab: ' + error.message, 'error');
-  }
-}
+// closeTab function moved to tab-operations.js
 
-// Helper function to safely close tabs, ignoring missing tab IDs
-async function safelyCloseTabs(tabIds) {
-  // Query ALL tabs from ALL windows
-  const allTabs = await chrome.tabs.query({});
-  const existingTabIds = new Set(allTabs.map(tab => tab.id));
-  
-  // Get the current window ID (where the extension is running)
-  const currentWindow = await chrome.windows.getCurrent();
-  const currentWindowId = currentWindow.id;
-  
-  // Filter out tab IDs that no longer exist
-  const validTabIds = tabIds.filter(id => existingTabIds.has(id));
-  const missingCount = tabIds.length - validTabIds.length;
-  
-  if (validTabIds.length > 0) {
-    // Group tabs by window
-    const tabsByWindow = {};
-    allTabs.forEach(tab => {
-      if (validTabIds.includes(tab.id)) {
-        if (!tabsByWindow[tab.windowId]) {
-          tabsByWindow[tab.windowId] = [];
-        }
-        tabsByWindow[tab.windowId].push(tab.id);
-      }
-    });
-    
-    // Check each window to ensure we don't close all tabs in the current window
-    for (const [windowId, windowTabIds] of Object.entries(tabsByWindow)) {
-      const windowIdInt = parseInt(windowId);
-      
-      // Only protect the current window from being completely closed
-      if (windowIdInt === currentWindowId) {
-        const windowTabs = allTabs.filter(tab => tab.windowId === windowIdInt);
-        const remainingTabs = windowTabs.filter(tab => !windowTabIds.includes(tab.id));
-        
-        // If we're about to close all tabs in the current window, create a new tab
-        if (remainingTabs.length === 0) {
-          await chrome.tabs.create({ windowId: windowIdInt, active: true });
-        }
-      }
-      // Other windows can be closed completely
-    }
-    
-    // Close only the tabs that still exist
-    await chrome.tabs.remove(validTabIds);
-  }
-  
-  return { closedCount: validTabIds.length, missingCount };
-}
+// safelyCloseTabs function moved to tab-operations.js
 
-// Close all tabs in a category
-async function closeAllInCategory(category) {
-  const tabs = categorizedTabs[category];
-  if (tabs.length === 0) return;
-  
-  // Collect all tab IDs including duplicates
-  const allTabIds = new Set();
-  tabs.forEach(tab => {
-    const duplicateIds = tab.duplicateIds || [tab.id];
-    duplicateIds.forEach(id => allTabIds.add(id));
-  });
-  
-  const totalCount = allTabIds.size;
-  
-  try {
-    const { closedCount, missingCount } = await safelyCloseTabs(Array.from(allTabIds));
-    categorizedTabs[category] = [];
-    
-    // Check if all categories are empty
-    const allEmpty = categorizedTabs[1].length === 0 && 
-                     categorizedTabs[2].length === 0 && 
-                     categorizedTabs[3].length === 0;
-    
-    if (allEmpty) {
-      // Clear popup state since all tabs are closed
-      await chrome.storage.local.remove('popupState');
-      
-      // Hide the tabs container, action buttons, and grouping controls
-      hide($id(DOM_IDS.TABS_CONTAINER));
-      document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-      hide($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS));
-    } else {
-      // Update popup state with remaining tabs
-      await savePopupState();
-    }
-    
-    displayTabs();
-    
-    let statusMessage = `Closed ${closedCount} tab${closedCount > 1 ? 's' : ''}`;
-    if (missingCount > 0) {
-      statusMessage += ` (${missingCount} already closed)`;
-    }
-    showStatus(statusMessage, 'success');
-  } catch (error) {
-    showStatus('Error closing tabs: ' + error.message, 'error');
-  }
-}
+// closeAllInCategory function moved to tab-operations.js
 
-// Save and close tabs in a specific category
-async function saveAndCloseCategory(category) {
-  const tabs = categorizedTabs[category];
-  if (tabs.length === 0) return;
-  
-  try {
-    // Save only this category
-    const tempCategorized = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
-    tempCategorized[category] = tabs;
-    
-    await tabDatabase.saveTabs(tempCategorized, {
-      closedAfterSave: true,
-      provider: settings.provider,
-      model: settings.model
-    });
-    
-    // Collect all tab IDs including duplicates
-    const allTabIds = new Set();
-    tabs.forEach(tab => {
-      const duplicateIds = tab.duplicateIds || [tab.id];
-      duplicateIds.forEach(id => allTabIds.add(id));
-    });
-    
-    const { closedCount, missingCount } = await safelyCloseTabs(Array.from(allTabIds));
-    categorizedTabs[category] = [];
-    
-    // Check if all categories are empty
-    const allEmpty = categorizedTabs[1].length === 0 && 
-                     categorizedTabs[2].length === 0 && 
-                     categorizedTabs[3].length === 0;
-    
-    if (allEmpty) {
-      // Clear popup state since all tabs are closed
-      await chrome.storage.local.remove('popupState');
-      
-      // Hide the tabs container, action buttons, and grouping controls
-      hide($id(DOM_IDS.TABS_CONTAINER));
-      document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-      hide($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS));
-    } else {
-      // Update popup state with remaining tabs
-      await savePopupState();
-    }
-    
-    displayTabs();
-    
-    let statusMessage = `Saved and closed ${closedCount} tab${closedCount > 1 ? 's' : ''}`;
-    if (missingCount > 0) {
-      statusMessage += ` (${missingCount} already closed)`;
-    }
-    showStatus(statusMessage, 'success');
-  } catch (error) {
-    showStatus('Error saving tabs: ' + error.message, 'error');
-  }
-}
+// saveAndCloseCategory function moved to tab-operations.js
 
-// Save and close all tabs (categories 2 & 3)
-async function saveAndCloseAll() {
-  const tabsToSave = [...categorizedTabs[2], ...categorizedTabs[3]];
-  const tabsToClose = [...categorizedTabs[1], ...categorizedTabs[2], ...categorizedTabs[3]];
-  
-  if (tabsToSave.length === 0 && tabsToClose.length === 0) {
-    showStatus('No tabs to save or close', 'warning');
-    return;
-  }
-  
-  try {
-    if (tabsToSave.length > 0) {
-      // Save categories 2 & 3
-      await tabDatabase.saveTabs(categorizedTabs, {
-        closedAfterSave: true,
-        provider: settings.provider,
-        model: settings.model
-      });
-    }
-    
-    // Collect all tab IDs including duplicates
-    const allTabIds = new Set();
-    tabsToClose.forEach(tab => {
-      const duplicateIds = tab.duplicateIds || [tab.id];
-      duplicateIds.forEach(id => allTabIds.add(id));
-    });
-    
-    // Close all tabs including duplicates
-    let closedCount = 0;
-    let missingCount = 0;
-    if (allTabIds.size > 0) {
-      const result = await safelyCloseTabs(Array.from(allTabIds));
-      closedCount = result.closedCount;
-      missingCount = result.missingCount;
-    }
-    
-    let message = `Saved ${tabsToSave.length} tabs, closed ${closedCount} tab${closedCount > 1 ? 's' : ''}`;
-    if (missingCount > 0) {
-      message += ` (${missingCount} already closed)`;
-    }
-    showStatus(message, 'success');
-    
-    // Clear categorized tabs
-    categorizedTabs = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
-    
-    // Clear popup state since all tabs are closed
-    await chrome.storage.local.remove('popupState');
-    
-    // Hide the tabs container and action buttons
-    hide($id(DOM_IDS.TABS_CONTAINER));
-    document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-    
-    // Switch to saved tab to show the saved tabs
-    setTimeout(() => {
-      switchToTab('saved');
-    }, 500);
-  } catch (error) {
-    showStatus('Error: ' + error.message, 'error');
-  }
-}
+// saveAndCloseAll function moved to tab-operations.js
 
-async function saveTabs(closeAfterSave) {
-  try {
-    // Save to database
-    const savedId = await tabDatabase.saveTabs(categorizedTabs, {
-      closedAfterSave: closeAfterSave,
-      provider: settings.provider,
-      model: settings.model
-    });
-    
-    console.log('Saved to database with ID:', savedId);
-    
-    if (closeAfterSave) {
-      // Collect all tab IDs including duplicates
-      const allTabIds = new Set();
-      const allTabs = [
-        ...categorizedTabs[1],
-        ...categorizedTabs[2],
-        ...categorizedTabs[3]
-      ];
-      
-      allTabs.forEach(tab => {
-        const duplicateIds = tab.duplicateIds || [tab.id];
-        duplicateIds.forEach(id => allTabIds.add(id));
-      });
-      
-      const { closedCount, missingCount } = await safelyCloseTabs(Array.from(allTabIds));
-      
-      let statusMessage = `Saved to database and closed ${closedCount} tab${closedCount > 1 ? 's' : ''}`;
-      if (missingCount > 0) {
-        statusMessage += ` (${missingCount} already closed)`;
-      }
-      showStatus(statusMessage, 'success');
-      
-      // Update saved badge
-      updateSavedBadge();
-      
-      // Show option to view saved tabs with info about excluded tabs
-      const excludedCount = categorizedTabs[1].length;
-      const savedCount = categorizedTabs[2].length + categorizedTabs[3].length;
-      
-      // Clear popup state and switch to saved tab
-      await chrome.storage.local.remove('popupState');
-      
-      // Clear categorized tabs from UI
-      categorizedTabs = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
-      
-      // Hide the tabs container, action buttons, and grouping controls
-      hide($id(DOM_IDS.TABS_CONTAINER));
-      document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-      hide($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS));
-      
-      setTimeout(() => {
-        switchToTab('saved');
-      }, 500);
-    } else {
-      showStatus('Tabs saved to database successfully', 'success');
-      
-      // Show quick action to view saved tabs
-      setTimeout(() => {
-        const status = $id(DOM_IDS.STATUS);
-        if (status && status.textContent) {
-          status.innerHTML = status.textContent + ' <a href="#" onclick="showSavedTabs(); return false;">View saved</a>';
-        }
-      }, 100);
-    }
-  } catch (error) {
-    showStatus('Error saving tabs: ' + error.message, 'error');
-    console.error('Save error:', error);
-  }
-}
+// saveTabs function moved to tab-operations.js (replaced by saveAndCloseAll)
 
 function createMarkdownContent(tabs, title) {
   let content = `# ${title}\n\n`;
@@ -2737,37 +2363,7 @@ function scrollToTab(url, tabType, targetOffset = null) {
 // Additional functions to append to popup.js
 
 // Move tab between categories
-function moveTab(tabId, fromCategory, direction) {
-  const tab = categorizedTabs[fromCategory].find(t => t.id === tabId);
-  if (!tab) return;
-  
-  let toCategory;
-  if (direction === 'up') {
-    toCategory = fromCategory + 1; // Move to more important
-  } else {
-    toCategory = fromCategory - 1; // Move to less important
-  }
-  
-  // Validate category
-  if (toCategory < TAB_CATEGORIES.CAN_CLOSE || toCategory > TAB_CATEGORIES.IMPORTANT) return;
-  
-  // Remove from current category
-  categorizedTabs[fromCategory] = categorizedTabs[fromCategory].filter(t => t.id !== tabId);
-  
-  // Add to new category
-  categorizedTabs[toCategory].push(tab);
-  
-  // Re-sort the new category by domain
-  categorizedTabs[toCategory].sort((a, b) => a.domain.localeCompare(b.domain));
-  
-  // Save the updated state
-  savePopupState();
-  
-  // Refresh display
-  displayTabs(isViewingSaved);
-  
-  showStatus(`Moved to ${toCategory === 3 ? 'Important' : toCategory === 2 ? 'Save for Later' : 'Can Be Closed'}`, 'success');
-}
+// moveTab function moved to tab-operations.js
 
 // Search functionality
 function onSearchInput(e) {
