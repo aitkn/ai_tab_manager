@@ -95,7 +95,14 @@ export async function initializeApp() {
     // Initialize saved tabs content
     if (state.popupState) {
       const savedGrouping = state.popupState.groupingSelections?.saved || 'category';
-      await showSavedTabsContent(savedGrouping).catch(console.error);
+      const includeCanClose = state.popupState.showAllCategories || false;
+      await showSavedTabsContent(savedGrouping, includeCanClose).catch(console.error);
+      
+      // Restore checkbox state
+      const showAllCheckbox = $id('showAllCategoriesCheckbox');
+      if (showAllCheckbox) {
+        showAllCheckbox.checked = includeCanClose;
+      }
     }
     
     // Initialize settings UI

@@ -187,13 +187,23 @@ export function updateCategorizeButtonState() {
   const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
   if (!categorizeBtn) return;
   
-  const hasUncategorized = state.categorizedTabs && 
-    state.categorizedTabs[0] && 
-    state.categorizedTabs[0].length > 0;
+  const uncategorizedCount = state.categorizedTabs && state.categorizedTabs[0] 
+    ? state.categorizedTabs[0].length 
+    : 0;
+  
+  const hasUncategorized = uncategorizedCount > 0;
+  
+  // Update button text to show count
+  const buttonText = categorizeBtn.querySelector('text') || categorizeBtn.lastChild;
+  if (buttonText && buttonText.nodeType === Node.TEXT_NODE) {
+    buttonText.textContent = hasUncategorized 
+      ? ` Categorize (${uncategorizedCount})`
+      : ' Categorize';
+  }
   
   categorizeBtn.disabled = !hasUncategorized;
   categorizeBtn.title = hasUncategorized ? 
-    'Categorize uncategorized tabs using AI' : 
+    `Categorize ${uncategorizedCount} uncategorized tabs using AI` : 
     'No uncategorized tabs';
 }
 

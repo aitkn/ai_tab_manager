@@ -25,7 +25,8 @@ export const state = {
       categorize: 'category',
       saved: 'category'
     },
-    scrollPositions: {}
+    scrollPositions: {},
+    showAllCategories: false
   },
   urlToDuplicateIds: {},
   settings: {

@@ -13,6 +13,7 @@ import { onGroupingChange as handleGroupingChange, onSavedGroupingChange as hand
 import { saveAndCloseAll } from './tab-operations.js';
 import { exportToCSV, handleCSVImport } from './import-export.js';
 import { updateModelDropdown } from './settings-manager.js';
+import { showSavedTabsContent } from './saved-tabs-manager.js';
 
 /**
  * Set up all event listeners
@@ -58,6 +59,22 @@ export function setupEventListeners() {
     $id(DOM_IDS.CSV_FILE_INPUT).click();
   });
   on($id(DOM_IDS.CSV_FILE_INPUT), EVENTS.CHANGE, handleCSVImport);
+  
+  // Show All Categories checkbox
+  const showAllCheckbox = $id('showAllCategoriesCheckbox');
+  if (showAllCheckbox) {
+    on(showAllCheckbox, EVENTS.CHANGE, handleShowAllCategoriesChange);
+  }
+  
+  // Refresh sessions button
+  const refreshSessionsBtn = $id('refreshSessionsBtn');
+  if (refreshSessionsBtn) {
+    on(refreshSessionsBtn, EVENTS.CLICK, async () => {
+      const { displayRecentSessions } = await import('./saved-tabs-manager.js');
+      await displayRecentSessions();
+      showStatus('Sessions refreshed', 'success', 2000);
+    });
+  }
   
   // Grouping controls
   on($id(DOM_IDS.GROUPING_SELECT), EVENTS.CHANGE, handleGroupingChange);
@@ -248,6 +265,22 @@ function onSavedSearchInput(e) {
 function clearSavedSearch() {
   $id(DOM_IDS.SAVED_SEARCH_INPUT).value = '';
   // Trigger saved tab display update
+}
+
+/**
+ * Handle Show All Categories checkbox change
+ */
+async function handleShowAllCategoriesChange(event) {
+  const includeCanClose = event.target.checked;
+  const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
+  const groupingType = savedGroupingSelect ? savedGroupingSelect.value : 'category';
+  
+  // Update saved tabs display with new setting
+  await showSavedTabsContent(groupingType, includeCanClose);
+  
+  // Save preference
+  updateState('showAllCategories', includeCanClose);
+  await savePopupState();
 }
 
 // Grouping handlers imported from ui-utilities.js

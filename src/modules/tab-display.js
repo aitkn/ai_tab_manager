@@ -400,6 +400,11 @@ export function createTabElement(tab, category) {
     classes.add(tabElement, CSS_CLASSES.TAB_ALREADY_SAVED);
   }
   
+  // Add class if already categorized (not uncategorized)
+  if (tab.alreadyCategorized || (tab.knownCategory && tab.knownCategory !== 0)) {
+    classes.add(tabElement, 'already-categorized');
+  }
+  
   // Favicon
   const favicon = createElement('img', {
     className: 'favicon',

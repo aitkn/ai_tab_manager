@@ -71,7 +71,9 @@ async function initializeTabTracking() {
           url: tab.url,
           title: tab.title || 'Loading...',
           domain: extractDomain(tab.url),
-          windowId: tab.windowId
+          windowId: tab.windowId,
+          alreadyCategorized: category !== 0,
+          knownCategory: category
         });
         
         // Record open event in database
@@ -246,7 +248,9 @@ chrome.tabs.onCreated.addListener(async (tab) => {
           url: tab.url,
           title: tab.title || 'Loading...',
           domain: extractDomain(tab.url),
-          windowId: tab.windowId
+          windowId: tab.windowId,
+          alreadyCategorized: category !== 0,
+          knownCategory: category
         });
         
         console.log('Background: Added tab to category', category, ':', tab.id);
@@ -346,7 +350,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             url: tab.url,
             title: tab.title || 'Loading...',
             domain: extractDomain(tab.url),
-            windowId: tab.windowId
+            windowId: tab.windowId,
+            alreadyCategorized: targetCategory !== 0,
+            knownCategory: targetCategory
           });
           console.log('Background: Added navigated tab to category', targetCategory, ':', tab.id, tab.url);
         }
@@ -363,7 +369,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
           ...tabData,
           url: tab.url,
           title: tab.title || tabData.title,
-          domain: extractDomain(tab.url)
+          domain: extractDomain(tab.url),
+          alreadyCategorized: targetCategory !== 0,
+          knownCategory: targetCategory
         });
         
         console.log('Background: Moved tab from category', currentCategory, 'to', targetCategory);

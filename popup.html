@@ -187,6 +187,10 @@
                 <path d="M6 9l6 6 6-6"/>
               </svg>
             </button>
+            <label class="checkbox-label" title="Include 'Can Be Closed' category tabs">
+              <input type="checkbox" id="showAllCategoriesCheckbox">
+              <span>Show All</span>
+            </label>
             <div class="export-import-btns">
               <button id="exportCSVBtn" class="icon-btn" title="Export saved tabs as CSV">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -209,6 +213,21 @@
           <div id="savedSearchControls" class="search-controls">
             <input type="text" id="savedSearchInput" class="search-input" placeholder="Search saved tabs...">
             <button id="clearSavedSearchBtn" class="clear-search-btn" title="Clear search">×</button>
+          </div>
+          
+          <!-- Recent Sessions -->
+          <div id="recentSessions" class="recent-sessions" style="display: none;">
+            <h3 class="sessions-header">
+              <span>Recent Sessions</span>
+              <button id="refreshSessionsBtn" class="icon-btn-small" title="Refresh sessions">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+              </button>
+            </h3>
+            <div id="sessionsList" class="sessions-list"></div>
           </div>
           
           <!-- Content will be populated when viewing saved tabs -->
