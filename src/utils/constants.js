@@ -32,7 +32,9 @@ export const DOM_IDS = {
   
   // Buttons
   CATEGORIZE_BTN: 'categorizeBtn',
+  CATEGORIZE_BTN2: 'categorizeBtn2',
   SAVE_AND_CLOSE_ALL_BTN: 'saveAndCloseAllBtn',
+  CLOSE_ALL_BTN2: 'closeAllBtn2',
   EXPORT_CSV_BTN: 'exportCSVBtn',
   IMPORT_CSV_BTN: 'importCSVBtn',
   SAVE_API_KEY_BTN: 'saveApiKeyBtn',

@@ -188,17 +188,15 @@ export async function categorizeTabs() {
     const { displayTabs } = await import('./tab-display.js');
     displayTabs();
     
-    // Show the tabs container and controls
+    // Show the tabs container and toolbar
     const { show } = await import('../utils/dom-helpers.js');
     const { DOM_IDS } = await import('../utils/constants.js');
     const { $id } = await import('../utils/dom-helpers.js');
     show($id(DOM_IDS.TABS_CONTAINER));
-    show($id(DOM_IDS.SEARCH_CONTROLS), 'flex');
-    show($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS), 'flex');
-    const actionButtons = document.querySelector('.action-buttons');
-    if (actionButtons) {
-      show(actionButtons, 'flex');
-    }
+    
+    // Show unified toolbar
+    const { showToolbar } = await import('./unified-toolbar.js');
+    showToolbar();
     
     return result;
     

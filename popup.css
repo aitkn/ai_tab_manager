@@ -431,6 +431,76 @@ h1 {
   z-index: 1;
 }
 
+/* Unified Toolbar */
+.unified-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-3);
+  padding: var(--md-spacing-3);
+  background-color: var(--md-sys-color-surface-container);
+  border-bottom: 1px solid var(--md-sys-color-surface-variant);
+  min-height: 56px;
+  flex-wrap: wrap;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+}
+
+.search-section {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+
+.search-section .search-input {
+  width: 100%;
+  padding-right: 32px;
+}
+
+.search-section .clear-search-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.grouping-section {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+}
+
+.grouping-section label {
+  font-size: var(--md-sys-typescale-label-medium);
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+}
+
+.additional-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+  margin-left: auto;
+}
+
+.tab-specific-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+}
+
+/* Hide old control containers */
+.controls,
+#searchControls,
+#savedSearchControls,
+#categorizeGroupingControls,
+#savedGroupingControls {
+  display: none !important;
+}
+
 /* Status bar */
 .status {
   position: fixed;

@@ -20,8 +20,9 @@ import { showSavedTabsContent } from './saved-tabs-manager.js';
  */
 export function setupEventListeners() {
   // Main action buttons
-  on($id(DOM_IDS.CATEGORIZE_BTN), EVENTS.CLICK, handleCategorize);
-  on($id(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN), EVENTS.CLICK, () => saveAndCloseAll());
+  // NOTE: CATEGORIZE_BTN and SAVE_AND_CLOSE_ALL_BTN now handled by unified toolbar
+  // on($id(DOM_IDS.CATEGORIZE_BTN), EVENTS.CLICK, handleCategorize);
+  // on($id(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN), EVENTS.CLICK, () => saveAndCloseAll());
   on($id(DOM_IDS.SAVE_API_KEY_BTN), EVENTS.CLICK, saveApiKey);
   on($id(DOM_IDS.OPEN_SETTINGS_BTN), EVENTS.CLICK, () => switchToTab('settings'));
   
@@ -32,39 +33,27 @@ export function setupEventListeners() {
   on($id(DOM_IDS.RESET_PROMPT_BTN), EVENTS.CLICK, resetPrompt);
   on($id(DOM_IDS.MAX_TABS_INPUT), EVENTS.CHANGE, onMaxTabsChange);
   
-  // Search controls
-  on($id(DOM_IDS.SEARCH_INPUT), EVENTS.INPUT, onSearchInput);
-  on($id(DOM_IDS.CLEAR_SEARCH_BTN), EVENTS.CLICK, clearSearch);
+  // Search controls - now handled by unified toolbar
+  // on($id(DOM_IDS.SEARCH_INPUT), EVENTS.INPUT, onSearchInput);
+  // on($id(DOM_IDS.CLEAR_SEARCH_BTN), EVENTS.CLICK, clearSearch);
   
-  // Saved tab controls
-  const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
-  const savedSearchInput = $id(DOM_IDS.SAVED_SEARCH_INPUT);
-  const clearSavedSearchBtn = $id(DOM_IDS.CLEAR_SAVED_SEARCH_BTN);
+  // Saved tab controls - now handled by unified toolbar
+  // const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
+  // const savedSearchInput = $id(DOM_IDS.SAVED_SEARCH_INPUT);
+  // const clearSavedSearchBtn = $id(DOM_IDS.CLEAR_SAVED_SEARCH_BTN);
   
-  if (savedGroupingSelect) {
-    on(savedGroupingSelect, EVENTS.CHANGE, handleSavedGroupingChange);
-  }
-  
-  if (savedSearchInput) {
-    on(savedSearchInput, EVENTS.INPUT, onSavedSearchInput);
-  }
-  
-  if (clearSavedSearchBtn) {
-    on(clearSavedSearchBtn, EVENTS.CLICK, clearSavedSearch);
-  }
-  
-  // Export/Import buttons
-  on($id(DOM_IDS.EXPORT_CSV_BTN), EVENTS.CLICK, exportToCSV);
-  on($id(DOM_IDS.IMPORT_CSV_BTN), EVENTS.CLICK, () => {
-    $id(DOM_IDS.CSV_FILE_INPUT).click();
-  });
+  // Export/Import buttons - now handled by unified toolbar
+  // on($id(DOM_IDS.EXPORT_CSV_BTN), EVENTS.CLICK, exportToCSV);
+  // on($id(DOM_IDS.IMPORT_CSV_BTN), EVENTS.CLICK, () => {
+  //   $id(DOM_IDS.CSV_FILE_INPUT).click();
+  // });
   on($id(DOM_IDS.CSV_FILE_INPUT), EVENTS.CHANGE, handleCSVImport);
   
-  // Show All Categories checkbox
-  const showAllCheckbox = $id('showAllCategoriesCheckbox');
-  if (showAllCheckbox) {
-    on(showAllCheckbox, EVENTS.CHANGE, handleShowAllCategoriesChange);
-  }
+  // Show All Categories checkbox - now handled by unified toolbar
+  // const showAllCheckbox = $id('showAllCategoriesCheckbox');
+  // if (showAllCheckbox) {
+  //   on(showAllCheckbox, EVENTS.CHANGE, handleShowAllCategoriesChange);
+  // }
   
   // Refresh sessions button
   const refreshSessionsBtn = $id('refreshSessionsBtn');

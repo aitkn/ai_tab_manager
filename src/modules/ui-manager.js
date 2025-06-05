@@ -121,6 +121,11 @@ export function switchToTab(tabName) {
       hideApiKeyPrompt();
     }
   }
+  
+  // Update unified toolbar visibility
+  import('./unified-toolbar.js').then(({ updateToolbarVisibility }) => {
+    updateToolbarVisibility(tabName);
+  });
 }
 
 /**

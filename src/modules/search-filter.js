@@ -221,6 +221,13 @@ export function initializeSearch() {
 // Re-export handleSavedTabSearch from saved-tabs-manager
 import { handleSavedTabSearch } from './saved-tabs-manager.js';
 
+/**
+ * Apply search filter to saved tabs
+ */
+export function applySavedSearchFilter(query) {
+  handleSavedTabSearch(query);
+}
+
 // Export default object
 export default {
   onSearchInput,
@@ -229,5 +236,6 @@ export default {
   applySearchFilter,
   filterGroupTabs,
   applyGroupedSearchFilter,
-  initializeSearch
+  initializeSearch,
+  applySavedSearchFilter
 };

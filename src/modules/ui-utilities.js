@@ -258,7 +258,8 @@ export function downloadFile(filename, content) {
  * Update Close All button color based on uncategorized tabs
  */
 export function updateCloseAllButtonColor() {
-  const closeAllBtn = $id(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN);
+  // Check both old and new button IDs
+  let closeAllBtn = $id(DOM_IDS.CLOSE_ALL_BTN2) || $id(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN);
   if (!closeAllBtn) return;
   
   const hasUncategorized = state.categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED] && 

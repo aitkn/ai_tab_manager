@@ -112,6 +112,10 @@ export async function initializeApp() {
     const { initializeSettings } = await import('./settings-manager.js');
     await initializeSettings();
     
+    // Initialize unified toolbar
+    const { initializeUnifiedToolbar } = await import('./unified-toolbar.js');
+    initializeUnifiedToolbar();
+    
     // Restore active tab
     await restoreActiveTab();
     
@@ -146,14 +150,12 @@ async function loadCategorizedTabsFromBackground() {
         
         // Update UI
         show($id(DOM_IDS.TABS_CONTAINER));
-        show($id(DOM_IDS.SEARCH_CONTROLS), 'flex');
-        show($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS), 'flex');
-        const actionButtons = document.querySelector('.action-buttons');
-        if (actionButtons) {
-          show(actionButtons, 'flex');
-        }
         displayTabs();
         updateCategorizeBadge();
+        
+        // Show unified toolbar
+        const { showToolbar } = await import('./unified-toolbar.js');
+        showToolbar();
         
         // Update categorize button state based on uncategorized tabs
         const hasUncategorized = response.categorizedTabs[0] && response.categorizedTabs[0].length > 0;
