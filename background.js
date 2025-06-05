@@ -477,6 +477,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         for (const category of Object.keys(categorizedTabs)) {
           if (categorizedTabs[category].some(t => t.url === tab.url)) {
             isDuplicate = true;
+            console.log('Background: Detected duplicate URL via navigation:', tab.url, 'in category', category);
             break;
           }
         }
@@ -496,6 +497,38 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             knownCategory: targetCategory
           });
           console.log('Background: Added navigated tab to category', targetCategory, ':', tab.id, tab.url);
+        } else {
+          // Tab is a duplicate - find the existing entry and update it
+          let existingTab = null;
+          let existingCategory = null;
+          
+          for (const cat of Object.keys(categorizedTabs)) {
+            const existing = categorizedTabs[cat].find(t => t.url === tab.url);
+            if (existing) {
+              existingTab = existing;
+              existingCategory = cat;
+              break;
+            }
+          }
+          
+          if (existingTab) {
+            // Update existing tab entry with duplicate info
+            if (!existingTab.duplicateIds) {
+              existingTab.duplicateIds = [existingTab.id];
+            }
+            existingTab.duplicateIds.push(tab.id);
+            existingTab.duplicateCount = existingTab.duplicateIds.length;
+            
+            // Update urlToDuplicateIds
+            urlToDuplicateIds[tab.url] = existingTab.duplicateIds;
+            
+            console.log('Background: Added duplicate tab', tab.id, 'to existing entry via navigation. Total duplicates:', existingTab.duplicateCount);
+            
+            // Notify popup with a slight delay to ensure state is fully updated
+            setTimeout(() => {
+              notifyPopupOfTabChange('updated', tab);
+            }, 100);
+          }
         }
       } else if (currentCategory !== targetCategory.toString()) {
         // Move tab to correct category if it changed
