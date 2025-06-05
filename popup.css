@@ -630,6 +630,30 @@ button svg {
   margin-left: auto;
 }
 
+/* Inline grouping controls for categorize tab */
+.grouping-controls-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+  margin: 0 var(--md-spacing-2);
+}
+
+.grouping-controls-inline label {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-medium);
+  font-weight: 500;
+}
+
+.grouping-controls-inline .grouping-select {
+  padding: var(--md-spacing-1) var(--md-spacing-2);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-medium);
+  cursor: pointer;
+}
+
 /* Categorize button should not expand */
 #categorizeBtn {
   flex-shrink: 0;

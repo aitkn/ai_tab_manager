@@ -149,6 +149,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (categorizedTabs[1].length > 0 || categorizedTabs[2].length > 0 || categorizedTabs[3].length > 0) {
           document.getElementById('tabsContainer').style.display = 'block';
           document.querySelector('.action-buttons').style.display = 'flex';
+          document.getElementById('categorizeGroupingControls').style.display = 'flex';
           displayTabs();
           updateCategorizeBadge();
           // Scroll restoration is handled centrally after initialization
@@ -807,8 +808,9 @@ async function handleCategorize() {
     // Display categorized tabs
     displayTabs();
     
-    // Show action buttons
+    // Show action buttons and grouping controls
     document.querySelector('.action-buttons').style.display = 'flex';
+    document.getElementById('categorizeGroupingControls').style.display = 'flex';
     document.getElementById('tabsContainer').style.display = 'block';
     
     // Update badge
@@ -1003,11 +1005,7 @@ function displayTabs(isFromSaved = false) {
   try {
     isViewingSaved = isFromSaved;
     
-    // Show appropriate grouping controls
-    const categorizeGroupingControls = document.getElementById('categorizeGroupingControls');
-    if (categorizeGroupingControls && !isFromSaved) {
-      categorizeGroupingControls.style.display = 'flex';
-    }
+    // Note: Grouping controls are now in the fixed controls area, not in the scrollable container
     
     // Get the appropriate grouping for the current tab
     const currentGrouping = isFromSaved 
@@ -2103,9 +2101,10 @@ async function closeTab(tabId, category) {
       // Clear popup state since all tabs are closed
       await chrome.storage.local.remove('popupState');
       
-      // Hide the tabs container and action buttons
+      // Hide the tabs container, action buttons, and grouping controls
       document.getElementById('tabsContainer').style.display = 'none';
       document.querySelector('.action-buttons').style.display = 'none';
+      document.getElementById('categorizeGroupingControls').style.display = 'none';
     } else {
       // Update popup state with remaining tabs
       await savePopupState();
@@ -2201,9 +2200,10 @@ async function closeAllInCategory(category) {
       // Clear popup state since all tabs are closed
       await chrome.storage.local.remove('popupState');
       
-      // Hide the tabs container and action buttons
+      // Hide the tabs container, action buttons, and grouping controls
       document.getElementById('tabsContainer').style.display = 'none';
       document.querySelector('.action-buttons').style.display = 'none';
+      document.getElementById('categorizeGroupingControls').style.display = 'none';
     } else {
       // Update popup state with remaining tabs
       await savePopupState();
@@ -2256,9 +2256,10 @@ async function saveAndCloseCategory(category) {
       // Clear popup state since all tabs are closed
       await chrome.storage.local.remove('popupState');
       
-      // Hide the tabs container and action buttons
+      // Hide the tabs container, action buttons, and grouping controls
       document.getElementById('tabsContainer').style.display = 'none';
       document.querySelector('.action-buttons').style.display = 'none';
+      document.getElementById('categorizeGroupingControls').style.display = 'none';
     } else {
       // Update popup state with remaining tabs
       await savePopupState();
@@ -2383,9 +2384,10 @@ async function saveTabs(closeAfterSave) {
       // Clear categorized tabs from UI
       categorizedTabs = { 1: [], 2: [], 3: [] };
       
-      // Hide the tabs container and action buttons
+      // Hide the tabs container, action buttons, and grouping controls
       document.getElementById('tabsContainer').style.display = 'none';
       document.querySelector('.action-buttons').style.display = 'none';
+      document.getElementById('categorizeGroupingControls').style.display = 'none';
       
       setTimeout(() => {
         switchToTab('saved');
