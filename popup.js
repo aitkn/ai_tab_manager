@@ -20,8 +20,26 @@ import {
   CATEGORY_NAMES
 } from './src/utils/constants.js';
 
-// Log that constants are loaded
-console.log('Constants loaded:', { TAB_CATEGORIES, DOM_IDS });
+// Import helpers - REFACTORING STEP 1.2
+import {
+  getRootDomain,
+  getSubdomain,
+  extractDateFromGroupName,
+  sortTabsInGroup,
+  getWeekNumber,
+  getWeekStartDate,
+  fallbackCategorization,
+  extractDomain,
+  formatDate,
+  formatDateTime,
+  isValidUrl,
+  truncateText,
+  groupBy,
+  debounce
+} from './src/utils/helpers.js';
+
+// Log that modules are loaded
+console.log('Modules loaded:', { constants: !!TAB_CATEGORIES, helpers: !!getRootDomain });
 
 let categorizedTabs = { 1: [], 2: [], 3: [] };
 let isViewingSaved = false;
