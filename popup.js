@@ -143,11 +143,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Show saved tabs
         await showSavedTabs(true); // true = restoring state
       } else if (popupState.categorizedTabs) {
-        // Restore categorized tabs
-        categorizedTabs = popupState.categorizedTabs;
+        // Restore categorized tabs - ensure proper structure
+        categorizedTabs = {
+          1: popupState.categorizedTabs[1] || [],
+          2: popupState.categorizedTabs[2] || [],
+          3: popupState.categorizedTabs[3] || []
+        };
+        console.log('Restored categorizedTabs:', {
+          category1: categorizedTabs[1].length,
+          category2: categorizedTabs[2].length,
+          category3: categorizedTabs[3].length
+        });
         // Only show the container if there are actually tabs
         if (categorizedTabs[1].length > 0 || categorizedTabs[2].length > 0 || categorizedTabs[3].length > 0) {
           document.getElementById('tabsContainer').style.display = 'block';
+          document.getElementById('searchControls').style.display = 'flex';
           document.querySelector('.action-buttons').style.display = 'flex';
           document.getElementById('categorizeGroupingControls').style.display = 'flex';
           displayTabs();
@@ -386,12 +396,14 @@ function switchToTab(tabName) {
         document.getElementById('tabsContainer').style.display = 'block';
         document.getElementById('searchControls').style.display = 'flex';
         document.querySelector('.action-buttons').style.display = 'flex';
+        document.getElementById('categorizeGroupingControls').style.display = 'flex';
         displayTabs();
       } else {
         // Hide everything if no tabs
         document.getElementById('tabsContainer').style.display = 'none';
         document.getElementById('searchControls').style.display = 'none';
         document.querySelector('.action-buttons').style.display = 'none';
+        document.getElementById('categorizeGroupingControls').style.display = 'none';
         // Also ensure category sections are marked as empty
         [1, 2, 3].forEach(category => {
           const section = document.getElementById(`category${category}`);
@@ -675,7 +687,7 @@ async function savePopupState() {
     ...popupState,
     isViewingSaved,
     searchQuery,
-    categorizedTabs: isViewingSaved ? popupState.categorizedTabs : categorizedTabs,
+    categorizedTabs: isViewingSaved ? (popupState.categorizedTabs || categorizedTabs) : categorizedTabs,
     activeTab: popupState.activeTab || 'categorize',
     scrollPositions: { ...popupState.scrollPositions, ...scrollPositions },
     groupingSelections
