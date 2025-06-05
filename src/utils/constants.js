@@ -146,7 +146,8 @@ export const GROUPING_OPTIONS = {
   SAVED_MONTH: 'savedMonth',
   LAST_ACCESSED_DATE: 'lastAccessedDate',
   LAST_ACCESSED_WEEK: 'lastAccessedWeek',
-  LAST_ACCESSED_MONTH: 'lastAccessedMonth'
+  LAST_ACCESSED_MONTH: 'lastAccessedMonth',
+  CLOSE_TIME: 'closeTime'
 };
 
 // Tab Types

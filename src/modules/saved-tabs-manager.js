@@ -24,12 +24,18 @@ export async function showSavedTabsContent(groupingType, includeCanClose = false
       return;
     }
     
-    // Show recent sessions
-    await displayRecentSessions();
+    
+    // Get current grouping from dropdown if not passed
+    if (!groupingType) {
+      const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
+      groupingType = savedGroupingSelect ? savedGroupingSelect.value : 'category';
+    }
     
     // Load saved URLs from database (by default only categories 2 and 3)
     const categories = includeCanClose ? [1, 2, 3] : [2, 3];
-    const savedUrls = await window.tabDatabase.getSavedUrls(categories);
+    // Include events when grouping by close time
+    const includeEvents = groupingType === 'closeTime';
+    const savedUrls = await window.tabDatabase.getSavedUrls(categories, includeEvents);
     
     // Convert URLs to tab format for display
     const allSavedTabs = savedUrls.map(urlInfo => ({
@@ -40,14 +46,10 @@ export async function showSavedTabsContent(groupingType, includeCanClose = false
       category: urlInfo.category,
       savedDate: urlInfo.firstSeen,
       lastAccessedDate: urlInfo.lastCategorized || urlInfo.firstSeen,
+      lastCloseTime: urlInfo.lastCloseTime,
+      closeEvents: urlInfo.closeEvents,
       favicon: urlInfo.favicon
     }));
-    
-    // Get current grouping from dropdown if not passed
-    if (!groupingType) {
-      const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
-      groupingType = savedGroupingSelect ? savedGroupingSelect.value : 'category';
-    }
     
     // Store the saved tabs in a temporary object for display (don't overwrite categorizedTabs)
     const savedTabsByCategory = { 
@@ -341,113 +343,11 @@ export function handleSavedTabSearch(searchQuery) {
 }
 
 
-/**
- * Display recent sessions
- */
-export async function displayRecentSessions() {
-  try {
-    const sessionsContainer = $id('recentSessions');
-    const sessionsList = $id('sessionsList');
-    
-    if (!sessionsContainer || !sessionsList) return;
-    
-    // Get recent sessions from database
-    const sessions = await window.tabDatabase.getRecentSessions(5);
-    
-    if (sessions.length === 0) {
-      hide(sessionsContainer);
-      return;
-    }
-    
-    show(sessionsContainer);
-    sessionsList.innerHTML = '';
-    
-    // Display each session
-    for (const session of sessions) {
-      const sessionTime = new Date(session.closeTime);
-      const timeAgo = getTimeAgo(sessionTime);
-      
-      const sessionItem = createElement('div', {
-        className: 'session-item',
-        title: `Restore ${session.count} tabs closed at ${sessionTime.toLocaleString()}`
-      });
-      
-      const sessionInfo = createElement('div', { className: 'session-info' });
-      sessionInfo.appendChild(createElement('div', {
-        className: 'session-time',
-        textContent: timeAgo
-      }));
-      sessionInfo.appendChild(createElement('div', {
-        className: 'session-count',
-        textContent: `${session.count} tabs`
-      }));
-      
-      sessionItem.appendChild(sessionInfo);
-      
-      const restoreBtn = createElement('button', {
-        className: CSS_CLASSES.ICON_BTN_SMALL,
-        title: 'Restore this session',
-        innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>'
-      });
-      
-      on(restoreBtn, EVENTS.CLICK, async (e) => {
-        e.stopPropagation();
-        await restoreSession(session.closeTime);
-      });
-      
-      sessionItem.appendChild(restoreBtn);
-      sessionsList.appendChild(sessionItem);
-    }
-  } catch (error) {
-    console.error('Error displaying recent sessions:', error);
-  }
-}
-
-/**
- * Get human-readable time ago string
- */
-function getTimeAgo(date) {
-  const seconds = Math.floor((new Date() - date) / 1000);
-  
-  if (seconds < 60) return 'Just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
-  
-  return date.toLocaleDateString();
-}
-
-/**
- * Restore a session
- */
-async function restoreSession(closeTime) {
-  try {
-    showStatus('Restoring session...', 'loading');
-    
-    const tabs = await window.tabDatabase.getTabsClosedAt(closeTime);
-    let openedCount = 0;
-    
-    for (const tab of tabs) {
-      try {
-        await ChromeAPIService.createTab({ url: tab.url });
-        openedCount++;
-      } catch (error) {
-        console.error('Error opening tab:', error);
-      }
-    }
-    
-    showStatus(`Restored ${openedCount} tabs`, 'success');
-  } catch (error) {
-    console.error('Error restoring session:', error);
-    showStatus('Error restoring session', 'error');
-  }
-}
 
 // Export default object
 export default {
   showSavedTabsContent,
   showSavedTabs,
   loadSavedTabsCount,
-  handleSavedTabSearch,
-  displayRecentSessions
+  handleSavedTabSearch
 };

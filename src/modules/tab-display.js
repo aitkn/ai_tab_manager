@@ -191,6 +191,9 @@ export function displayGroupedView(groupingType, isFromSaved = false, tabsToDisp
     case GROUPING_OPTIONS.LAST_ACCESSED_MONTH:
       groups = groupByLastAccessedMonth(allTabs);
       break;
+    case GROUPING_OPTIONS.CLOSE_TIME:
+      groups = groupByCloseTime(allTabs);
+      break;
     default:
       groups = { 'All Tabs': allTabs };
   }
@@ -198,10 +201,22 @@ export function displayGroupedView(groupingType, isFromSaved = false, tabsToDisp
   // Sort groups and create sections
   const sortedGroups = Object.entries(groups).sort((a, b) => {
     // Sort by date for date-based groupings
-    if (groupingType.includes('Date') || groupingType.includes('Week') || groupingType.includes('Month')) {
-      const dateA = extractDateFromGroupName(a[0]);
-      const dateB = extractDateFromGroupName(b[0]);
-      return dateB - dateA; // Newest first
+    if (groupingType.includes('Date') || groupingType.includes('Week') || groupingType.includes('Month') || groupingType === 'closeTime') {
+      // For close time, extract date from "Closed MM/DD/YYYY, HH:MM:SS AM/PM" format
+      if (groupingType === 'closeTime') {
+        const extractCloseDate = (groupName) => {
+          if (groupName === 'Never Closed') return new Date(0); // Sort to end
+          const match = groupName.match(/Closed (.+)/);
+          return match ? new Date(match[1]) : new Date(0);
+        };
+        const dateA = extractCloseDate(a[0]);
+        const dateB = extractCloseDate(b[0]);
+        return dateB - dateA; // Newest first
+      } else {
+        const dateA = extractDateFromGroupName(a[0]);
+        const dateB = extractDateFromGroupName(b[0]);
+        return dateB - dateA; // Newest first
+      }
     }
     // Sort alphabetically for domain grouping
     return a[0].localeCompare(b[0]);
@@ -621,6 +636,58 @@ function groupByLastAccessedMonth(tabs) {
     ...tab,
     savedAt: tab.lastAccessed || tab.savedAt
   })));
+}
+
+function groupByCloseTime(tabs) {
+  const groups = {};
+  
+  tabs.forEach(tab => {
+    if (tab.closeEvents && tab.closeEvents.length > 0) {
+      // Group by each close event
+      tab.closeEvents.forEach(event => {
+        if (event.closeTime) {
+          const closeDate = new Date(event.closeTime);
+          const groupName = `Closed ${closeDate.toLocaleString()}`;
+          
+          if (!groups[groupName]) {
+            groups[groupName] = [];
+          }
+          
+          // Create a copy of the tab for this close event
+          const tabCopy = {
+            ...tab,
+            closeTime: event.closeTime,
+            groupKey: groupName
+          };
+          
+          groups[groupName].push(tabCopy);
+        }
+      });
+    } else if (tab.lastCloseTime) {
+      // Fallback to single close time if available
+      const closeDate = new Date(tab.lastCloseTime);
+      const groupName = `Closed ${closeDate.toLocaleString()}`;
+      
+      if (!groups[groupName]) {
+        groups[groupName] = [];
+      }
+      
+      groups[groupName].push({
+        ...tab,
+        closeTime: tab.lastCloseTime,
+        groupKey: groupName
+      });
+    } else {
+      // No close time available
+      const groupName = 'Never Closed';
+      if (!groups[groupName]) {
+        groups[groupName] = [];
+      }
+      groups[groupName].push(tab);
+    }
+  });
+  
+  return groups;
 }
 
 // Note: extractDateFromGroupName is already imported from helpers.js at the top of the file

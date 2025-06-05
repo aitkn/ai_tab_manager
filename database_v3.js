@@ -216,18 +216,43 @@ class TabDatabase {
    * @param {number[]} categories - Array of categories to retrieve (default: [2,3] for save later & important)
    * @returns {Promise<Object[]>} Array of URL objects
    */
-  async getSavedUrls(categories = [2, 3]) {
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['urls'], 'readonly');
-      const store = transaction.objectStore('urls');
+  async getSavedUrls(categories = [2, 3], includeEvents = false) {
+    return new Promise(async (resolve, reject) => {
+      const transaction = this.db.transaction(['urls', 'events'], 'readonly');
+      const urlStore = transaction.objectStore('urls');
+      const eventStore = transaction.objectStore('events');
       const results = [];
 
-      const request = store.openCursor();
-      request.onsuccess = (event) => {
+      const request = urlStore.openCursor();
+      request.onsuccess = async (event) => {
         const cursor = event.target.result;
         if (cursor) {
           if (categories.includes(cursor.value.category)) {
-            results.push(cursor.value);
+            const urlData = { ...cursor.value };
+            
+            // If includeEvents is true, get the most recent close event for this URL
+            if (includeEvents) {
+              const eventIndex = eventStore.index('urlId');
+              const eventRequest = eventIndex.getAll(cursor.value.id);
+              
+              await new Promise((resolveEvents) => {
+                eventRequest.onsuccess = () => {
+                  const events = eventRequest.result;
+                  // Find the most recent close event
+                  const closeEvents = events.filter(e => e.closeTime).sort((a, b) => 
+                    new Date(b.closeTime).getTime() - new Date(a.closeTime).getTime()
+                  );
+                  
+                  if (closeEvents.length > 0) {
+                    urlData.lastCloseTime = closeEvents[0].closeTime;
+                    urlData.closeEvents = closeEvents;
+                  }
+                  resolveEvents();
+                };
+              });
+            }
+            
+            results.push(urlData);
           }
           cursor.continue();
         } else {
