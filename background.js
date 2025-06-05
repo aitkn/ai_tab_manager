@@ -8,6 +8,10 @@
 
 console.log('Background service worker starting...');
 
+// Track current state
+let currentCategorization = null;
+let isPopupOpen = false;
+
 // Import configuration
 try {
   importScripts('config.js');
@@ -82,10 +86,66 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Will respond asynchronously
   }
   
+  // Handle popup state tracking
+  if (request.action === 'popupOpened') {
+    isPopupOpen = true;
+    sendResponse({ status: 'acknowledged' });
+    return false;
+  }
+  
+  if (request.action === 'popupClosed') {
+    isPopupOpen = false;
+    sendResponse({ status: 'acknowledged' });
+    return false;
+  }
+  
+  if (request.action === 'updateCategorization') {
+    currentCategorization = request.data;
+    sendResponse({ status: 'categorization stored' });
+    return false;
+  }
+  
   // Default response for unknown actions
   sendResponse({ error: 'Unknown action: ' + request.action });
   return false;
 });
+
+// Tab event listeners
+chrome.tabs.onCreated.addListener((tab) => {
+  console.log('Tab created:', tab.id, tab.url);
+  notifyPopupOfTabChange('created', tab);
+});
+
+chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+  console.log('Tab removed:', tabId);
+  notifyPopupOfTabChange('removed', { id: tabId });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Only notify on complete navigation to avoid too many updates
+  if (changeInfo.status === 'complete') {
+    console.log('Tab updated:', tabId, tab.url);
+    notifyPopupOfTabChange('updated', tab);
+  }
+});
+
+// Function to notify popup of tab changes
+function notifyPopupOfTabChange(action, tabInfo) {
+  if (!isPopupOpen) return;
+  
+  // Send message to popup
+  chrome.runtime.sendMessage({
+    action: 'tabChanged',
+    data: {
+      changeType: action,
+      tab: tabInfo,
+      timestamp: Date.now()
+    }
+  }).catch(error => {
+    // Popup might be closed, which is fine
+    console.log('Could not notify popup:', error.message);
+  });
+}
 
 async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPrompt, savedUrls = [] }) {
   console.log('Background: Categorizing tabs with', provider, model, tabs.length, 'tabs');

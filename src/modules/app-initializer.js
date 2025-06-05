@@ -108,6 +108,12 @@ export async function initializeApp() {
     // Update saved tab badge
     await loadSavedTabsCount();
     
+    // Notify background script that popup is open
+    chrome.runtime.sendMessage({ action: 'popupOpened' });
+    
+    // Set up tab change listener
+    setupTabChangeListener();
+    
   } catch (error) {
     console.error('Error during initialization:', error);
     showStatus('Error initializing extension', 'error');
@@ -300,7 +306,64 @@ export function setupAutoSave() {
       console.log('Window unloading, saving state');
       savePopupState();
     }
+    // Notify background script that popup is closing
+    chrome.runtime.sendMessage({ action: 'popupClosed' }).catch(() => {});
   });
+}
+
+/**
+ * Set up listener for tab changes from background script
+ */
+function setupTabChangeListener() {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'tabChanged') {
+      handleTabChange(message.data);
+    }
+  });
+}
+
+/**
+ * Handle tab change notifications
+ */
+async function handleTabChange(data) {
+  const { changeType, tab, timestamp } = data;
+  
+  // Only handle changes if we're on the categorize tab and have categorized tabs
+  if (state.popupState.activeTab !== TAB_TYPES.CATEGORIZE || !state.categorizedTabs) {
+    return;
+  }
+  
+  const hasCategorizedTabs = Object.values(state.categorizedTabs)
+    .some(tabs => tabs.length > 0);
+  
+  if (!hasCategorizedTabs) {
+    return;
+  }
+  
+  console.log('Tab change detected:', changeType, tab);
+  
+  // For now, just refresh the display
+  // In the future, we could be smarter about updating only the affected tab
+  if (changeType === 'removed') {
+    // Remove the tab from categorized tabs
+    for (const category of Object.keys(state.categorizedTabs)) {
+      state.categorizedTabs[category] = state.categorizedTabs[category]
+        .filter(t => t.id !== tab.id);
+    }
+    
+    // Update display
+    displayTabs();
+    updateCategorizeBadge();
+    showStatus('Tab closed - display updated', 'success', 2000);
+  } else if (changeType === 'created' || changeType === 'updated') {
+    // For new or updated tabs, we could either:
+    // 1. Add them to "uncategorized" section
+    // 2. Re-run categorization
+    // 3. Just show a notification
+    
+    // For now, just show a notification
+    showStatus('New tab detected - click Categorize to update', 'warning', 3000);
+  }
 }
 
 // Export default object
