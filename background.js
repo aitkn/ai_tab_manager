@@ -88,14 +88,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // Handle popup state tracking
   if (request.action === 'popupOpened') {
+    console.log('Background: Popup opened notification received');
     isPopupOpen = true;
-    sendResponse({ status: 'acknowledged' });
+    sendResponse({ status: 'acknowledged', isPopupOpen: true });
     return false;
   }
   
   if (request.action === 'popupClosed') {
+    console.log('Background: Popup closed notification received');
     isPopupOpen = false;
-    sendResponse({ status: 'acknowledged' });
+    sendResponse({ status: 'acknowledged', isPopupOpen: false });
     return false;
   }
   

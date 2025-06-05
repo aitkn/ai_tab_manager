@@ -109,7 +109,10 @@ export async function initializeApp() {
     await loadSavedTabsCount();
     
     // Notify background script that popup is open
-    chrome.runtime.sendMessage({ action: 'popupOpened' });
+    console.log('Popup: Notifying background script that popup is open');
+    chrome.runtime.sendMessage({ action: 'popupOpened' }, response => {
+      console.log('Popup: Background acknowledged:', response);
+    });
     
     // Set up tab change listener
     setupTabChangeListener();
@@ -325,10 +328,12 @@ function setupTabChangeListener() {
  * Handle tab change notifications
  */
 async function handleTabChange(data) {
+  console.log('Popup: handleTabChange called with:', data);
   const { changeType, tab, timestamp } = data;
   
   // Only handle changes if we're on the categorize tab and have categorized tabs
   if (state.popupState.activeTab !== TAB_TYPES.CATEGORIZE || !state.categorizedTabs) {
+    console.log('Popup: Skipping - not on categorize tab or no categorized tabs');
     return;
   }
   
@@ -336,10 +341,11 @@ async function handleTabChange(data) {
     .some(tabs => tabs.length > 0);
   
   if (!hasCategorizedTabs) {
+    console.log('Popup: Skipping - no categorized tabs');
     return;
   }
   
-  console.log('Tab change detected:', changeType, tab);
+  console.log('Popup: Tab change detected:', changeType, tab);
   
   // For now, just refresh the display
   // In the future, we could be smarter about updating only the affected tab

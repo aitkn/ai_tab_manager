@@ -44,6 +44,18 @@ window.DEBUG = {
     ];
     const missing = elements.filter(id => !document.getElementById(id));
     console.log('DOM Check:', missing.length ? `Missing: ${missing}` : 'All elements found');
+  },
+  testTabChange: () => {
+    console.log('Testing tab change notification...');
+    if (window.handleTabChangeFromBackground) {
+      window.handleTabChangeFromBackground({
+        changeType: 'removed',
+        tab: { id: 12345 },
+        timestamp: Date.now()
+      });
+    } else {
+      console.log('Handler not found!');
+    }
   }
 };
 console.log('AI Tab Manager Debug Mode - Version:', window.DEBUG.version);
