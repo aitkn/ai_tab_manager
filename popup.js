@@ -43,11 +43,15 @@ import ChromeAPIService from './src/services/ChromeAPIService.js';
 import StorageService from './src/services/StorageService.js';
 import MessageService from './src/services/MessageService.js';
 
+// Import DOM helpers - REFACTORING STEP 1.4
+import { $, $id, show, hide, toggle, on, createElement, classes, animate } from './src/utils/dom-helpers.js';
+
 // Log that modules are loaded
 console.log('Modules loaded:', { 
   constants: !!TAB_CATEGORIES, 
   helpers: !!getRootDomain,
-  services: { chrome: !!ChromeAPIService, storage: !!StorageService, message: !!MessageService }
+  services: { chrome: !!ChromeAPIService, storage: !!StorageService, message: !!MessageService },
+  dom: !!$id
 });
 
 let categorizedTabs = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
@@ -196,12 +200,12 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async function() {
       }
       
       // Restore grouping selections
-      const groupingSelect = document.getElementById(DOM_IDS.GROUPING_SELECT);
+      const groupingSelect = $id(DOM_IDS.GROUPING_SELECT);
       if (groupingSelect) {
         groupingSelect.value = popupState.groupingSelections.categorize;
       }
       
-      const savedGroupingSelect = document.getElementById(DOM_IDS.SAVED_GROUPING_SELECT);
+      const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
       if (savedGroupingSelect) {
         savedGroupingSelect.value = popupState.groupingSelections.saved;
       }
@@ -227,10 +231,10 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async function() {
         await showSavedTabs(true); // true = restoring state
       } else if (categorizedTabs[1].length > 0 || categorizedTabs[2].length > 0 || categorizedTabs[3].length > 0) {
         // Show categorized tabs if they exist
-        document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.BLOCK;
-        document.getElementById(DOM_IDS.SEARCH_CONTROLS).style.display = DISPLAY.FLEX;
-        document.querySelector('.action-buttons').style.display = DISPLAY.FLEX;
-        document.getElementById(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS).style.display = DISPLAY.FLEX;
+        show($id(DOM_IDS.TABS_CONTAINER));
+        show($id(DOM_IDS.SEARCH_CONTROLS), 'flex');
+        show('.action-buttons', 'flex');
+        show($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS), 'flex');
         displayTabs();
         updateCategorizeBadge();
         // Scroll restoration is handled centrally after initialization
@@ -238,7 +242,7 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async function() {
       
       // Restore search
       if (searchQuery) {
-        document.getElementById(DOM_IDS.SEARCH_INPUT).value = searchQuery;
+        $id(DOM_IDS.SEARCH_INPUT).value = searchQuery;
         applySearchFilter();
       }
       
@@ -268,8 +272,8 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async function() {
       // Set scroll positions with both panes temporarily visible
       if (popupState.scrollPositions) {
         // Make both tab panes temporarily active to allow scroll setting
-        const categorizeTab = document.getElementById('categorizeTab');
-        const savedTab = document.getElementById('savedTab');
+        const categorizeTab = $id('categorizeTab');
+        const savedTab = $id('savedTab');
         
         if (categorizeTab) categorizeTab.classList.add(CSS_CLASSES.TAB_PANE_ACTIVE);
         if (savedTab) savedTab.classList.add(CSS_CLASSES.TAB_PANE_ACTIVE);
@@ -278,7 +282,7 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async function() {
         requestAnimationFrame(() => {
           // Set scroll for categorize tab
           if (popupState.scrollPositions.categorize) {
-            const tabsContainer = document.getElementById(DOM_IDS.TABS_CONTAINER);
+            const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
             if (tabsContainer) {
               tabsContainer.scrollTop = popupState.scrollPositions.categorize;
               console.log('Force set categorize scroll to:', popupState.scrollPositions.categorize);
@@ -287,7 +291,7 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async function() {
           
           // Set scroll for saved tab
           if (popupState.scrollPositions.saved) {
-            const savedContent = document.getElementById(DOM_IDS.SAVED_CONTENT);
+            const savedContent = $id(DOM_IDS.SAVED_CONTENT);
             if (savedContent) {
               savedContent.scrollTop = popupState.scrollPositions.saved;
               console.log('Force set saved scroll to:', popupState.scrollPositions.saved);
@@ -337,22 +341,22 @@ document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async function() {
 });
 
 function setupEventListeners() {
-  document.getElementById(DOM_IDS.CATEGORIZE_BTN).addEventListener(EVENTS.CLICK, handleCategorize);
-  document.getElementById(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN).addEventListener(EVENTS.CLICK, () => saveAndCloseAll());
-  document.getElementById(DOM_IDS.SAVE_API_KEY_BTN).addEventListener(EVENTS.CLICK, saveApiKey);
-  document.getElementById(DOM_IDS.OPEN_SETTINGS_BTN).addEventListener(EVENTS.CLICK, () => switchToTab('settings'));
-  document.getElementById(DOM_IDS.PROVIDER_SELECT).addEventListener(EVENTS.CHANGE, onProviderChange);
-  document.getElementById(DOM_IDS.MODEL_SELECT).addEventListener(EVENTS.CHANGE, onModelChange);
-  document.getElementById(DOM_IDS.PROMPT_TEXTAREA).addEventListener(EVENTS.INPUT, onPromptChange);
-  document.getElementById(DOM_IDS.RESET_PROMPT_BTN).addEventListener(EVENTS.CLICK, resetPrompt);
-  document.getElementById(DOM_IDS.SEARCH_INPUT).addEventListener(EVENTS.INPUT, onSearchInput);
-  document.getElementById(DOM_IDS.CLEAR_SEARCH_BTN).addEventListener(EVENTS.CLICK, clearSearch);
-  document.getElementById(DOM_IDS.MAX_TABS_INPUT).addEventListener(EVENTS.CHANGE, onMaxTabsChange);
+  on($id(DOM_IDS.CATEGORIZE_BTN), EVENTS.CLICK, handleCategorize);
+  on($id(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN), EVENTS.CLICK, () => saveAndCloseAll());
+  on($id(DOM_IDS.SAVE_API_KEY_BTN), EVENTS.CLICK, saveApiKey);
+  on($id(DOM_IDS.OPEN_SETTINGS_BTN), EVENTS.CLICK, () => switchToTab('settings'));
+  on($id(DOM_IDS.PROVIDER_SELECT), EVENTS.CHANGE, onProviderChange);
+  on($id(DOM_IDS.MODEL_SELECT), EVENTS.CHANGE, onModelChange);
+  on($id(DOM_IDS.PROMPT_TEXTAREA), EVENTS.INPUT, onPromptChange);
+  on($id(DOM_IDS.RESET_PROMPT_BTN), EVENTS.CLICK, resetPrompt);
+  on($id(DOM_IDS.SEARCH_INPUT), EVENTS.INPUT, onSearchInput);
+  on($id(DOM_IDS.CLEAR_SEARCH_BTN), EVENTS.CLICK, clearSearch);
+  on($id(DOM_IDS.MAX_TABS_INPUT), EVENTS.CHANGE, onMaxTabsChange);
   
   // Saved tab controls
-  const savedGroupingSelect = document.getElementById(DOM_IDS.SAVED_GROUPING_SELECT);
-  const savedSearchInput = document.getElementById(DOM_IDS.SAVED_SEARCH_INPUT);
-  const clearSavedSearchBtn = document.getElementById(DOM_IDS.CLEAR_SAVED_SEARCH_BTN);
+  const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
+  const savedSearchInput = $id(DOM_IDS.SAVED_SEARCH_INPUT);
+  const clearSavedSearchBtn = $id(DOM_IDS.CLEAR_SAVED_SEARCH_BTN);
   
   if (savedGroupingSelect) {
     savedGroupingSelect.addEventListener(EVENTS.CHANGE, onSavedGroupingChange);
@@ -374,24 +378,24 @@ function setupEventListeners() {
   });
   
   // CSV Export/Import handlers
-  document.getElementById(DOM_IDS.EXPORT_CSV_BTN).addEventListener(EVENTS.CLICK, exportToCSV);
-  document.getElementById(DOM_IDS.IMPORT_CSV_BTN).addEventListener(EVENTS.CLICK, () => {
-    document.getElementById(DOM_IDS.CSV_FILE_INPUT).click();
+  $id(DOM_IDS.EXPORT_CSV_BTN).addEventListener(EVENTS.CLICK, exportToCSV);
+  $id(DOM_IDS.IMPORT_CSV_BTN).addEventListener(EVENTS.CLICK, () => {
+    $id(DOM_IDS.CSV_FILE_INPUT).click();
   });
-  document.getElementById(DOM_IDS.CSV_FILE_INPUT).addEventListener(EVENTS.CHANGE, handleCSVImport);
+  $id(DOM_IDS.CSV_FILE_INPUT).addEventListener(EVENTS.CHANGE, handleCSVImport);
   
   // Toggle all groups button
-  document.getElementById(DOM_IDS.TOGGLE_ALL_GROUPS_BTN).addEventListener(EVENTS.CLICK, toggleAllGroups);
+  $id(DOM_IDS.TOGGLE_ALL_GROUPS_BTN).addEventListener(EVENTS.CLICK, toggleAllGroups);
   
   // Categorize tab grouping controls
-  const groupingSelect = document.getElementById(DOM_IDS.GROUPING_SELECT);
+  const groupingSelect = $id(DOM_IDS.GROUPING_SELECT);
   if (groupingSelect) {
     groupingSelect.addEventListener(EVENTS.CHANGE, onGroupingChange);
   }
-  document.getElementById(DOM_IDS.TOGGLE_CATEGORIZE_GROUPS_BTN).addEventListener(EVENTS.CLICK, toggleCategorizeGroups);
+  $id(DOM_IDS.TOGGLE_CATEGORIZE_GROUPS_BTN).addEventListener(EVENTS.CLICK, toggleCategorizeGroups);
   
   // Add scroll event listeners to save scroll position
-  const tabsContainer = document.getElementById(DOM_IDS.TABS_CONTAINER);
+  const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
   if (tabsContainer) {
     let scrollSaveTimeout;
     tabsContainer.addEventListener(EVENTS.SCROLL, () => {
@@ -406,7 +410,7 @@ function setupEventListeners() {
     });
   }
   
-  const savedContent = document.getElementById(DOM_IDS.SAVED_CONTENT);
+  const savedContent = $id(DOM_IDS.SAVED_CONTENT);
   if (savedContent) {
     console.log('Adding scroll listener to savedContent');
     let scrollSaveTimeout;
@@ -440,12 +444,12 @@ function initializeTabNavigation() {
 function switchToTab(tabName) {
   // Update tab buttons
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabName);
+    classes.toggle(btn, CSS_CLASSES.TAB_PANE_ACTIVE, btn.dataset.tab === tabName);
   });
   
   // Update tab panes
   document.querySelectorAll('.tab-pane').forEach(pane => {
-    pane.classList.toggle('active', pane.id === `${tabName}Tab`);
+    classes.toggle(pane, CSS_CLASSES.TAB_PANE_ACTIVE, pane.id === `${tabName}Tab`);
   });
   
   // Clear status message when switching tabs (except saved which sets its own)
@@ -464,17 +468,17 @@ function switchToTab(tabName) {
       
       if (hasCategorizedTabs) {
         // Show the container and display tabs
-        document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.BLOCK;
-        document.getElementById(DOM_IDS.SEARCH_CONTROLS).style.display = DISPLAY.FLEX;
-        document.querySelector('.action-buttons').style.display = DISPLAY.FLEX;
-        document.getElementById(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS).style.display = DISPLAY.FLEX;
+        show($id(DOM_IDS.TABS_CONTAINER));
+        show($id(DOM_IDS.SEARCH_CONTROLS), 'flex');
+        show('.action-buttons', 'flex');
+        show($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS), 'flex');
         displayTabs();
       } else {
         // Hide everything if no tabs
-        document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.NONE;
-        document.getElementById(DOM_IDS.SEARCH_CONTROLS).style.display = DISPLAY.NONE;
-        document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-        document.getElementById(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS).style.display = DISPLAY.NONE;
+        hide($id(DOM_IDS.TABS_CONTAINER));
+        hide($id(DOM_IDS.SEARCH_CONTROLS));
+        hide('.action-buttons');
+        hide($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS));
         // Also ensure category sections are marked as empty
         [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
           const section = document.getElementById(`category${category}`);
@@ -489,7 +493,7 @@ function switchToTab(tabName) {
       showSavedTabsContent();
       // Re-check and add scroll listener if needed
       setTimeout(() => {
-        const savedContent = document.getElementById(DOM_IDS.SAVED_CONTENT);
+        const savedContent = $id(DOM_IDS.SAVED_CONTENT);
         if (savedContent && !savedContent.hasAttribute('data-scroll-listener')) {
           savedContent.setAttribute('data-scroll-listener', 'true');
           console.log('Adding delayed scroll listener to savedContent');
@@ -511,7 +515,7 @@ function switchToTab(tabName) {
       break;
     case 'settings':
       // Hide API key prompt when showing settings
-      document.getElementById(DOM_IDS.API_KEY_PROMPT).style.display = DISPLAY.NONE;
+      hide($id(DOM_IDS.API_KEY_PROMPT));
       break;
   }
   
@@ -521,30 +525,30 @@ function switchToTab(tabName) {
 }
 
 function showApiKeyPrompt() {
-  document.getElementById(DOM_IDS.API_KEY_PROMPT).style.display = DISPLAY.BLOCK;
+  show($id(DOM_IDS.API_KEY_PROMPT));
 }
 
 function initializeSettingsUI() {
   // Set current provider
-  document.getElementById(DOM_IDS.PROVIDER_SELECT).value = settings.provider;
+  $id(DOM_IDS.PROVIDER_SELECT).value = settings.provider;
   
   // Populate models for current provider
   updateModelDropdown();
   
   // Set current model
-  document.getElementById(DOM_IDS.MODEL_SELECT).value = settings.model;
+  $id(DOM_IDS.MODEL_SELECT).value = settings.model;
   
   // Set API key if exists
-  const apiKeyInput = document.getElementById(DOM_IDS.API_KEY_INPUT);
+  const apiKeyInput = $id(DOM_IDS.API_KEY_INPUT);
   apiKeyInput.value = settings.apiKeys[settings.provider] || '';
   apiKeyInput.placeholder = CONFIG.PROVIDERS[settings.provider].apiKeyPlaceholder;
   
   // Set custom prompt
-  const promptTextarea = document.getElementById(DOM_IDS.PROMPT_TEXTAREA);
+  const promptTextarea = $id(DOM_IDS.PROMPT_TEXTAREA);
   promptTextarea.value = settings.customPrompt || CONFIG.DEFAULT_PROMPT;
   
   // Set max tabs to open
-  const maxTabsInput = document.getElementById(DOM_IDS.MAX_TABS_INPUT);
+  const maxTabsInput = $id(DOM_IDS.MAX_TABS_INPUT);
   maxTabsInput.value = settings.maxTabsToOpen || 50;
   
   // Update prompt status
@@ -552,7 +556,7 @@ function initializeSettingsUI() {
 }
 
 async function updateModelDropdown() {
-  const modelSelect = document.getElementById(DOM_IDS.MODEL_SELECT);
+  const modelSelect = $id(DOM_IDS.MODEL_SELECT);
   const provider = CONFIG.PROVIDERS[settings.provider];
   
   // Show loading state
@@ -653,7 +657,7 @@ async function onProviderChange(e) {
   updateModelDropdown();
   
   // Update API key placeholder
-  const apiKeyInput = document.getElementById(DOM_IDS.API_KEY_INPUT);
+  const apiKeyInput = $id(DOM_IDS.API_KEY_INPUT);
   apiKeyInput.value = settings.apiKeys[settings.provider] || '';
   apiKeyInput.placeholder = CONFIG.PROVIDERS[settings.provider].apiKeyPlaceholder;
   
@@ -668,7 +672,7 @@ async function onModelChange(e) {
 }
 
 async function saveApiKey() {
-  const input = document.getElementById(DOM_IDS.API_KEY_INPUT);
+  const input = $id(DOM_IDS.API_KEY_INPUT);
   const key = input.value.trim();
   
   if (key) {
@@ -677,7 +681,7 @@ async function saveApiKey() {
     showStatus(`API key saved for ${settings.provider}!`, 'success');
     
     // Hide API prompt if it was showing
-    document.getElementById(DOM_IDS.API_KEY_PROMPT).style.display = DISPLAY.NONE;
+    hide($id(DOM_IDS.API_KEY_PROMPT));
     
     // Refresh models with the new API key
     await updateModelDropdown();
@@ -723,10 +727,10 @@ async function savePopupState() {
   const scrollPositions = { ...popupState.scrollPositions };
   
   // Always try to get both scroll positions
-  const tabsContainer = document.getElementById(DOM_IDS.TABS_CONTAINER);
+  const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
   if (tabsContainer) {
     // Check if categorize tab is active
-    const categorizeTab = document.getElementById('categorizeTab');
+    const categorizeTab = $id('categorizeTab');
     const isActive = categorizeTab && categorizeTab.classList.contains('active');
     
     if (isActive) {
@@ -738,10 +742,10 @@ async function savePopupState() {
     }
   }
   
-  const savedContent = document.getElementById(DOM_IDS.SAVED_CONTENT);
+  const savedContent = $id(DOM_IDS.SAVED_CONTENT);
   if (savedContent) {
     // Check if saved tab is active
-    const savedTab = document.getElementById('savedTab');
+    const savedTab = $id('savedTab');
     const isActive = savedTab && savedTab.classList.contains('active');
     
     if (isActive) {
@@ -759,8 +763,8 @@ async function savePopupState() {
   
   // Get current grouping selections
   const groupingSelections = {
-    categorize: document.getElementById(DOM_IDS.GROUPING_SELECT)?.value || 'category',
-    saved: document.getElementById(DOM_IDS.SAVED_GROUPING_SELECT)?.value || 'category'
+    categorize: $id(DOM_IDS.GROUPING_SELECT)?.value || 'category',
+    saved: $id(DOM_IDS.SAVED_GROUPING_SELECT)?.value || 'category'
   };
   
   // Merge new state with existing state
@@ -797,7 +801,7 @@ function restoreScrollPosition(tabName, delay = 100) {
   
   setTimeout(() => {
     if (tabName === 'categorize' && popupState.scrollPositions.categorize) {
-      const tabsContainer = document.getElementById(DOM_IDS.TABS_CONTAINER);
+      const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
       if (tabsContainer) {
         console.log('Setting categorize scroll to:', popupState.scrollPositions.categorize);
         tabsContainer.scrollTop = popupState.scrollPositions.categorize;
@@ -809,7 +813,7 @@ function restoreScrollPosition(tabName, delay = 100) {
         console.log('tabsContainer not found');
       }
     } else if (tabName === 'saved' && popupState.scrollPositions.saved) {
-      const savedContent = document.getElementById(DOM_IDS.SAVED_CONTENT);
+      const savedContent = $id(DOM_IDS.SAVED_CONTENT);
       if (savedContent) {
         console.log('Setting saved scroll to:', popupState.scrollPositions.saved);
         savedContent.scrollTop = popupState.scrollPositions.saved;
@@ -826,8 +830,8 @@ function restoreScrollPosition(tabName, delay = 100) {
 
 async function handleCategorize() {
   console.log('handleCategorize called');
-  const statusDiv = document.getElementById(DOM_IDS.STATUS);
-  const tabsContainer = document.getElementById(DOM_IDS.TABS_CONTAINER);
+  const statusDiv = $id(DOM_IDS.STATUS);
+  const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
   
   // Check for API key
   const apiKey = settings.apiKeys[settings.provider];
@@ -915,9 +919,9 @@ async function handleCategorize() {
     
     // Show action buttons and grouping controls
     document.querySelector('.action-buttons').style.display = DISPLAY.FLEX;
-    document.getElementById(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS).style.display = DISPLAY.FLEX;
-    document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.BLOCK;
-    document.getElementById(DOM_IDS.SEARCH_CONTROLS).style.display = DISPLAY.FLEX;
+    show($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS), 'flex');
+    show($id(DOM_IDS.TABS_CONTAINER));
+    show($id(DOM_IDS.SEARCH_CONTROLS), 'flex');
     
     // Update badge
     updateCategorizeBadge();
@@ -926,7 +930,7 @@ async function handleCategorize() {
     await savePopupState();
     
     // Remove any existing back button
-    const existingBackBtn = document.getElementById('backToSaved');
+    const existingBackBtn = $id('backToSaved');
     if (existingBackBtn) {
       existingBackBtn.remove();
     }
@@ -1075,8 +1079,8 @@ function displayTabs(isFromSaved = false) {
 
 function displayCategoryView(isFromSaved = false) {
   // Show category view, hide grouped view
-  document.getElementById(DOM_IDS.CATEGORY_VIEW).style.display = DISPLAY.BLOCK;
-  document.getElementById(DOM_IDS.GROUPED_VIEW).style.display = DISPLAY.NONE;
+  show($id(DOM_IDS.CATEGORY_VIEW));
+  hide($id(DOM_IDS.GROUPED_VIEW));
   
   // Display each category
   [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
@@ -1176,9 +1180,9 @@ function displayGroupedView(groupBy, isFromSaved = false, tabsToDisplay = null) 
     groupedView.id = 'savedGroupedView';
   } else {
     // For regular categorize tab
-    document.getElementById(DOM_IDS.CATEGORY_VIEW).style.display = DISPLAY.NONE;
-    document.getElementById(DOM_IDS.GROUPED_VIEW).style.display = DISPLAY.BLOCK;
-    groupedView = document.getElementById(DOM_IDS.GROUPED_VIEW);
+    hide($id(DOM_IDS.CATEGORY_VIEW));
+    show($id(DOM_IDS.GROUPED_VIEW));
+    groupedView = $id(DOM_IDS.GROUPED_VIEW);
   }
   
   groupedView.innerHTML = '';
@@ -1687,7 +1691,7 @@ function groupByLastAccessedMonth(tabs) {
 
 // Toggle all groups collapsed/expanded
 function toggleAllGroups() {
-  const savedContent = document.getElementById(DOM_IDS.SAVED_CONTENT);
+  const savedContent = $id(DOM_IDS.SAVED_CONTENT);
   if (!savedContent) return;
   
   const groupSections = savedContent.querySelectorAll('.group-section, .category-section');
@@ -1711,7 +1715,7 @@ function toggleAllGroups() {
   });
   
   // Update button icon
-  const btn = document.getElementById(DOM_IDS.TOGGLE_ALL_GROUPS_BTN);
+  const btn = $id(DOM_IDS.TOGGLE_ALL_GROUPS_BTN);
   if (btn) {
     const svg = btn.querySelector('svg');
     if (svg) {
@@ -1966,9 +1970,9 @@ async function closeTab(tabId, category) {
       await chrome.storage.local.remove('popupState');
       
       // Hide the tabs container, action buttons, and grouping controls
-      document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.NONE;
+      hide($id(DOM_IDS.TABS_CONTAINER));
       document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-      document.getElementById(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS).style.display = DISPLAY.NONE;
+      hide($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS));
     } else {
       // Update popup state with remaining tabs
       await savePopupState();
@@ -2065,9 +2069,9 @@ async function closeAllInCategory(category) {
       await chrome.storage.local.remove('popupState');
       
       // Hide the tabs container, action buttons, and grouping controls
-      document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.NONE;
+      hide($id(DOM_IDS.TABS_CONTAINER));
       document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-      document.getElementById(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS).style.display = DISPLAY.NONE;
+      hide($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS));
     } else {
       // Update popup state with remaining tabs
       await savePopupState();
@@ -2121,9 +2125,9 @@ async function saveAndCloseCategory(category) {
       await chrome.storage.local.remove('popupState');
       
       // Hide the tabs container, action buttons, and grouping controls
-      document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.NONE;
+      hide($id(DOM_IDS.TABS_CONTAINER));
       document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-      document.getElementById(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS).style.display = DISPLAY.NONE;
+      hide($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS));
     } else {
       // Update popup state with remaining tabs
       await savePopupState();
@@ -2190,7 +2194,7 @@ async function saveAndCloseAll() {
     await chrome.storage.local.remove('popupState');
     
     // Hide the tabs container and action buttons
-    document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.NONE;
+    hide($id(DOM_IDS.TABS_CONTAINER));
     document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
     
     // Switch to saved tab to show the saved tabs
@@ -2249,9 +2253,9 @@ async function saveTabs(closeAfterSave) {
       categorizedTabs = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
       
       // Hide the tabs container, action buttons, and grouping controls
-      document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.NONE;
+      hide($id(DOM_IDS.TABS_CONTAINER));
       document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
-      document.getElementById(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS).style.display = DISPLAY.NONE;
+      hide($id(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS));
       
       setTimeout(() => {
         switchToTab('saved');
@@ -2261,7 +2265,7 @@ async function saveTabs(closeAfterSave) {
       
       // Show quick action to view saved tabs
       setTimeout(() => {
-        const status = document.getElementById(DOM_IDS.STATUS);
+        const status = $id(DOM_IDS.STATUS);
         if (status && status.textContent) {
           status.innerHTML = status.textContent + ' <a href="#" onclick="showSavedTabs(); return false;">View saved</a>';
         }
@@ -2311,7 +2315,7 @@ function downloadFile(filename, content) {
 }
 
 function showStatus(message, type) {
-  const statusDiv = document.getElementById(DOM_IDS.STATUS);
+  const statusDiv = $id(DOM_IDS.STATUS);
   if (!statusDiv) {
     console.error('Status div not found');
     return;
@@ -2321,7 +2325,7 @@ function showStatus(message, type) {
 }
 
 function clearStatus() {
-  const statusDiv = document.getElementById(DOM_IDS.STATUS);
+  const statusDiv = $id(DOM_IDS.STATUS);
   if (statusDiv) {
     statusDiv.textContent = '';
     statusDiv.className = 'status';
@@ -2340,7 +2344,7 @@ function resetPrompt() {
   settings.customPrompt = CONFIG.DEFAULT_PROMPT;
   settings.isPromptCustomized = false;
   settings.promptVersion = CONFIG.PROMPT_VERSION;
-  document.getElementById(DOM_IDS.PROMPT_TEXTAREA).value = CONFIG.DEFAULT_PROMPT;
+  $id(DOM_IDS.PROMPT_TEXTAREA).value = CONFIG.DEFAULT_PROMPT;
   saveSettings();
   updatePromptStatus();
   showStatus('Prompt reset to default', 'success');
@@ -2348,7 +2352,7 @@ function resetPrompt() {
 
 // Update prompt status indicator
 function updatePromptStatus() {
-  const promptStatus = document.getElementById(DOM_IDS.PROMPT_STATUS);
+  const promptStatus = $id(DOM_IDS.PROMPT_STATUS);
   if (!promptStatus) return;
   
   const currentPrompt = settings.customPrompt || '';
@@ -2435,7 +2439,7 @@ async function openAllTabsInCategory(category) {
 async function showSavedTabsContent(groupingType) {
   try {
     // Make sure the saved tab pane exists and is ready
-    const savedTab = document.getElementById('savedTab');
+    const savedTab = $id('savedTab');
     if (!savedTab) {
       console.error('Saved tab pane not found');
       return;
@@ -2445,7 +2449,7 @@ async function showSavedTabsContent(groupingType) {
     
     // Get current grouping from dropdown if not passed
     if (!groupingType) {
-      const savedGroupingSelect = document.getElementById(DOM_IDS.SAVED_GROUPING_SELECT);
+      const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
       groupingType = savedGroupingSelect ? savedGroupingSelect.value : 'category';
     }
     
@@ -2458,7 +2462,7 @@ async function showSavedTabsContent(groupingType) {
     });
     
     // Get the saved content container
-    const savedContent = document.getElementById(DOM_IDS.SAVED_CONTENT);
+    const savedContent = $id(DOM_IDS.SAVED_CONTENT);
     savedContent.innerHTML = '';
     
     if (groupingType === 'category') {
@@ -2636,10 +2640,10 @@ function findFirstVisibleTab(tabType) {
   let container, tabSelector;
   
   if (tabType === 'categorize') {
-    container = document.getElementById(DOM_IDS.TABS_CONTAINER);
+    container = $id(DOM_IDS.TABS_CONTAINER);
     tabSelector = '#categoryView .tab-item:not(.hidden), #groupedView .tab-item:not(.hidden)';
   } else if (tabType === 'saved') {
-    container = document.getElementById(DOM_IDS.SAVED_CONTENT);
+    container = $id(DOM_IDS.SAVED_CONTENT);
     tabSelector = '.tab-item:not(.hidden)';
   }
   
@@ -2686,10 +2690,10 @@ function scrollToTab(url, tabType, targetOffset = null) {
   let container, tabSelector;
   
   if (tabType === 'categorize') {
-    container = document.getElementById(DOM_IDS.TABS_CONTAINER);
+    container = $id(DOM_IDS.TABS_CONTAINER);
     tabSelector = '#categoryView .tab-item:not(.hidden), #groupedView .tab-item:not(.hidden)';
   } else if (tabType === 'saved') {
-    container = document.getElementById(DOM_IDS.SAVED_CONTENT);
+    container = $id(DOM_IDS.SAVED_CONTENT);
     tabSelector = '.tab-item:not(.hidden)';
   }
   
@@ -2774,7 +2778,7 @@ function onSearchInput(e) {
 
 function clearSearch() {
   searchQuery = '';
-  document.getElementById(DOM_IDS.SEARCH_INPUT).value = '';
+  $id(DOM_IDS.SEARCH_INPUT).value = '';
   applySearchFilter();
   savePopupState();
   
@@ -2843,7 +2847,7 @@ function applySearchFilter() {
 
 // Update the categorize tab badge
 function updateCategorizeBadge() {
-  const badge = document.getElementById(DOM_IDS.CATEGORIZE_BADGE);
+  const badge = $id(DOM_IDS.CATEGORIZE_BADGE);
   if (!badge) return;
   
   const importantCount = categorizedTabs[3] ? categorizedTabs[3].length : 0;
@@ -2860,7 +2864,7 @@ function updateCategorizeBadge() {
 
 // Update the saved tab badge
 async function updateSavedBadge() {
-  const badge = document.getElementById(DOM_IDS.SAVED_BADGE);
+  const badge = $id(DOM_IDS.SAVED_BADGE);
   if (!badge) return;
   
   try {
@@ -2884,7 +2888,7 @@ async function updateSavedBadge() {
 // Clear popup state on window unload
 window.addEventListener('beforeunload', () => {
   // Only save state if we have tabs displayed
-  if (document.getElementById(DOM_IDS.TABS_CONTAINER).style.display !== 'none') {
+  if ($id(DOM_IDS.TABS_CONTAINER).style.display !== 'none') {
     savePopupState();
   }
 });
@@ -2893,7 +2897,7 @@ window.addEventListener('beforeunload', () => {
 function onGroupingChange(e) {
   // Wait a moment for any pending scroll to settle
   setTimeout(() => {
-    const tabsContainer = document.getElementById(DOM_IDS.TABS_CONTAINER);
+    const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
     const currentScrollTop = tabsContainer ? tabsContainer.scrollTop : 0;
     
     // Only find first visible tab if not at top
@@ -2919,7 +2923,7 @@ function onGroupingChange(e) {
 
 // Toggle all groups in categorize tab
 function toggleCategorizeGroups() {
-  const container = isViewingSaved ? document.getElementById(DOM_IDS.SAVED_CONTENT) : document.getElementById(DOM_IDS.TABS_CONTAINER);
+  const container = isViewingSaved ? $id(DOM_IDS.SAVED_CONTENT) : $id(DOM_IDS.TABS_CONTAINER);
   if (!container) return;
   
   const groupSections = container.querySelectorAll('.group-section, .category-section');
@@ -2943,7 +2947,7 @@ function toggleCategorizeGroups() {
   });
   
   // Update button icon
-  const btn = document.getElementById(DOM_IDS.TOGGLE_CATEGORIZE_GROUPS_BTN);
+  const btn = $id(DOM_IDS.TOGGLE_CATEGORIZE_GROUPS_BTN);
   if (btn) {
     const svg = btn.querySelector('svg');
     if (svg) {
@@ -2958,7 +2962,7 @@ function toggleCategorizeGroups() {
 function onSavedGroupingChange(e) {
   // Wait a moment for any pending scroll to settle
   setTimeout(() => {
-    const savedContent = document.getElementById(DOM_IDS.SAVED_CONTENT);
+    const savedContent = $id(DOM_IDS.SAVED_CONTENT);
     const currentScrollTop = savedContent ? savedContent.scrollTop : 0;
     
     // Only find first visible tab if not at top
@@ -2987,12 +2991,12 @@ function onSavedSearchInput(e) {
 }
 
 function clearSavedSearch() {
-  document.getElementById(DOM_IDS.SAVED_SEARCH_INPUT).value = '';
+  $id(DOM_IDS.SAVED_SEARCH_INPUT).value = '';
   onSavedSearchInput({ target: { value: '' } });
 }
 
 function applySavedSearchFilter(searchQuery) {
-  const savedContent = document.getElementById(DOM_IDS.SAVED_CONTENT);
+  const savedContent = $id(DOM_IDS.SAVED_CONTENT);
   if (!savedContent) return;
   
   // Get all tab elements in saved content
@@ -3042,7 +3046,7 @@ function applySavedSearchFilter(searchQuery) {
     showStatus(`Found ${visibleCount} of ${totalCount} saved tabs matching "${searchQuery}"`, 'success');
   } else {
     // Restore original status
-    const savedGroupingSelect = document.getElementById(DOM_IDS.SAVED_GROUPING_SELECT);
+    const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
     if (savedGroupingSelect) {
       showSavedTabsContent(savedGroupingSelect.value);
     }
@@ -3068,7 +3072,7 @@ function checkExtensionIntegrity() {
       console.warn('Unofficial version detected');
       // Show warning in UI
       setTimeout(() => {
-        const status = document.getElementById(DOM_IDS.STATUS);
+        const status = $id(DOM_IDS.STATUS);
         if (status) {
           status.innerHTML = '⚠️ Unofficial version! Get the official extension from <a href="https://github.com/aitkn/ai_tab_manager" target="_blank">GitHub</a>';
           status.className = 'status error';
