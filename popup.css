@@ -282,10 +282,12 @@ body {
 /* MD3 Typography */
 h1 {
   margin: 0;
+  font-family: 'Inter', sans-serif;
   font-size: var(--md-sys-typescale-title-large);
-  font-weight: 400;
+  font-weight: 600;
   line-height: 28px;
   color: var(--md-sys-color-on-surface);
+  letter-spacing: -0.02em;
 }
 
 /* Support button */
