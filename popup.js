@@ -31,6 +31,28 @@ let settings = {
   maxTabsToOpen: 50 // Default max tabs to open at once
 };
 
+// Debug helpers for safe refactoring - TEMPORARY
+window.DEBUG = {
+  logState: () => console.log('Current state:', {
+    categorizedTabs,
+    isViewingSaved,
+    popupState,
+    settings,
+    urlToDuplicateIds
+  }),
+  testCategorization: () => categorizeTabs(),
+  version: 'refactoring-v1',
+  checkDOM: () => {
+    const elements = [
+      'categorizeBtn', 'tabsContainer', 'searchInput', 
+      'savedContent', 'groupingSelect', 'savedGroupingSelect'
+    ];
+    const missing = elements.filter(id => !document.getElementById(id));
+    console.log('DOM Check:', missing.length ? `Missing: ${missing}` : 'All elements found');
+  }
+};
+console.log('AI Tab Manager Debug Mode - Version:', window.DEBUG.version);
+
 // Theme management functions - defined early
 function initializeTheme() {
   // Load saved theme or use system default
