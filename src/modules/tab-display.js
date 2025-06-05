@@ -56,15 +56,15 @@ export function displayCategoryView() {
       return;
     }
     
+    const tabsList = categorySection.querySelector('.tabs-list');
+    const countElement = categorySection.querySelector('.count');
+    const tabs = state.categorizedTabs[category] || [];
+    
     // Show/hide uncategorized section based on whether it has tabs
     if (category === TAB_CATEGORIES.UNCATEGORIZED) {
       const hasUncategorized = tabs.length > 0;
       categorySection.style.display = hasUncategorized ? 'block' : 'none';
     }
-    
-    const tabsList = categorySection.querySelector('.tabs-list');
-    const countElement = categorySection.querySelector('.count');
-    const tabs = state.categorizedTabs[category] || [];
     
     // Update count
     if (countElement) {
