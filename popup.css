@@ -433,63 +433,103 @@ h1 {
 
 /* Unified Toolbar */
 .unified-toolbar {
+  background-color: var(--md-sys-color-surface);
+  border-bottom: 1px solid var(--md-sys-color-surface-variant);
+}
+
+.toolbar-row {
+  padding: var(--md-spacing-3);
+}
+
+/* Main controls row - matches original .controls layout */
+.main-controls-row {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.main-controls {
+  display: flex;
+  gap: var(--md-spacing-3);
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.main-controls .grouping-controls-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+  flex: 1;
+  justify-content: center;
+}
+
+.main-controls .action-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+  flex-shrink: 0;
+}
+
+/* Saved tab grouping controls - matches original layout */
+#savedTabControls.grouping-controls {
   display: flex;
   align-items: center;
   gap: var(--md-spacing-3);
-  padding: var(--md-spacing-3);
-  background-color: var(--md-sys-color-surface-container);
-  border-bottom: 1px solid var(--md-sys-color-surface-variant);
-  min-height: 56px;
   flex-wrap: wrap;
-}
-
-.toolbar-section {
-  display: flex;
-  align-items: center;
-  gap: var(--md-spacing-2);
-}
-
-.search-section {
-  flex: 1;
-  min-width: 200px;
-  position: relative;
-}
-
-.search-section .search-input {
   width: 100%;
-  padding-right: 32px;
+  justify-content: space-between;
+  padding: 0;
 }
 
-.search-section .clear-search-btn {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.grouping-section {
+.saved-controls-left {
   display: flex;
   align-items: center;
   gap: var(--md-spacing-2);
 }
 
-.grouping-section label {
+.saved-controls-right {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-3);
+}
+
+.grouping-controls label,
+.grouping-controls-inline label {
   font-size: var(--md-sys-typescale-label-medium);
   color: var(--md-sys-color-on-surface-variant);
   white-space: nowrap;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.additional-controls {
+.export-import-btns {
+  display: flex;
+  gap: var(--md-spacing-1);
+  flex-shrink: 0;
+}
+
+/* Search controls row - matches original */
+.search-controls {
   display: flex;
   align-items: center;
   gap: var(--md-spacing-2);
-  margin-left: auto;
+  padding: var(--md-spacing-2) var(--md-spacing-3);
+  background-color: var(--md-sys-color-surface-container-low);
+  position: relative;
 }
 
-.tab-specific-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--md-spacing-2);
+.search-controls .search-input {
+  flex: 1;
+  padding-right: 36px;
+}
+
+.search-controls .clear-search-btn {
+  position: absolute;
+  right: var(--md-spacing-3);
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* Hide old control containers */
@@ -787,7 +827,8 @@ button svg {
 /* Removed - using global .grouping-select style */
 
 /* Categorize button should not expand */
-#categorizeBtn {
+#categorizeBtn,
+#categorizeBtn2 {
   flex-shrink: 0;
 }
 
@@ -829,7 +870,7 @@ button svg {
   user-select: none;
   font-size: var(--md-sys-typescale-label-medium);
   color: var(--md-sys-color-on-surface);
-  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -1732,7 +1773,7 @@ input[type="checkbox"] {
 .export-import-btns {
   display: flex;
   gap: var(--md-spacing-1);
-  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* Recent Sessions */
