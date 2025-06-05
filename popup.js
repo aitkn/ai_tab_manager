@@ -50,7 +50,7 @@ console.log('Modules loaded:', {
   services: { chrome: !!ChromeAPIService, storage: !!StorageService, message: !!MessageService }
 });
 
-let categorizedTabs = { 1: [], 2: [], 3: [] };
+let categorizedTabs = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
 let isViewingSaved = false;
 let searchQuery = '';
 let isInitializing = true; // Flag to prevent saving during initialization
@@ -129,9 +129,9 @@ function applyTheme(theme) {
 function updateThemeButtons(activeTheme) {
   document.querySelectorAll('.theme-btn').forEach(btn => {
     if (btn.dataset.theme === activeTheme) {
-      btn.classList.add('active');
+      btn.classList.add(CSS_CLASSES.TAB_PANE_ACTIVE);
     } else {
-      btn.classList.remove('active');
+      btn.classList.remove(CSS_CLASSES.TAB_PANE_ACTIVE);
     }
   });
 }
@@ -145,14 +145,14 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Also save when window loses focus
-window.addEventListener('blur', () => {
+window.addEventListener(EVENTS.BLUR, () => {
   if (!isInitializing) {
     console.log('Window blur, saving state');
     savePopupState();
   }
 });
 
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener(EVENTS.DOM_CONTENT_LOADED, async function() {
   console.log('Popup loaded, initializing...');
   
   try {
@@ -271,8 +271,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         const categorizeTab = document.getElementById('categorizeTab');
         const savedTab = document.getElementById('savedTab');
         
-        if (categorizeTab) categorizeTab.classList.add('active');
-        if (savedTab) savedTab.classList.add('active');
+        if (categorizeTab) categorizeTab.classList.add(CSS_CLASSES.TAB_PANE_ACTIVE);
+        if (savedTab) savedTab.classList.add(CSS_CLASSES.TAB_PANE_ACTIVE);
         
         // Use requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
@@ -337,17 +337,17 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 function setupEventListeners() {
-  document.getElementById(DOM_IDS.CATEGORIZE_BTN).addEventListener('click', handleCategorize);
-  document.getElementById(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN).addEventListener('click', () => saveAndCloseAll());
-  document.getElementById(DOM_IDS.SAVE_API_KEY_BTN).addEventListener('click', saveApiKey);
-  document.getElementById(DOM_IDS.OPEN_SETTINGS_BTN).addEventListener('click', () => switchToTab('settings'));
-  document.getElementById(DOM_IDS.PROVIDER_SELECT).addEventListener('change', onProviderChange);
-  document.getElementById(DOM_IDS.MODEL_SELECT).addEventListener('change', onModelChange);
-  document.getElementById(DOM_IDS.PROMPT_TEXTAREA).addEventListener('input', onPromptChange);
-  document.getElementById(DOM_IDS.RESET_PROMPT_BTN).addEventListener('click', resetPrompt);
-  document.getElementById(DOM_IDS.SEARCH_INPUT).addEventListener('input', onSearchInput);
-  document.getElementById(DOM_IDS.CLEAR_SEARCH_BTN).addEventListener('click', clearSearch);
-  document.getElementById(DOM_IDS.MAX_TABS_INPUT).addEventListener('change', onMaxTabsChange);
+  document.getElementById(DOM_IDS.CATEGORIZE_BTN).addEventListener(EVENTS.CLICK, handleCategorize);
+  document.getElementById(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN).addEventListener(EVENTS.CLICK, () => saveAndCloseAll());
+  document.getElementById(DOM_IDS.SAVE_API_KEY_BTN).addEventListener(EVENTS.CLICK, saveApiKey);
+  document.getElementById(DOM_IDS.OPEN_SETTINGS_BTN).addEventListener(EVENTS.CLICK, () => switchToTab('settings'));
+  document.getElementById(DOM_IDS.PROVIDER_SELECT).addEventListener(EVENTS.CHANGE, onProviderChange);
+  document.getElementById(DOM_IDS.MODEL_SELECT).addEventListener(EVENTS.CHANGE, onModelChange);
+  document.getElementById(DOM_IDS.PROMPT_TEXTAREA).addEventListener(EVENTS.INPUT, onPromptChange);
+  document.getElementById(DOM_IDS.RESET_PROMPT_BTN).addEventListener(EVENTS.CLICK, resetPrompt);
+  document.getElementById(DOM_IDS.SEARCH_INPUT).addEventListener(EVENTS.INPUT, onSearchInput);
+  document.getElementById(DOM_IDS.CLEAR_SEARCH_BTN).addEventListener(EVENTS.CLICK, clearSearch);
+  document.getElementById(DOM_IDS.MAX_TABS_INPUT).addEventListener(EVENTS.CHANGE, onMaxTabsChange);
   
   // Saved tab controls
   const savedGroupingSelect = document.getElementById(DOM_IDS.SAVED_GROUPING_SELECT);
@@ -355,46 +355,46 @@ function setupEventListeners() {
   const clearSavedSearchBtn = document.getElementById(DOM_IDS.CLEAR_SAVED_SEARCH_BTN);
   
   if (savedGroupingSelect) {
-    savedGroupingSelect.addEventListener('change', onSavedGroupingChange);
+    savedGroupingSelect.addEventListener(EVENTS.CHANGE, onSavedGroupingChange);
   }
   if (savedSearchInput) {
-    savedSearchInput.addEventListener('input', onSavedSearchInput);
+    savedSearchInput.addEventListener(EVENTS.INPUT, onSavedSearchInput);
   }
   if (clearSavedSearchBtn) {
-    clearSavedSearchBtn.addEventListener('click', clearSavedSearch);
+    clearSavedSearchBtn.addEventListener(EVENTS.CLICK, clearSavedSearch);
   }
   
   // Theme switcher buttons
   document.querySelectorAll('.theme-btn').forEach(btn => {
     console.log('Adding theme listener to button:', btn.dataset.theme);
-    btn.addEventListener('click', () => {
+    btn.addEventListener(EVENTS.CLICK, () => {
       console.log('Theme button clicked:', btn.dataset.theme);
       setTheme(btn.dataset.theme);
     });
   });
   
   // CSV Export/Import handlers
-  document.getElementById(DOM_IDS.EXPORT_CSV_BTN).addEventListener('click', exportToCSV);
-  document.getElementById(DOM_IDS.IMPORT_CSV_BTN).addEventListener('click', () => {
+  document.getElementById(DOM_IDS.EXPORT_CSV_BTN).addEventListener(EVENTS.CLICK, exportToCSV);
+  document.getElementById(DOM_IDS.IMPORT_CSV_BTN).addEventListener(EVENTS.CLICK, () => {
     document.getElementById(DOM_IDS.CSV_FILE_INPUT).click();
   });
-  document.getElementById(DOM_IDS.CSV_FILE_INPUT).addEventListener('change', handleCSVImport);
+  document.getElementById(DOM_IDS.CSV_FILE_INPUT).addEventListener(EVENTS.CHANGE, handleCSVImport);
   
   // Toggle all groups button
-  document.getElementById(DOM_IDS.TOGGLE_ALL_GROUPS_BTN).addEventListener('click', toggleAllGroups);
+  document.getElementById(DOM_IDS.TOGGLE_ALL_GROUPS_BTN).addEventListener(EVENTS.CLICK, toggleAllGroups);
   
   // Categorize tab grouping controls
   const groupingSelect = document.getElementById(DOM_IDS.GROUPING_SELECT);
   if (groupingSelect) {
-    groupingSelect.addEventListener('change', onGroupingChange);
+    groupingSelect.addEventListener(EVENTS.CHANGE, onGroupingChange);
   }
-  document.getElementById(DOM_IDS.TOGGLE_CATEGORIZE_GROUPS_BTN).addEventListener('click', toggleCategorizeGroups);
+  document.getElementById(DOM_IDS.TOGGLE_CATEGORIZE_GROUPS_BTN).addEventListener(EVENTS.CLICK, toggleCategorizeGroups);
   
   // Add scroll event listeners to save scroll position
   const tabsContainer = document.getElementById(DOM_IDS.TABS_CONTAINER);
   if (tabsContainer) {
     let scrollSaveTimeout;
-    tabsContainer.addEventListener('scroll', () => {
+    tabsContainer.addEventListener(EVENTS.SCROLL, () => {
       if (!isInitializing) {
         clearTimeout(scrollSaveTimeout);
         scrollSaveTimeout = setTimeout(() => {
@@ -410,7 +410,7 @@ function setupEventListeners() {
   if (savedContent) {
     console.log('Adding scroll listener to savedContent');
     let scrollSaveTimeout;
-    savedContent.addEventListener('scroll', (e) => {
+    savedContent.addEventListener(EVENTS.SCROLL, (e) => {
       console.log('Saved content scrolled to:', e.target.scrollTop);
       if (!isInitializing) {
         clearTimeout(scrollSaveTimeout);
@@ -430,7 +430,7 @@ function setupEventListeners() {
 function initializeTabNavigation() {
   // Tab button click handlers
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener(EVENTS.CLICK, () => {
       const tabName = btn.dataset.tab;
       switchToTab(tabName);
     });
@@ -476,7 +476,7 @@ function switchToTab(tabName) {
         document.querySelector('.action-buttons').style.display = DISPLAY.NONE;
         document.getElementById(DOM_IDS.CATEGORIZE_GROUPING_CONTROLS).style.display = DISPLAY.NONE;
         // Also ensure category sections are marked as empty
-        [1, 2, 3].forEach(category => {
+        [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
           const section = document.getElementById(`category${category}`);
           if (section) {
             section.classList.add('empty');
@@ -494,7 +494,7 @@ function switchToTab(tabName) {
           savedContent.setAttribute('data-scroll-listener', 'true');
           console.log('Adding delayed scroll listener to savedContent');
           let scrollSaveTimeout;
-          savedContent.addEventListener('scroll', (e) => {
+          savedContent.addEventListener(EVENTS.SCROLL, (e) => {
             console.log('Saved content scrolled (delayed) to:', e.target.scrollTop);
             if (!isInitializing) {
               clearTimeout(scrollSaveTimeout);
@@ -969,7 +969,7 @@ async function categorizeTabs(tabs, apiKey, provider, model, customPrompt) {
       console.log(`Large number of tabs detected (${tabs.length}), processing in batches of ${BATCH_SIZE}`);
       showStatus(`Categorizing ${tabs.length} tabs in batches...`, 'loading');
       
-      const categorizedResults = { 1: [], 2: [], 3: [] };
+      const categorizedResults = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
       
       for (let i = 0; i < tabs.length; i += BATCH_SIZE) {
         const batch = tabs.slice(i, i + BATCH_SIZE);
@@ -991,7 +991,7 @@ async function categorizeTabs(tabs, apiKey, provider, model, customPrompt) {
         
         if (response.success && response.data) {
           // Merge batch results
-          [1, 2, 3].forEach(category => {
+          [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
             if (response.data[category]) {
               categorizedResults[category].push(...response.data[category]);
             }
@@ -1047,7 +1047,7 @@ async function categorizeTabs(tabs, apiKey, provider, model, customPrompt) {
 
 // REFACTORING: Commented out - now using imported fallbackCategorization from helpers.js
 // function fallbackCategorization(tabs) {
-//   const organized = { 1: [], 2: [], 3: [] };
+//   const organized = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
 //   
 //   // Common error page patterns
 //   const errorPatterns = [
@@ -1142,7 +1142,7 @@ function displayCategoryView(isFromSaved = false) {
   document.getElementById(DOM_IDS.GROUPED_VIEW).style.display = DISPLAY.NONE;
   
   // Display each category
-  [3, 2, 1].forEach(category => {
+  [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
     const section = document.getElementById(`category${category}`);
     if (!section) {
       console.error(`Category section not found: category${category}`);
@@ -1183,7 +1183,7 @@ function displayCategoryView(isFromSaved = false) {
       actionsContainer.innerHTML = ''; // Clear any existing buttons
       
       if (!isFromSaved && tabs.length > 0) {
-        if (category === 1) {
+        if (category === TAB_CATEGORIES.CAN_CLOSE) {
           // Category 1: Can Be Closed - Add Close button
           const closeAllBtn = document.createElement('button');
           closeAllBtn.className = 'inline-action-btn primary-btn';
@@ -1221,7 +1221,7 @@ function displayCategoryView(isFromSaved = false) {
         // Don't collapse if clicking on action buttons
         if (e.target.closest('.category-header-actions')) return;
         
-        section.classList.toggle('collapsed');
+        section.classList.toggle(CSS_CLASSES.CATEGORY_COLLAPSED);
         const isCollapsed = section.classList.contains('collapsed');
         listContainer.style.display = isCollapsed ? 'none' : 'block';
       };
@@ -1251,7 +1251,7 @@ function displayGroupedView(groupBy, isFromSaved = false, tabsToDisplay = null) 
   
   // Combine all tabs
   const allTabs = [];
-  [1, 2, 3].forEach(category => {
+  [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
     if (tabsSource[category]) {
       tabsSource[category].forEach(tab => {
         allTabs.push({ ...tab, category });
@@ -1813,7 +1813,7 @@ function createGroupSection(groupName, tabs, groupType, isFromSaved) {
   header.appendChild(headerRight);
   
   const listContainer = document.createElement('div');
-  listContainer.className = 'tabs-list';
+  listContainer.className = CSS_CLASSES.TABS_LIST;
   
   // Tabs are already sorted by the calling function
   tabs.forEach(tab => {
@@ -1826,7 +1826,7 @@ function createGroupSection(groupName, tabs, groupType, isFromSaved) {
   
   // Make header clickable to collapse/expand
   header.onclick = () => {
-    section.classList.toggle('collapsed');
+    section.classList.toggle(CSS_CLASSES.CATEGORY_COLLAPSED);
     listContainer.style.display = listContainer.style.display === 'none' ? 'block' : 'none';
   };
   
@@ -1950,10 +1950,10 @@ function toggleAllGroups() {
     const tabsList = section.querySelector('.tabs-list');
     if (tabsList) {
       if (anyExpanded) {
-        section.classList.add('collapsed');
+        section.classList.add(CSS_CLASSES.CATEGORY_COLLAPSED);
         tabsList.style.display = DISPLAY.NONE;
       } else {
-        section.classList.remove('collapsed');
+        section.classList.remove(CSS_CLASSES.CATEGORY_COLLAPSED);
         tabsList.style.display = DISPLAY.BLOCK;
       }
     }
@@ -2062,7 +2062,7 @@ async function deleteTabsInGroup(tabs, groupName) {
 
 function createTabElement(tab, category, isFromSaved = false) {
   const div = document.createElement('div');
-  div.className = 'tab-item';
+  div.className = CSS_CLASSES.TAB_ITEM;
   if (tab.alreadySaved) {
     div.className += ' already-saved';
   }
@@ -2158,14 +2158,14 @@ function createTabElement(tab, category, isFromSaved = false) {
     moveUpBtn.className = 'move-btn move-up-btn';
     moveUpBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>';
     moveUpBtn.title = 'Move up category';
-    moveUpBtn.disabled = category === 3; // Can't move up from Important
+    moveUpBtn.disabled = category === TAB_CATEGORIES.IMPORTANT; // Can't move up from Important
     moveUpBtn.onclick = () => moveTab(tab.id, category, 'up');
     
     const moveDownBtn = document.createElement('button');
     moveDownBtn.className = 'move-btn move-down-btn';
     moveDownBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>';
     moveDownBtn.title = 'Move down category';
-    moveDownBtn.disabled = category === 1; // Can't move down from Not Important
+    moveDownBtn.disabled = category === TAB_CATEGORIES.CAN_CLOSE; // Can't move down from Not Important
     moveDownBtn.onclick = () => moveTab(tab.id, category, 'down');
     
     moveButtons.appendChild(moveUpBtn);
@@ -2182,7 +2182,7 @@ function createTabElement(tab, category, isFromSaved = false) {
   
   // Apply search filter if active
   if (searchQuery && !matchesSearch(tab, searchQuery)) {
-    div.classList.add('hidden');
+    div.classList.add(CSS_CLASSES.TAB_ITEM_HIDDEN);
   }
   
   return div;
@@ -2341,7 +2341,7 @@ async function saveAndCloseCategory(category) {
   
   try {
     // Save only this category
-    const tempCategorized = { 1: [], 2: [], 3: [] };
+    const tempCategorized = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
     tempCategorized[category] = tabs;
     
     await tabDatabase.saveTabs(tempCategorized, {
@@ -2433,7 +2433,7 @@ async function saveAndCloseAll() {
     showStatus(message, 'success');
     
     // Clear categorized tabs
-    categorizedTabs = { 1: [], 2: [], 3: [] };
+    categorizedTabs = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
     
     // Clear popup state since all tabs are closed
     await chrome.storage.local.remove('popupState');
@@ -2495,7 +2495,7 @@ async function saveTabs(closeAfterSave) {
       await chrome.storage.local.remove('popupState');
       
       // Clear categorized tabs from UI
-      categorizedTabs = { 1: [], 2: [], 3: [] };
+      categorizedTabs = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
       
       // Hide the tabs container, action buttons, and grouping controls
       document.getElementById(DOM_IDS.TABS_CONTAINER).style.display = DISPLAY.NONE;
@@ -2699,7 +2699,7 @@ async function showSavedTabsContent(groupingType) {
     }
     
     // Store the saved tabs in a temporary object for display (don't overwrite categorizedTabs)
-    const savedTabsByCategory = { 1: [], 2: [], 3: [] };
+    const savedTabsByCategory = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
     allSavedTabs.forEach(tab => {
       if (savedTabsByCategory[tab.category]) {
         savedTabsByCategory[tab.category].push(tab);
@@ -2717,24 +2717,24 @@ async function showSavedTabsContent(groupingType) {
       categoryView.id = 'savedCategoryView';
     
       // Display each category
-      [3, 2, 1].forEach(category => {
+      [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
         const tabs = savedTabsByCategory[category] || [];
       if (tabs.length === 0) return; // Skip empty categories
       
       const section = document.createElement('div');
-      section.className = 'category-section';
+      section.className = CSS_CLASSES.CATEGORY_SECTION;
       section.id = `savedCategory${category}`;
       
       const header = document.createElement('h2');
-      header.className = `category-header ${category === 3 ? 'important' : category === 2 ? 'somewhat-important' : 'not-important'}`;
+      header.className = `category-header ${category === TAB_CATEGORIES.IMPORTANT ? 'important' : category === TAB_CATEGORIES.SAVE_LATER ? 'somewhat-important' : 'not-important'}`;
       
-      const iconSvg = category === 3 
+      const iconSvg = category === TAB_CATEGORIES.IMPORTANT 
         ? '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'
-        : category === 2
+        : category === TAB_CATEGORIES.SAVE_LATER
         ? '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>'
         : '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
       
-      const categoryName = category === 3 ? 'Important Links' : category === 2 ? 'Save for Later' : 'Can Be Closed';
+      const categoryName = category === TAB_CATEGORIES.IMPORTANT ? 'Important Links' : category === TAB_CATEGORIES.SAVE_LATER ? 'Save for Later' : 'Can Be Closed';
       header.innerHTML = `
         <div class="category-header-title">
           ${iconSvg} ${categoryName} (<span class="count">${tabs.length}</span>)
@@ -2778,7 +2778,7 @@ async function showSavedTabsContent(groupingType) {
       }
       
       const listContainer = document.createElement('div');
-      listContainer.className = 'tabs-list';
+      listContainer.className = CSS_CLASSES.TABS_LIST;
       
       // Add tabs
       tabs.forEach(tab => {
@@ -2795,7 +2795,7 @@ async function showSavedTabsContent(groupingType) {
         // Don't collapse if clicking on action buttons
         if (e.target.closest('.category-header-actions')) return;
         
-        section.classList.toggle('collapsed');
+        section.classList.toggle(CSS_CLASSES.CATEGORY_COLLAPSED);
         const isCollapsed = section.classList.contains('collapsed');
         listContainer.style.display = isCollapsed ? 'none' : 'block';
       };
@@ -2820,7 +2820,7 @@ async function showSavedTabsContent(groupingType) {
     } else {
       savedContent.appendChild(categoryView);
       // Count non-empty categories
-      const nonEmptyCategories = [1, 2, 3].filter(cat => savedTabsByCategory[cat].length > 0).length;
+      const nonEmptyCategories = [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].filter(cat => savedTabsByCategory[cat].length > 0).length;
       showStatus(`Viewing ${allSavedTabs.length} saved tabs in ${nonEmptyCategories} ${nonEmptyCategories === 1 ? 'category' : 'categories'}`, 'success');
     }
     } else {
@@ -2994,7 +2994,7 @@ function moveTab(tabId, fromCategory, direction) {
   }
   
   // Validate category
-  if (toCategory < 1 || toCategory > 3) return;
+  if (toCategory < TAB_CATEGORIES.CAN_CLOSE || toCategory > TAB_CATEGORIES.IMPORTANT) return;
   
   // Remove from current category
   categorizedTabs[fromCategory] = categorizedTabs[fromCategory].filter(t => t.id !== tabId);
@@ -3028,7 +3028,7 @@ function clearSearch() {
   savePopupState();
   
   // Reset category counts
-  [1, 2, 3].forEach(category => {
+  [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
     const countElement = document.querySelector(`#category${category} .count`);
     if (countElement && categorizedTabs[category]) {
       countElement.textContent = categorizedTabs[category].length;
@@ -3059,18 +3059,18 @@ function applySearchFilter() {
     }
     
     if (tab && matchesSearch(tab, searchQuery)) {
-      tabElement.classList.remove('hidden');
+      tabElement.classList.remove(CSS_CLASSES.TAB_ITEM_HIDDEN);
       tabElement.classList.add('search-match');
       visibleCount++;
       visibleByCategory[category]++;
     } else {
-      tabElement.classList.add('hidden');
+      tabElement.classList.add(CSS_CLASSES.TAB_ITEM_HIDDEN);
       tabElement.classList.remove('search-match');
     }
   });
   
   // Update category counts
-  [1, 2, 3].forEach(category => {
+  [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
     const countElement = document.querySelector(`#category${category} .count`);
     if (countElement) {
       if (searchQuery) {
@@ -3115,8 +3115,8 @@ async function updateSavedBadge() {
   try {
     await tabDatabase.init();
     const savedTabs = await tabDatabase.getAllSavedTabs();
-    const importantCount = savedTabs.filter(tab => tab.category === 3).length;
-    const saveForLaterCount = savedTabs.filter(tab => tab.category === 2).length;
+    const importantCount = savedTabs.filter(tab => tab.category === TAB_CATEGORIES.IMPORTANT).length;
+    const saveForLaterCount = savedTabs.filter(tab => tab.category === TAB_CATEGORIES.SAVE_LATER).length;
     const total = importantCount + saveForLaterCount;
     
     if (total > 0) {
@@ -3182,10 +3182,10 @@ function toggleCategorizeGroups() {
     const tabsList = section.querySelector('.tabs-list');
     if (tabsList) {
       if (anyExpanded) {
-        section.classList.add('collapsed');
+        section.classList.add(CSS_CLASSES.CATEGORY_COLLAPSED);
         tabsList.style.display = DISPLAY.NONE;
       } else {
-        section.classList.remove('collapsed');
+        section.classList.remove(CSS_CLASSES.CATEGORY_COLLAPSED);
         tabsList.style.display = DISPLAY.BLOCK;
       }
     }
