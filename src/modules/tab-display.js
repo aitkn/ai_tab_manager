@@ -380,8 +380,16 @@ export function createTabElement(tab, category) {
   const tabInfo = createElement('div', {
     className: 'tab-info',
     onclick: () => {
-      chrome.tabs.update(tab.id, { active: true });
-      window.close();
+      // First switch to the tab's window, then activate the tab
+      if (tab.windowId) {
+        chrome.windows.update(tab.windowId, { focused: true }, () => {
+          chrome.tabs.update(tab.id, { active: true });
+          window.close();
+        });
+      } else {
+        chrome.tabs.update(tab.id, { active: true });
+        window.close();
+      }
     }
   });
   
@@ -406,6 +414,20 @@ export function createTabElement(tab, category) {
   tabInfo.appendChild(tabUrl);
   
   tabElement.appendChild(tabInfo);
+  
+  // Add window indicator if there are multiple windows
+  if (tab.windowId) {
+    const windowIndicator = createElement('span', {
+      className: 'window-indicator',
+      title: `Window ${tab.windowId}`,
+      innerHTML: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="9" y1="3" x2="9" y2="21"></line>
+        <line x1="3" y1="9" x2="21" y2="9"></line>
+      </svg>`
+    });
+    tabElement.appendChild(windowIndicator);
+  }
   
   // Action buttons
   if (!state.isViewingSaved) {

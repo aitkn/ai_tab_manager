@@ -41,6 +41,14 @@ export class ChromeAPIService {
   }
   
   /**
+   * Get all tabs from all windows
+   * @returns {Promise<Array>} Array of all tabs
+   */
+  static async getAllTabs() {
+    return this.queryTabs({});
+  }
+  
+  /**
    * Create a new tab
    * @param {Object} createProperties - Tab creation properties
    * @returns {Promise<Object>} Created tab object

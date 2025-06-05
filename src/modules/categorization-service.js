@@ -38,8 +38,8 @@ export async function categorizeTabs() {
   showStatus(STATUS_MESSAGES.LOADING, 'loading', 0);
   
   try {
-    // Get all tabs in current window
-    const tabs = await ChromeAPIService.getCurrentWindowTabs();
+    // Get all tabs from all windows
+    const tabs = await ChromeAPIService.getAllTabs();
     
     // Process tabs to add domain info
     const processedTabs = tabs.map(tab => ({
