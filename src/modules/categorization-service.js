@@ -38,8 +38,26 @@ export async function categorizeTabs() {
   showStatus(STATUS_MESSAGES.LOADING, 'loading', 0);
   
   try {
-    // Get all tabs from all windows
-    const tabs = await ChromeAPIService.getAllTabs();
+    // Get uncategorized tabs from background
+    let uncategorizedTabs = [];
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getCategorizedTabs' });
+      if (response && response.categorizedTabs && response.categorizedTabs[0]) {
+        uncategorizedTabs = response.categorizedTabs[0];
+        console.log(`Found ${uncategorizedTabs.length} uncategorized tabs from background`);
+      }
+    } catch (error) {
+      console.error('Error getting uncategorized tabs from background:', error);
+    }
+    
+    // If no uncategorized tabs from background, get all tabs
+    let tabs;
+    if (uncategorizedTabs.length > 0) {
+      tabs = uncategorizedTabs;
+    } else {
+      // Get all tabs from all windows
+      tabs = await ChromeAPIService.getAllTabs();
+    }
     
     // Process tabs to add domain info
     const processedTabs = tabs.map(tab => ({
@@ -107,6 +125,7 @@ export async function categorizeTabs() {
     
     // Ensure all categories exist
     const result = {
+      [TAB_CATEGORIES.UNCATEGORIZED]: [], // Clear uncategorized after categorization
       [TAB_CATEGORIES.CAN_CLOSE]: categorized[TAB_CATEGORIES.CAN_CLOSE] || [],
       [TAB_CATEGORIES.SAVE_LATER]: categorized[TAB_CATEGORIES.SAVE_LATER] || [],
       [TAB_CATEGORIES.IMPORTANT]: categorized[TAB_CATEGORIES.IMPORTANT] || []
@@ -118,15 +137,42 @@ export async function categorizeTabs() {
       category3: result[TAB_CATEGORIES.IMPORTANT].length
     });
     
+    // Merge with existing categorized tabs (if any were already categorized)
+    // Keep any tabs that weren't in the uncategorized list
+    const existingCategorized = state.categorizedTabs || {};
+    const mergedResult = {
+      [TAB_CATEGORIES.UNCATEGORIZED]: [], // Clear uncategorized
+      [TAB_CATEGORIES.CAN_CLOSE]: result[TAB_CATEGORIES.CAN_CLOSE] || [],
+      [TAB_CATEGORIES.SAVE_LATER]: result[TAB_CATEGORIES.SAVE_LATER] || [],
+      [TAB_CATEGORIES.IMPORTANT]: result[TAB_CATEGORIES.IMPORTANT] || []
+    };
+    
+    // If we only categorized uncategorized tabs, merge with existing
+    if (uncategorizedTabs.length > 0) {
+      // Keep existing tabs that weren't recategorized
+      [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(cat => {
+        const existing = existingCategorized[cat] || [];
+        const newlyProcessed = mergedResult[cat];
+        const processedIds = new Set(tabs.map(t => t.id));
+        
+        // Add existing tabs that weren't in the processed list
+        existing.forEach(tab => {
+          if (!processedIds.has(tab.id)) {
+            mergedResult[cat].push(tab);
+          }
+        });
+      });
+    }
+    
     // Update state with categorized tabs
-    updateState('categorizedTabs', result);
+    updateState('categorizedTabs', mergedResult);
     updateState('urlToDuplicateIds', urlToDuplicateIds);
     
     // Sync with background script
     await chrome.runtime.sendMessage({
       action: 'storeCategorizedTabs',
       data: {
-        categorizedTabs: result,
+        categorizedTabs: mergedResult,
         urlToDuplicateIds: urlToDuplicateIds
       }
     });

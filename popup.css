@@ -580,6 +580,16 @@ button {
   opacity: var(--md-sys-state-pressed-opacity);
 }
 
+.primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.primary-btn:disabled:hover::before {
+  opacity: 0;
+}
+
 /* Outlined button (secondary) */
 .secondary-btn {
   background-color: transparent;
@@ -908,6 +918,12 @@ button svg {
 
 .category-header.not-important {
   color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Uncategorized tabs - neutral but distinct */
+#category0 .category-header {
+  color: var(--md-sys-color-primary);
+  opacity: 0.8;
 }
 
 .category-header-title {

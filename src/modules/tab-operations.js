@@ -172,6 +172,7 @@ export async function saveAndCloseAll() {
     
     // Clear all categories
     state.categorizedTabs = {
+      [TAB_CATEGORIES.UNCATEGORIZED]: [],
       [TAB_CATEGORIES.CAN_CLOSE]: [],
       [TAB_CATEGORIES.SAVE_LATER]: [],
       [TAB_CATEGORIES.IMPORTANT]: []
@@ -449,7 +450,9 @@ export function moveTab(tab, fromCategory, direction) {
   let toCategory = fromCategory;
   
   if (direction === 'up') {
-    if (fromCategory === TAB_CATEGORIES.CAN_CLOSE) {
+    if (fromCategory === TAB_CATEGORIES.UNCATEGORIZED) {
+      toCategory = TAB_CATEGORIES.CAN_CLOSE;
+    } else if (fromCategory === TAB_CATEGORIES.CAN_CLOSE) {
       toCategory = TAB_CATEGORIES.SAVE_LATER;
     } else if (fromCategory === TAB_CATEGORIES.SAVE_LATER) {
       toCategory = TAB_CATEGORIES.IMPORTANT;
@@ -459,6 +462,8 @@ export function moveTab(tab, fromCategory, direction) {
       toCategory = TAB_CATEGORIES.SAVE_LATER;
     } else if (fromCategory === TAB_CATEGORIES.SAVE_LATER) {
       toCategory = TAB_CATEGORIES.CAN_CLOSE;
+    } else if (fromCategory === TAB_CATEGORIES.CAN_CLOSE) {
+      toCategory = TAB_CATEGORIES.UNCATEGORIZED;
     }
   }
   

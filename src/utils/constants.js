@@ -5,12 +5,14 @@
 
 // Tab Categories
 export const TAB_CATEGORIES = {
+  UNCATEGORIZED: 0,
   CAN_CLOSE: 1,
   SAVE_LATER: 2,
   IMPORTANT: 3
 };
 
 export const CATEGORY_NAMES = {
+  [TAB_CATEGORIES.UNCATEGORIZED]: 'Uncategorized',
   [TAB_CATEGORIES.CAN_CLOSE]: 'Can Be Closed',
   [TAB_CATEGORIES.SAVE_LATER]: 'Save for Later',
   [TAB_CATEGORIES.IMPORTANT]: 'Important'
@@ -69,6 +71,7 @@ export const DOM_IDS = {
   SAVED_BADGE: 'savedBadge',
   
   // Category sections
+  CATEGORY_0: 'category0',
   CATEGORY_1: 'category1',
   CATEGORY_2: 'category2',
   CATEGORY_3: 'category3'

@@ -49,11 +49,17 @@ export function displayCategoryView() {
   hide($id(DOM_IDS.GROUPED_VIEW));
   
   // Display each category in order of importance
-  [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
+  [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
     const categorySection = $id(`category${category}`);
     if (!categorySection) {
       console.error(`Category section not found for category ${category}`);
       return;
+    }
+    
+    // Show/hide uncategorized section based on whether it has tabs
+    if (category === TAB_CATEGORIES.UNCATEGORIZED) {
+      const hasUncategorized = tabs.length > 0;
+      categorySection.style.display = hasUncategorized ? 'block' : 'none';
     }
     
     const tabsList = categorySection.querySelector('.tabs-list');
@@ -92,7 +98,7 @@ export function displayCategoryView() {
     // Add action buttons to category header if they don't exist
     const headerActions = categorySection.querySelector('.category-header-actions');
     if (headerActions && headerActions.children.length === 0 && tabs.length > 0) {
-      // Only add buttons for categories 2 and 3 (not for "Can Be Closed")
+      // Only add buttons for categories 2 and 3 (not for "Can Be Closed" or "Uncategorized")
       if (category === TAB_CATEGORIES.SAVE_LATER || category === TAB_CATEGORIES.IMPORTANT) {
         const saveBtn = createElement('button', {
           className: CSS_CLASSES.ICON_BTN_SMALL,

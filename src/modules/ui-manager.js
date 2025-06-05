@@ -175,6 +175,26 @@ export function updateCategorizeBadge() {
   } else {
     hide(badge);
   }
+  
+  // Also update categorize button state
+  updateCategorizeButtonState();
+}
+
+/**
+ * Update categorize button enable/disable state
+ */
+export function updateCategorizeButtonState() {
+  const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
+  if (!categorizeBtn) return;
+  
+  const hasUncategorized = state.categorizedTabs && 
+    state.categorizedTabs[0] && 
+    state.categorizedTabs[0].length > 0;
+  
+  categorizeBtn.disabled = !hasUncategorized;
+  categorizeBtn.title = hasUncategorized ? 
+    'Categorize uncategorized tabs using AI' : 
+    'No uncategorized tabs';
 }
 
 /**

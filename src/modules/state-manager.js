@@ -230,6 +230,7 @@ export function restoreScrollPosition(containerId, scrollTop, retryCount = 0) {
  */
 export function clearCategorizedTabs() {
   state.categorizedTabs = {
+    [TAB_CATEGORIES.UNCATEGORIZED]: [],
     [TAB_CATEGORIES.CAN_CLOSE]: [],
     [TAB_CATEGORIES.SAVE_LATER]: [],
     [TAB_CATEGORIES.IMPORTANT]: []

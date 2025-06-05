@@ -15,6 +15,7 @@ let popupPort = null;
 
 // Store categorized tabs in background
 let categorizedTabs = {
+  0: [], // Uncategorized
   1: [], // Can close
   2: [], // Save for later
   3: []  // Important
@@ -142,10 +143,47 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Tab event listeners
-chrome.tabs.onCreated.addListener((tab) => {
+chrome.tabs.onCreated.addListener(async (tab) => {
   console.log('Background: Tab created:', tab.id, tab.url, 'Popup open:', isPopupOpen);
+  
+  // Add new tab to uncategorized unless it's a duplicate
+  if (tab.url && tab.url !== 'chrome://newtab/' && !tab.url.startsWith('chrome://')) {
+    // Check if this URL already exists in categorized tabs or saved tabs
+    let isDuplicate = false;
+    
+    // Check all categories for duplicates
+    for (const category of Object.keys(categorizedTabs)) {
+      if (categorizedTabs[category].some(t => t.url === tab.url)) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    
+    if (!isDuplicate) {
+      // Add to uncategorized
+      categorizedTabs[0].push({
+        id: tab.id,
+        url: tab.url,
+        title: tab.title || 'Loading...',
+        domain: extractDomain(tab.url),
+        windowId: tab.windowId
+      });
+      console.log('Background: Added tab to uncategorized:', tab.id);
+    }
+  }
+  
   notifyPopupOfTabChange('created', tab);
 });
+
+// Helper function to extract domain
+function extractDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname;
+  } catch {
+    return '';
+  }
+}
 
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
   console.log('Background: Tab removed:', tabId, 'Popup open:', isPopupOpen);
@@ -181,6 +219,15 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Update title when it becomes available
+  if (changeInfo.title && categorizedTabs[0]) {
+    const uncategorizedTab = categorizedTabs[0].find(t => t.id === tabId);
+    if (uncategorizedTab) {
+      uncategorizedTab.title = changeInfo.title;
+      console.log('Background: Updated uncategorized tab title:', tabId, changeInfo.title);
+    }
+  }
+  
   // Only notify on complete navigation to avoid too many updates
   if (changeInfo.status === 'complete') {
     console.log('Background: Tab updated:', tabId, tab.url, 'Popup open:', isPopupOpen);

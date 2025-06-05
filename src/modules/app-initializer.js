@@ -144,6 +144,14 @@ async function loadCategorizedTabsFromBackground() {
         }
         displayTabs();
         updateCategorizeBadge();
+        
+        // Update categorize button state based on uncategorized tabs
+        const hasUncategorized = response.categorizedTabs[0] && response.categorizedTabs[0].length > 0;
+        const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
+        if (categorizeBtn) {
+          categorizeBtn.disabled = !hasUncategorized;
+          categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
+        }
       }
     }
   } catch (error) {
@@ -400,13 +408,32 @@ async function handleTabChange(data) {
     updateCategorizeBadge();
     showStatus('Tab closed - display updated', 'success', 2000);
   } else if (changeType === 'created' || changeType === 'updated') {
-    // For new or updated tabs, we could either:
-    // 1. Add them to "uncategorized" section
-    // 2. Re-run categorization
-    // 3. Just show a notification
-    
-    // For now, just show a notification
-    showStatus('New tab detected - click Categorize to update', 'warning', 3000);
+    // Load latest categorized tabs from background
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getCategorizedTabs' });
+      if (response && response.categorizedTabs) {
+        state.categorizedTabs = response.categorizedTabs;
+        state.urlToDuplicateIds = response.urlToDuplicateIds || {};
+        
+        // Update display
+        displayTabs();
+        updateCategorizeBadge();
+        
+        // Update categorize button state
+        const hasUncategorized = response.categorizedTabs[0] && response.categorizedTabs[0].length > 0;
+        const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
+        if (categorizeBtn) {
+          categorizeBtn.disabled = !hasUncategorized;
+          categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
+        }
+        
+        if (hasUncategorized) {
+          showStatus('New uncategorized tab detected', 'success', 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading categorized tabs:', error);
+    }
   }
 }
 
