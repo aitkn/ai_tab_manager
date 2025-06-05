@@ -534,26 +534,28 @@ h1 {
 
 /* Export/Import buttons group */
 .export-import-group {
-  gap: 3px;
+  gap: 0;
 }
 
-/* Compact icon buttons for toolbar */
-.toolbar-row .icon-btn {
+/* Compact collapse/expand button for toolbar */
+.grouping-group .icon-btn {
   width: 28px;
   height: 28px;
   padding: 0;
   min-width: 28px;
 }
 
+/* Use negative margins to bring Export/Import buttons closer */
 .export-import-group .icon-btn {
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
+  margin: 0 -3px;
 }
 
-.export-import-group .icon-btn svg {
-  width: 14px;
-  height: 14px;
+.export-import-group .icon-btn:first-child {
+  margin-left: 0;
+}
+
+.export-import-group .icon-btn:last-child {
+  margin-right: 0;
 }
 
 /* Hide old control containers */
@@ -898,7 +900,7 @@ button svg {
 
 /* Tighter checkbox for toolbar */
 .toolbar-row .checkbox-label {
-  gap: 4px;
+  gap: 2px;
   margin-left: 0;
 }
 
