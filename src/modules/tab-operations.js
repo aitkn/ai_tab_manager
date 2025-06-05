@@ -138,38 +138,13 @@ export async function saveAndCloseCategory(category) {
 }
 
 /**
- * Save and close all categorized tabs
+ * Close all categorized tabs (renamed from saveAndCloseAll)
  */
 export async function saveAndCloseAll() {
   try {
-    showStatus('Saving all tabs...', 'loading');
+    showStatus('Closing all tabs...', 'loading');
     
-    let totalSaved = 0;
     let totalClosed = 0;
-    
-    // Prepare tabs to save (all categories including CAN_CLOSE)
-    const tabsToSave = {
-      [TAB_CATEGORIES.CAN_CLOSE]: [],
-      [TAB_CATEGORIES.SAVE_LATER]: [],
-      [TAB_CATEGORIES.IMPORTANT]: []
-    };
-    
-    // Collect tabs to save from each category
-    for (const category of [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE]) {
-      const tabs = state.categorizedTabs[category] || [];
-      
-      for (const tab of tabs) {
-        if (!tab.alreadySaved) {
-          tabsToSave[category].push(tab);
-          totalSaved++;
-        }
-      }
-    }
-    
-    // Save all tabs at once
-    if (totalSaved > 0) {
-      await window.tabDatabase.saveCategorizedTabs(tabsToSave);
-    }
     
     // Check if we're about to close all tabs in the current window
     const currentWindow = await ChromeAPIService.getCurrentWindow();
@@ -230,7 +205,7 @@ export async function saveAndCloseAll() {
     updateCategorizeBadge();
     await savePopupState();
     
-    showStatus(`Saved ${totalSaved} tabs, closed ${totalClosed} tabs`, 'success');
+    showStatus(`Closed ${totalClosed} tabs`, 'success');
     
     // Trigger display update
     window.dispatchEvent(new CustomEvent('tabsChanged'));

@@ -98,34 +98,26 @@ export function displayCategoryView() {
     // Add action buttons to category header if they don't exist
     const headerActions = categorySection.querySelector('.category-header-actions');
     if (headerActions && headerActions.children.length === 0 && tabs.length > 0) {
-      // Only add buttons for categories 2 and 3 (not for "Can Be Closed" or "Uncategorized")
-      if (category === TAB_CATEGORIES.SAVE_LATER || category === TAB_CATEGORIES.IMPORTANT) {
-        const saveBtn = createElement('button', {
-          className: CSS_CLASSES.ICON_BTN_SMALL,
-          title: 'Save tabs in this category',
-          innerHTML: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>',
-          onclick: () => saveAndCloseCategory(category)
-        });
-        headerActions.appendChild(saveBtn);
-      }
-      
-      // Add open all button
-      const openAllBtn = createElement('button', {
+      // Add close button for all categories with tabs
+      const closeBtn = createElement('button', {
         className: CSS_CLASSES.ICON_BTN_SMALL,
-        title: 'Open all tabs in this category',
-        innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
-        onclick: () => openAllInCategory(category)
-      });
-      headerActions.appendChild(openAllBtn);
-      
-      // Add close all button
-      const closeAllBtn = createElement('button', {
-        className: CSS_CLASSES.ICON_BTN_SMALL + ' ' + CSS_CLASSES.DANGER_BTN,
-        title: 'Close all tabs in this category',
+        title: category === TAB_CATEGORIES.UNCATEGORIZED ? 
+          'Close all uncategorized tabs (WARNING: These tabs have not been saved)' : 
+          'Close all tabs in this category',
         innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
-        onclick: () => closeAllInCategory(category)
+        onclick: (e) => {
+          e.stopPropagation();
+          if (category === TAB_CATEGORIES.UNCATEGORIZED) {
+            // Show warning for uncategorized tabs
+            if (confirm(STATUS_MESSAGES.WARNING_CLOSE_UNCATEGORIZED)) {
+              closeAllInCategory(category);
+            }
+          } else {
+            closeAllInCategory(category);
+          }
+        }
       });
-      headerActions.appendChild(closeAllBtn);
+      headerActions.appendChild(closeBtn);
     }
   });
 }

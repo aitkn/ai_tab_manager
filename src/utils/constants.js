@@ -183,10 +183,12 @@ export const STORAGE_KEYS = {
 
 // Status Messages
 export const STATUS_MESSAGES = {
-  LOADING: 'Categorizing tabs...',
-  SUCCESS_CATEGORIZED: 'Tabs categorized successfully!',
+  LOADING: 'Categorizing and saving tabs...',
+  SUCCESS_CATEGORIZED: 'Tabs categorized and saved successfully!',
   SUCCESS_SAVED: 'tabs saved and closed successfully!',
+  SUCCESS_CLOSED: 'tabs closed successfully!',
   ERROR_NO_API_KEY: 'Please configure your LLM provider and API key in Settings',
   ERROR_CATEGORIZATION: 'Error categorizing tabs:',
-  WARNING_NO_TABS: 'No tabs to save'
+  WARNING_NO_TABS: 'No tabs to save',
+  WARNING_CLOSE_UNCATEGORIZED: 'Are you sure you want to close all uncategorized tabs? They have not been saved yet.'
 };
