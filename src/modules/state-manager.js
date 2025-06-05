@@ -108,6 +108,14 @@ export async function savePopupState() {
   state.popupState.searchQuery = state.searchQuery;
   state.popupState.categorizedTabs = state.categorizedTabs;
   
+  // Log categorized tabs to debug
+  const tabCounts = {
+    canClose: state.categorizedTabs[TAB_CATEGORIES.CAN_CLOSE]?.length || 0,
+    saveLater: state.categorizedTabs[TAB_CATEGORIES.SAVE_LATER]?.length || 0,
+    important: state.categorizedTabs[TAB_CATEGORIES.IMPORTANT]?.length || 0
+  };
+  console.log('Saving categorized tabs:', tabCounts);
+  
   // Get current scroll positions for all scrollable containers
   const tabsContainer = document.getElementById('tabsContainer');
   const savedContent = document.getElementById('savedContent');
@@ -144,6 +152,13 @@ export async function loadSavedState() {
           [TAB_CATEGORIES.SAVE_LATER]: savedPopupState.categorizedTabs[TAB_CATEGORIES.SAVE_LATER] || [],
           [TAB_CATEGORIES.IMPORTANT]: savedPopupState.categorizedTabs[TAB_CATEGORIES.IMPORTANT] || []
         };
+        
+        const loadedCounts = {
+          canClose: state.categorizedTabs[TAB_CATEGORIES.CAN_CLOSE]?.length || 0,
+          saveLater: state.categorizedTabs[TAB_CATEGORIES.SAVE_LATER]?.length || 0,
+          important: state.categorizedTabs[TAB_CATEGORIES.IMPORTANT]?.length || 0
+        };
+        console.log('Loaded categorized tabs:', loadedCounts);
       }
       
       state.isViewingSaved = savedPopupState.isViewingSaved || false;

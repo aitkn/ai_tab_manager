@@ -280,9 +280,8 @@ export function setupAutoSave() {
   
   // Save state on window unload
   window.addEventListener('beforeunload', () => {
-    // Only save state if we have tabs displayed
-    const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
-    if (tabsContainer && tabsContainer.style.display !== 'none') {
+    if (!state.isInitializing) {
+      console.log('Window unloading, saving state');
       savePopupState();
     }
   });

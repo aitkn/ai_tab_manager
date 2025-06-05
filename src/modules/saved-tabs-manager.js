@@ -52,8 +52,15 @@ export async function showSavedTabsContent(groupingType) {
     if (groupingType === 'category') {
       displayCategoryView(savedContent, savedTabsByCategory, allSavedTabs);
     } else {
-      // For grouped view, pass the saved tabs directly
-      const groupedView = displayGroupedView(groupingType, true, savedTabsByCategory);
+      // For non-category groupings, we need to pass the tabs in the expected format
+      // displayGroupedView expects an object with category keys
+      const tabsForDisplay = {
+        [TAB_CATEGORIES.CAN_CLOSE]: savedTabsByCategory[TAB_CATEGORIES.CAN_CLOSE] || [],
+        [TAB_CATEGORIES.SAVE_LATER]: savedTabsByCategory[TAB_CATEGORIES.SAVE_LATER] || [],
+        [TAB_CATEGORIES.IMPORTANT]: savedTabsByCategory[TAB_CATEGORIES.IMPORTANT] || []
+      };
+      
+      const groupedView = displayGroupedView(groupingType, true, tabsForDisplay);
       if (groupedView) {
         savedContent.appendChild(groupedView);
         
