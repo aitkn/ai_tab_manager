@@ -55,6 +55,9 @@ import { showSavedTabsContent, showSavedTabs, loadSavedTabsCount, handleSavedTab
 // Import search filter module
 import { onSearchInput, clearSearch, matchesSearch, applySearchFilter, filterGroupTabs, applyGroupedSearchFilter, initializeSearch } from './src/modules/search-filter.js';
 
+// Import import/export module
+import { exportToCSV, handleCSVImport, initializeImportExport } from './src/modules/import-export.js';
+
 // Log that modules are loaded
 console.log('Modules loaded:', { 
   constants: !!TAB_CATEGORIES, 
@@ -386,12 +389,8 @@ function setupEventListeners() {
     });
   });
   
-  // CSV Export/Import handlers
-  $id(DOM_IDS.EXPORT_CSV_BTN).addEventListener(EVENTS.CLICK, exportToCSV);
-  $id(DOM_IDS.IMPORT_CSV_BTN).addEventListener(EVENTS.CLICK, () => {
-    $id(DOM_IDS.CSV_FILE_INPUT).click();
-  });
-  $id(DOM_IDS.CSV_FILE_INPUT).addEventListener(EVENTS.CHANGE, handleCSVImport);
+  // Import/export handlers moved to import-export.js
+  initializeImportExport();
   
   // Toggle all groups button
   $id(DOM_IDS.TOGGLE_ALL_GROUPS_BTN).addEventListener(EVENTS.CLICK, toggleAllGroups);
@@ -2380,126 +2379,4 @@ function checkExtensionIntegrity() {
   });
 }
 
-// Export tabs to CSV
-async function exportToCSV() {
-  try {
-    showStatus('Exporting tabs to CSV...', 'loading');
-    
-    const csvContent = await tabDatabase.exportAsCSV();
-    
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const filename = `saved_tabs_${new Date().toISOString().split('T')[0]}.csv`;
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.click();
-    
-    URL.revokeObjectURL(url);
-    
-    showStatus('Tabs exported successfully', 'success');
-  } catch (error) {
-    console.error('Export error:', error);
-    showStatus('Failed to export tabs: ' + error.message, 'error');
-  }
-}
-
-// Handle CSV import
-async function handleCSVImport(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  try {
-    showStatus('Reading CSV file...', 'loading');
-    
-    const csvContent = await readFileAsText(file);
-    
-    // Show import dialog to confirm
-    const confirmed = await showImportDialog(csvContent);
-    
-    if (confirmed) {
-      showStatus('Importing tabs...', 'loading');
-      
-      // Get current settings for categorization
-      const importSettings = {
-        apiKey: settings.apiKeys[settings.provider],
-        provider: settings.provider,
-        model: settings.model,
-        customPrompt: settings.customPrompt
-      };
-      
-      const result = await tabDatabase.importFromCSV(csvContent, importSettings);
-      
-      // Build status message
-      let statusMessage;
-      const details = [];
-      
-      if (result.imported === 0 && result.duplicates > 0) {
-        // All tabs were duplicates
-        statusMessage = `No new tabs imported (all ${result.duplicates} were already saved)`;
-      } else if (result.imported === 0) {
-        // No valid tabs found
-        statusMessage = 'No valid tabs found in CSV file';
-      } else {
-        // Normal import
-        statusMessage = `Imported ${result.imported} tabs`;
-        
-        if (result.duplicates > 0) {
-          details.push(`${result.duplicates} duplicates skipped`);
-        }
-        
-        if (result.categorized > 0) {
-          details.push(`${result.categorized} categorized by AI`);
-        }
-        
-        if (details.length > 0) {
-          statusMessage += ` (${details.join(', ')})`;
-        }
-      }
-      
-      showStatus(statusMessage, result.imported > 0 ? 'success' : 'warning');
-      
-      // Store the import message to preserve it
-      const importMessage = statusMessage;
-      const importStatus = result.imported > 0 ? 'success' : 'warning';
-      
-      // Refresh saved tabs view if currently showing
-      if (popupState.activeTab === 'saved') {
-        await showSavedTabsContent();
-        // Restore the import status message after refresh
-        showStatus(importMessage, importStatus);
-      }
-    }
-  } catch (error) {
-    console.error('Import error:', error);
-    showStatus('Failed to import tabs: ' + error.message, 'error');
-  }
-  
-  // Reset file input
-  event.target.value = '';
-}
-
-// Read file as text
-function readFileAsText(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
-    reader.onerror = (e) => reject(new Error('Failed to read file'));
-    reader.readAsText(file);
-  });
-}
-
-// Show import confirmation dialog
-async function showImportDialog(csvContent) {
-  // Simple preview of the CSV
-  const lines = csvContent.split('\n').filter(line => line.trim());
-  const rowCount = lines.length - 1; // Minus header
-  
-  
-  const message = `Import ${rowCount} rows from CSV?\n\n` +
-    `Note: Tabs without categories will be categorized using ${settings.provider} if API key is available.`;
-  
-  return confirm(message);
-}
+// Import/export functions moved to import-export.js
