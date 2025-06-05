@@ -52,6 +52,9 @@ import { closeTab, saveAndCloseCategory, saveAndCloseAll, closeAllInCategory, op
 // Import saved tabs manager module
 import { showSavedTabsContent, showSavedTabs, loadSavedTabsCount, handleSavedTabSearch } from './src/modules/saved-tabs-manager.js';
 
+// Import search filter module
+import { onSearchInput, clearSearch, matchesSearch, applySearchFilter, filterGroupTabs, applyGroupedSearchFilter, initializeSearch } from './src/modules/search-filter.js';
+
 // Log that modules are loaded
 console.log('Modules loaded:', { 
   constants: !!TAB_CATEGORIES, 
@@ -2174,98 +2177,9 @@ function scrollToTab(url, tabType, targetOffset = null) {
 // Move tab between categories
 // moveTab function moved to tab-operations.js
 
-// Search functionality
-function onSearchInput(e) {
-  searchQuery = e.target.value.toLowerCase().trim();
-  applySearchFilter();
-  savePopupState();
-}
+// Search functions moved to search-filter.js
 
-function clearSearch() {
-  searchQuery = '';
-  $id(DOM_IDS.SEARCH_INPUT).value = '';
-  applySearchFilter();
-  savePopupState();
-  
-  // Reset category counts
-  [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
-    const countElement = document.querySelector(`#category${category} .count`);
-    if (countElement && categorizedTabs[category]) {
-      countElement.textContent = categorizedTabs[category].length;
-    }
-  });
-}
-
-function matchesSearch(tab, query) {
-  if (!query) return true;
-  return tab.title.toLowerCase().includes(query) || 
-         tab.url.toLowerCase().includes(query) ||
-         tab.domain.toLowerCase().includes(query);
-}
-
-function applySearchFilter() {
-  const allTabs = document.querySelectorAll('.tab-item');
-  let visibleCount = 0;
-  const visibleByCategory = { 1: 0, 2: 0, 3: 0 };
-  
-  allTabs.forEach(tabElement => {
-    const tabId = parseInt(tabElement.dataset.tabId);
-    const category = parseInt(tabElement.dataset.category);
-    
-    // Find the tab data
-    let tab = null;
-    if (categorizedTabs[category]) {
-      tab = categorizedTabs[category].find(t => t.id === tabId);
-    }
-    
-    if (tab && matchesSearch(tab, searchQuery)) {
-      tabElement.classList.remove(CSS_CLASSES.TAB_ITEM_HIDDEN);
-      tabElement.classList.add('search-match');
-      visibleCount++;
-      visibleByCategory[category]++;
-    } else {
-      tabElement.classList.add(CSS_CLASSES.TAB_ITEM_HIDDEN);
-      tabElement.classList.remove('search-match');
-    }
-  });
-  
-  // Update category counts
-  [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
-    const countElement = document.querySelector(`#category${category} .count`);
-    if (countElement) {
-      if (searchQuery) {
-        countElement.textContent = `${visibleByCategory[category]} of ${categorizedTabs[category].length}`;
-      } else {
-        countElement.textContent = categorizedTabs[category].length;
-      }
-    }
-  });
-  
-  // Update categorize tab badge with important + save for later counts
-  updateCategorizeBadge();
-  
-  // Update status
-  if (searchQuery) {
-    showStatus(`Found ${visibleCount} tabs matching "${searchQuery}"`, 'success');
-  }
-}
-
-// Update the categorize tab badge
-function updateCategorizeBadge() {
-  const badge = $id(DOM_IDS.CATEGORIZE_BADGE);
-  if (!badge) return;
-  
-  const importantCount = categorizedTabs[3] ? categorizedTabs[3].length : 0;
-  const saveForLaterCount = categorizedTabs[2] ? categorizedTabs[2].length : 0;
-  const total = importantCount + saveForLaterCount;
-  
-  if (total > 0) {
-    badge.textContent = total;
-    badge.style.display = '';
-  } else {
-    badge.style.display = DISPLAY.NONE;
-  }
-}
+// updateCategorizeBadge function already in ui-manager.js
 
 // updateSavedBadge function moved to ui-manager.js
 
