@@ -31,7 +31,7 @@ export async function closeTab(tab, category) {
     // Close all duplicate tabs
     for (const tabId of duplicateIds) {
       try {
-        await ChromeAPIService.removeTab(tabId);
+        await ChromeAPIService.removeTabs(tabId);
       } catch (error) {
         console.error(`Error closing tab ${tabId}:`, error);
       }
@@ -91,7 +91,7 @@ export async function saveAndCloseCategory(category) {
         const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
         for (const tabId of duplicateIds) {
           try {
-            await ChromeAPIService.removeTab(tabId);
+            await ChromeAPIService.removeTabs(tabId);
             closedCount++;
           } catch (error) {
             console.error(`Error closing tab ${tabId}:`, error);
@@ -149,7 +149,7 @@ export async function saveAndCloseAll() {
           const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
           for (const tabId of duplicateIds) {
             try {
-              await ChromeAPIService.removeTab(tabId);
+              await ChromeAPIService.removeTabs(tabId);
               totalClosed++;
             } catch (error) {
               console.error(`Error closing tab ${tabId}:`, error);
@@ -199,7 +199,7 @@ export async function closeAllInCategory(category) {
       const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
       for (const tabId of duplicateIds) {
         try {
-          await ChromeAPIService.removeTab(tabId);
+          await ChromeAPIService.removeTabs(tabId);
           closedCount++;
         } catch (error) {
           console.error(`Error closing tab ${tabId}:`, error);
@@ -254,6 +254,64 @@ export async function openAllInCategory(category) {
   } catch (error) {
     console.error('Error opening tabs:', error);
     showStatus('Error opening tabs', 'error');
+  }
+}
+
+/**
+ * Close all tabs in a group
+ */
+export async function closeTabsInGroup(tabs) {
+  try {
+    if (!tabs || tabs.length === 0) return;
+    
+    showStatus('Closing tabs...', 'loading');
+    
+    let closedCount = 0;
+    const allTabIds = [];
+    
+    // Collect all tab IDs including duplicates
+    for (const tab of tabs) {
+      if (tab.duplicateIds && tab.duplicateIds.length > 0) {
+        // If tab has duplicate IDs, use those
+        allTabIds.push(...tab.duplicateIds);
+      } else {
+        // Otherwise just use the tab ID
+        allTabIds.push(tab.id);
+      }
+    }
+    
+    // Close all tabs
+    for (const tabId of allTabIds) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        closedCount++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
+      }
+    }
+    
+    // Remove tabs from state
+    for (const tab of tabs) {
+      // Find and remove from categorized tabs
+      for (const category of Object.keys(state.categorizedTabs)) {
+        state.categorizedTabs[category] = state.categorizedTabs[category]
+          .filter(t => t.id !== tab.id);
+      }
+    }
+    
+    updateState('categorizedTabs', state.categorizedTabs);
+    updateCategorizeBadge();
+    await savePopupState();
+    
+    showStatus(`Closed ${closedCount} tabs`, 'success');
+    
+    // Trigger display update
+    const { displayTabs } = await import('./tab-display.js');
+    displayTabs();
+    
+  } catch (error) {
+    console.error('Error closing group tabs:', error);
+    showStatus('Error closing tabs', 'error');
   }
 }
 

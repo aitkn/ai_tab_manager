@@ -313,7 +313,7 @@ export function createGroupSection(groupName, tabs, groupingType) {
   });
   groupActions.appendChild(openAllBtn);
   
-  // Delete group button (for saved tabs view)
+  // Delete/Close group button
   if (state.isViewingSaved) {
     const deleteBtn = createElement('button', {
       className: CSS_CLASSES.ICON_BTN_SMALL + ' delete-btn',
@@ -325,6 +325,18 @@ export function createGroupSection(groupName, tabs, groupingType) {
       }
     });
     groupActions.appendChild(deleteBtn);
+  } else {
+    // Close all button for current tabs
+    const closeBtn = createElement('button', {
+      className: CSS_CLASSES.ICON_BTN_SMALL + ' ' + CSS_CLASSES.DANGER_BTN,
+      title: 'Close all tabs in this group',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+      onclick: (e) => {
+        e.stopPropagation();
+        closeTabsInGroup(tabs);
+      }
+    });
+    groupActions.appendChild(closeBtn);
   }
   
   headerRight.appendChild(groupActions);
@@ -414,20 +426,6 @@ export function createTabElement(tab, category) {
   tabInfo.appendChild(tabUrl);
   
   tabElement.appendChild(tabInfo);
-  
-  // Add window indicator if there are multiple windows
-  if (tab.windowId) {
-    const windowIndicator = createElement('span', {
-      className: 'window-indicator',
-      title: `Window ${tab.windowId}`,
-      innerHTML: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-        <line x1="9" y1="3" x2="9" y2="21"></line>
-        <line x1="3" y1="9" x2="21" y2="9"></line>
-      </svg>`
-    });
-    tabElement.appendChild(windowIndicator);
-  }
   
   // Action buttons
   if (!state.isViewingSaved) {
@@ -603,7 +601,7 @@ function groupByLastAccessedMonth(tabs) {
 // Note: extractDateFromGroupName is already imported from helpers.js at the top of the file
 
 // Import tab operations
-import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, deleteTabsInGroup, moveTab, closeTab, deleteSavedTab } from './tab-operations.js';
+import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, closeTabsInGroup, deleteTabsInGroup, moveTab, closeTab, deleteSavedTab } from './tab-operations.js';
 
 // Export functions
 export default {

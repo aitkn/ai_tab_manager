@@ -1012,19 +1012,6 @@ button svg {
   text-overflow: ellipsis;
 }
 
-.window-indicator {
-  position: absolute;
-  right: 40px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--md-sys-color-on-surface-variant);
-  opacity: 0.6;
-  transition: opacity 200ms;
-}
-
-.tab-item:hover .window-indicator {
-  opacity: 1;
-}
 
 /* Action buttons for tabs */
 .move-buttons {
