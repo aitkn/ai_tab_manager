@@ -9,6 +9,10 @@ import { state, updateState, savePopupState, debouncedSaveState } from './state-
 import { switchToTab, setTheme, showStatus, clearStatus } from './ui-manager.js';
 import { handleCategorize } from './categorization-service.js';
 import StorageService from '../services/StorageService.js';
+import { onGroupingChange as handleGroupingChange, onSavedGroupingChange as handleSavedGroupingChange, toggleAllGroups } from './ui-utilities.js';
+import { saveAndCloseAll } from './tab-operations.js';
+import { exportToCSV, handleCSVImport } from './import-export.js';
+import { updateModelDropdown } from './settings-manager.js';
 
 /**
  * Set up all event listeners
@@ -37,7 +41,7 @@ export function setupEventListeners() {
   const clearSavedSearchBtn = $id(DOM_IDS.CLEAR_SAVED_SEARCH_BTN);
   
   if (savedGroupingSelect) {
-    on(savedGroupingSelect, EVENTS.CHANGE, onSavedGroupingChange);
+    on(savedGroupingSelect, EVENTS.CHANGE, handleSavedGroupingChange);
   }
   
   if (savedSearchInput) {
@@ -56,7 +60,7 @@ export function setupEventListeners() {
   on($id(DOM_IDS.CSV_FILE_INPUT), EVENTS.CHANGE, handleCSVImport);
   
   // Grouping controls
-  on($id(DOM_IDS.GROUPING_SELECT), EVENTS.CHANGE, onGroupingChange);
+  on($id(DOM_IDS.GROUPING_SELECT), EVENTS.CHANGE, handleGroupingChange);
   on($id(DOM_IDS.TOGGLE_ALL_GROUPS_BTN), EVENTS.CLICK, toggleAllGroups);
   on($id(DOM_IDS.TOGGLE_CATEGORIZE_GROUPS_BTN), EVENTS.CLICK, toggleAllGroups);
   
@@ -246,48 +250,9 @@ function clearSavedSearch() {
   // Trigger saved tab display update
 }
 
-/**
- * Grouping change handler
- */
-function onGroupingChange(e) {
-  const groupingType = e.target.value;
-  state.popupState.groupingSelections.categorize = groupingType;
-  
-  // Trigger display update
-  savePopupState();
-}
+// Grouping handlers imported from ui-utilities.js
 
-/**
- * Saved tab grouping change handler
- */
-function onSavedGroupingChange(e) {
-  const groupingType = e.target.value;
-  state.popupState.groupingSelections.saved = groupingType;
-  
-  // Trigger saved tab display update
-  savePopupState();
-}
-
-// Placeholder functions - these will be imported from other modules
-function saveAndCloseAll() {
-  console.log('saveAndCloseAll - to be implemented');
-}
-
-function updateModelDropdown() {
-  console.log('updateModelDropdown - to be implemented');
-}
-
-function toggleAllGroups() {
-  console.log('toggleAllGroups - to be implemented');
-}
-
-function exportToCSV() {
-  console.log('exportToCSV - to be implemented');
-}
-
-function handleCSVImport() {
-  console.log('handleCSVImport - to be implemented');
-}
+// Functions are now imported from their respective modules
 
 // Export default object
 export default {
