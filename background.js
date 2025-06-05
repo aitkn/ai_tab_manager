@@ -11,6 +11,22 @@ console.log('Background service worker starting...');
 // Track current state
 let currentCategorization = null;
 let isPopupOpen = false;
+let popupPort = null;
+
+// Listen for connections from popup
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'popup') {
+    console.log('Background: Popup connected');
+    popupPort = port;
+    isPopupOpen = true;
+    
+    port.onDisconnect.addListener(() => {
+      console.log('Background: Popup disconnected');
+      popupPort = null;
+      isPopupOpen = false;
+    });
+  }
+});
 
 // Import configuration
 try {
@@ -86,26 +102,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Will respond asynchronously
   }
   
-  // Handle popup state tracking
-  if (request.action === 'popupOpened') {
-    console.log('Background: Popup opened notification received');
-    isPopupOpen = true;
-    sendResponse({ status: 'acknowledged', isPopupOpen: true });
-    return false;
-  }
-  
-  if (request.action === 'popupClosed') {
-    console.log('Background: Popup closed notification received');
-    isPopupOpen = false;
-    sendResponse({ status: 'acknowledged', isPopupOpen: false });
-    return false;
-  }
   
   if (request.action === 'updateCategorization') {
     currentCategorization = request.data;
     sendResponse({ status: 'categorization stored' });
     return false;
   }
+  
   
   // Default response for unknown actions
   sendResponse({ error: 'Unknown action: ' + request.action });
@@ -133,28 +136,27 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Function to notify popup of tab changes
 function notifyPopupOfTabChange(action, tabInfo) {
-  if (!isPopupOpen) {
-    console.log('Background: Skipping notification - popup not open');
+  if (!isPopupOpen || !popupPort) {
+    console.log('Background: Skipping notification - popup not open or not connected');
     return;
   }
   
-  // Try to get all views (including popup)
-  const views = chrome.extension.getViews({ type: 'popup' });
-  console.log('Background: Found', views.length, 'popup views');
+  const notification = {
+    changeType: action,
+    tab: tabInfo,
+    timestamp: Date.now()
+  };
   
-  views.forEach(view => {
-    // Check if the popup has our handler function
-    if (view.handleTabChangeFromBackground) {
-      console.log('Background: Calling popup handler for', action);
-      view.handleTabChangeFromBackground({
-        changeType: action,
-        tab: tabInfo,
-        timestamp: Date.now()
-      });
-    } else {
-      console.log('Background: Popup handler not found in view');
-    }
-  });
+  try {
+    // Send message through port
+    popupPort.postMessage({
+      action: 'tabChanged',
+      data: notification
+    });
+    console.log('Background: Sent tab change notification:', action);
+  } catch (error) {
+    console.log('Background: Error sending notification:', error);
+  }
 }
 
 async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPrompt, savedUrls = [] }) {

@@ -108,12 +108,6 @@ export async function initializeApp() {
     // Update saved tab badge
     await loadSavedTabsCount();
     
-    // Notify background script that popup is open
-    console.log('Popup: Notifying background script that popup is open');
-    chrome.runtime.sendMessage({ action: 'popupOpened' }, response => {
-      console.log('Popup: Background acknowledged:', response);
-    });
-    
     // Set up tab change listener
     setupTabChangeListener();
     
@@ -309,8 +303,6 @@ export function setupAutoSave() {
       console.log('Window unloading, saving state');
       savePopupState();
     }
-    // Notify background script that popup is closing
-    chrome.runtime.sendMessage({ action: 'popupClosed' }).catch(() => {});
   });
 }
 
@@ -318,7 +310,20 @@ export function setupAutoSave() {
  * Set up listener for tab changes from background script
  */
 function setupTabChangeListener() {
-  // Expose handler to window for background script to call
+  console.log('Popup: Setting up tab change listener');
+  
+  // Connect to background script
+  const port = chrome.runtime.connect({ name: 'popup' });
+  
+  // Listen for messages from background
+  port.onMessage.addListener((message) => {
+    if (message.action === 'tabChanged') {
+      console.log('Popup: Received tab change:', message.data);
+      handleTabChange(message.data);
+    }
+  });
+  
+  // Also expose handler to window for testing
   window.handleTabChangeFromBackground = (data) => {
     handleTabChange(data);
   };
