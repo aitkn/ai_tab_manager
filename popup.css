@@ -460,7 +460,6 @@ h1 {
 .toolbar-section {
   display: flex;
   align-items: center;
-  gap: var(--md-spacing-2);
 }
 
 /* First row sections */
@@ -489,7 +488,7 @@ h1 {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: var(--md-spacing-2);
+  gap: var(--md-spacing-1);
 }
 
 /* Search section (second row) */
@@ -521,7 +520,6 @@ h1 {
 .control-group {
   display: flex;
   align-items: center;
-  gap: var(--md-spacing-1);
 }
 
 /* GROUP BY controls group */
@@ -531,7 +529,7 @@ h1 {
 
 /* Show All checkbox group */
 .show-all-group {
-  /* No additional styles needed, inherits from control-group */
+  /* No additional styles needed */
 }
 
 /* Export/Import buttons group */
