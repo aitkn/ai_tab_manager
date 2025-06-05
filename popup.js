@@ -67,6 +67,18 @@ function updateThemeButtons(activeTheme) {
   });
 }
 
+// Save state when window loses focus or visibility changes
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    savePopupState();
+  }
+});
+
+// Also save when window loses focus
+window.addEventListener('blur', () => {
+  savePopupState();
+});
+
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('Popup loaded, initializing...');
   
@@ -133,6 +145,10 @@ document.addEventListener('DOMContentLoaded', async function() {
           document.querySelector('.action-buttons').style.display = 'flex';
           displayTabs();
           updateCategorizeBadge();
+          // Restore scroll position for categorize tab after content is displayed
+          if (!popupState.isViewingSaved) {
+            restoreScrollPosition('categorize', 200);
+          }
         }
       }
       
@@ -156,8 +172,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Restore active tab if available
     if (stored.popupState && stored.popupState.activeTab) {
       switchToTab(stored.popupState.activeTab);
-      // Restore scroll position after switching tabs
-      restoreScrollPosition(stored.popupState.activeTab, 300);
+      // For saved tab, scroll restoration happens in showSavedTabsContent
+      // For categorize tab, restore scroll after a delay
+      if (stored.popupState.activeTab === 'categorize') {
+        restoreScrollPosition('categorize', 300);
+      }
     }
     
     
