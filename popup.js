@@ -1045,67 +1045,68 @@ async function categorizeTabs(tabs, apiKey, provider, model, customPrompt) {
   }
 }
 
-function fallbackCategorization(tabs) {
-  const organized = { 1: [], 2: [], 3: [] };
-  
-  // Common error page patterns
-  const errorPatterns = [
-    /^(404|403|500|502|503|error|not found|access denied|forbidden|bad gateway|service unavailable)/i,
-    /this site can.?t be reached/i,
-    /err_.*$/i,
-    /page not found/i,
-    /the page you were looking for doesn.?t exist/i,
-    /gateway time.?out/i,
-    /internal server error/i
-  ];
-  
-  tabs.forEach(tab => {
-    const domain = tab.domain;
-    const title = tab.title.toLowerCase();
-    const url = tab.url.toLowerCase();
-    
-    // Check if it's an error page
-    const isErrorPage = errorPatterns.some(pattern => pattern.test(title));
-    
-    // Category 1: Error pages, frequent domains, or empty tabs - CHECK FIRST
-    if (isErrorPage ||
-        CONFIG.FREQUENT_DOMAINS.some(freq => domain.includes(freq)) || 
-        title === 'new tab' || 
-        url.includes('chrome://') ||
-        url.includes('/home') ||
-        url.includes('inbox')) {
-      organized[1].push(tab);
-    }
-    // Category 3: LLM conversations, documentation, github repos
-    else if (url.includes('claude.ai/chat') || 
-        url.includes('chatgpt.com/c/') || 
-        url.includes('grok.com/chat') ||
-        url.includes('gemini.google.com/app') ||
-        (url.includes('github.com') && !url.endsWith('github.com/')) ||
-        url.includes('/docs/') ||
-        url.includes('documentation') ||
-        url.includes('supabase.com/dashboard')) {
-      organized[3].push(tab);
-    }
-    // Category 2: Everything else
-    else {
-      organized[2].push(tab);
-    }
-  });
-  
-  // Sort by domain
-  Object.keys(organized).forEach(cat => {
-    organized[cat].sort((a, b) => a.domain.localeCompare(b.domain));
-  });
-  
-  console.log('Fallback categorization complete:', {
-    category1: organized[1].length,
-    category2: organized[2].length,
-    category3: organized[3].length
-  });
-  
-  return organized;
-}
+// REFACTORING: Commented out - now using imported fallbackCategorization from helpers.js
+// function fallbackCategorization(tabs) {
+//   const organized = { 1: [], 2: [], 3: [] };
+//   
+//   // Common error page patterns
+//   const errorPatterns = [
+//     /^(404|403|500|502|503|error|not found|access denied|forbidden|bad gateway|service unavailable)/i,
+//     /this site can.?t be reached/i,
+//     /err_.*$/i,
+//     /page not found/i,
+//     /the page you were looking for doesn.?t exist/i,
+//     /gateway time.?out/i,
+//     /internal server error/i
+//   ];
+//   
+//   tabs.forEach(tab => {
+//     const domain = tab.domain;
+//     const title = tab.title.toLowerCase();
+//     const url = tab.url.toLowerCase();
+//     
+//     // Check if it's an error page
+//     const isErrorPage = errorPatterns.some(pattern => pattern.test(title));
+//     
+//     // Category 1: Error pages, frequent domains, or empty tabs - CHECK FIRST
+//     if (isErrorPage ||
+//         CONFIG.FREQUENT_DOMAINS.some(freq => domain.includes(freq)) || 
+//         title === 'new tab' || 
+//         url.includes('chrome://') ||
+//         url.includes('/home') ||
+//         url.includes('inbox')) {
+//       organized[1].push(tab);
+//     }
+//     // Category 3: LLM conversations, documentation, github repos
+//     else if (url.includes('claude.ai/chat') || 
+//         url.includes('chatgpt.com/c/') || 
+//         url.includes('grok.com/chat') ||
+//         url.includes('gemini.google.com/app') ||
+//         (url.includes('github.com') && !url.endsWith('github.com/')) ||
+//         url.includes('/docs/') ||
+//         url.includes('documentation') ||
+//         url.includes('supabase.com/dashboard')) {
+//       organized[3].push(tab);
+//     }
+//     // Category 2: Everything else
+//     else {
+//       organized[2].push(tab);
+//     }
+//   });
+//   
+//   // Sort by domain
+//   Object.keys(organized).forEach(cat => {
+//     organized[cat].sort((a, b) => a.domain.localeCompare(b.domain));
+//   });
+//   
+//   console.log('Fallback categorization complete:', {
+//     category1: organized[1].length,
+//     category2: organized[2].length,
+//     category3: organized[3].length
+//   });
+//   
+//   return organized;
+// }
 
 function displayTabs(isFromSaved = false) {
   try {
@@ -1310,167 +1311,171 @@ function displayGroupedView(groupBy, isFromSaved = false, tabsToDisplay = null) 
   }
 }
 
-// Helper function to extract root domain
-function getRootDomain(domain) {
-  if (!domain || domain === 'unknown') return domain;
-  
-  // Handle special cases
-  if (domain.startsWith('chrome://') || domain.startsWith('file://')) {
-    return domain;
-  }
-  
-  // Remove www. prefix
-  let cleaned = domain.replace(/^www\./, '');
-  
-  // Extract root domain (last two parts for most domains)
-  const parts = cleaned.split('.');
-  if (parts.length >= 2) {
-    // Handle special TLDs like co.uk, com.au, etc.
-    const specialTLDs = ['co.uk', 'com.au', 'co.nz', 'co.jp', 'co.in', 'com.br', 'com.cn'];
-    const lastTwo = parts.slice(-2).join('.');
-    if (specialTLDs.includes(lastTwo) && parts.length >= 3) {
-      return parts.slice(-3).join('.');
-    }
-    return parts.slice(-2).join('.');
-  }
-  return cleaned;
-}
+// REFACTORING: Commented out - now using imported getRootDomain from helpers.js
+// // Helper function to extract root domain
+// function getRootDomain(domain) {
+//   if (!domain || domain === 'unknown') return domain;
+//   
+//   // Handle special cases
+//   if (domain.startsWith('chrome://') || domain.startsWith('file://')) {
+//     return domain;
+//   }
+//   
+//   // Remove www. prefix
+//   let cleaned = domain.replace(/^www\./, '');
+//   
+//   // Extract root domain (last two parts for most domains)
+//   const parts = cleaned.split('.');
+//   if (parts.length >= 2) {
+//     // Handle special TLDs like co.uk, com.au, etc.
+//     const specialTLDs = ['co.uk', 'com.au', 'co.nz', 'co.jp', 'co.in', 'com.br', 'com.cn'];
+//     const lastTwo = parts.slice(-2).join('.');
+//     if (specialTLDs.includes(lastTwo) && parts.length >= 3) {
+//       return parts.slice(-3).join('.');
+//     }
+//     return parts.slice(-2).join('.');
+//   }
+//   return cleaned;
+// }
 
-// Helper function to get subdomain
-function getSubdomain(fullDomain, rootDomain) {
-  if (!fullDomain || fullDomain === rootDomain) return '';
-  const subdomain = fullDomain.replace(new RegExp(`\\.?${rootDomain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), '');
-  return subdomain || '';
-}
+// REFACTORING: Commented out - now using imported getSubdomain from helpers.js
+// // Helper function to get subdomain
+// function getSubdomain(fullDomain, rootDomain) {
+//   if (!fullDomain || fullDomain === rootDomain) return '';
+//   const subdomain = fullDomain.replace(new RegExp(`\\.?${rootDomain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), '');
+//   return subdomain || '';
+// }
 
-// Extract date from group name for sorting
-function extractDateFromGroupName(groupName) {
-  // Handle "Today", "Yesterday"
-  if (groupName.includes('Today')) return new Date();
-  if (groupName.includes('Yesterday')) {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday;
-  }
-  
-  // Handle "This Week", "Last Week"
-  if (groupName.includes('This Week')) {
-    return new Date(); // Current week
-  }
-  if (groupName.includes('Last Week')) {
-    const lastWeek = new Date();
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    return lastWeek;
-  }
-  
-  // Handle "X days ago"
-  const daysAgoMatch = groupName.match(/(\d+) days ago/);
-  if (daysAgoMatch) {
-    const daysAgo = parseInt(daysAgoMatch[1]);
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-    return date;
-  }
-  
-  // Handle "Week of Mon DD" or "Week of Mon DD, YYYY" format
-  const weekOfMatch = groupName.match(/Week of (\w+)\s+(\d+)(?:,\s+(\d{4}))?/);
-  if (weekOfMatch) {
-    const monthName = weekOfMatch[1];
-    const day = parseInt(weekOfMatch[2]);
-    const year = weekOfMatch[3] ? parseInt(weekOfMatch[3]) : new Date().getFullYear();
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthIndex = monthNames.indexOf(monthName);
-    if (monthIndex !== -1) {
-      const date = new Date(year, monthIndex, day);
-      return date;
-    }
-  }
-  
-  // Handle "Week X, YYYY" (old format)
-  const weekMatch = groupName.match(/Week (\d+), (\d{4})/);
-  if (weekMatch) {
-    const week = parseInt(weekMatch[1]);
-    const year = parseInt(weekMatch[2]);
-    // Approximate date for week
-    const date = new Date(year, 0, 1);
-    date.setDate(date.getDate() + (week - 1) * 7);
-    return date;
-  }
-  
-  // Handle month names
-  const monthMatch = groupName.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})/);
-  if (monthMatch) {
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthIndex = monthNames.indexOf(monthMatch[1]);
-    const year = parseInt(monthMatch[2]);
-    return new Date(year, monthIndex, 1);
-  }
-  
-  // Try to parse any date format
-  const date = new Date(groupName.replace(/^(Saved|Opened) /, ''));
-  if (!isNaN(date.getTime())) {
-    return date;
-  }
-  
-  // Default to current date if unable to parse
-  return new Date();
-}
+// REFACTORING: Commented out - now using imported extractDateFromGroupName from helpers.js
+// // Extract date from group name for sorting
+// function extractDateFromGroupName(groupName) {
+//   // Handle "Today", "Yesterday"
+//   if (groupName.includes('Today')) return new Date();
+//   if (groupName.includes('Yesterday')) {
+//     const yesterday = new Date();
+//     yesterday.setDate(yesterday.getDate() - 1);
+//     return yesterday;
+//   }
+//   
+//   // Handle "This Week", "Last Week"
+//   if (groupName.includes('This Week')) {
+//     return new Date(); // Current week
+//   }
+//   if (groupName.includes('Last Week')) {
+//     const lastWeek = new Date();
+//     lastWeek.setDate(lastWeek.getDate() - 7);
+//     return lastWeek;
+//   }
+//   
+//   // Handle "X days ago"
+//   const daysAgoMatch = groupName.match(/(\d+) days ago/);
+//   if (daysAgoMatch) {
+//     const daysAgo = parseInt(daysAgoMatch[1]);
+//     const date = new Date();
+//     date.setDate(date.getDate() - daysAgo);
+//     return date;
+//   }
+//   
+//   // Handle "Week of Mon DD" or "Week of Mon DD, YYYY" format
+//   const weekOfMatch = groupName.match(/Week of (\w+)\s+(\d+)(?:,\s+(\d{4}))?/);
+//   if (weekOfMatch) {
+//     const monthName = weekOfMatch[1];
+//     const day = parseInt(weekOfMatch[2]);
+//     const year = weekOfMatch[3] ? parseInt(weekOfMatch[3]) : new Date().getFullYear();
+//     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+//     const monthIndex = monthNames.indexOf(monthName);
+//     if (monthIndex !== -1) {
+//       const date = new Date(year, monthIndex, day);
+//       return date;
+//     }
+//   }
+//   
+//   // Handle "Week X, YYYY" (old format)
+//   const weekMatch = groupName.match(/Week (\d+), (\d{4})/);
+//   if (weekMatch) {
+//     const week = parseInt(weekMatch[1]);
+//     const year = parseInt(weekMatch[2]);
+//     // Approximate date for week
+//     const date = new Date(year, 0, 1);
+//     date.setDate(date.getDate() + (week - 1) * 7);
+//     return date;
+//   }
+//   
+//   // Handle month names
+//   const monthMatch = groupName.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})/);
+//   if (monthMatch) {
+//     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+//     const monthIndex = monthNames.indexOf(monthMatch[1]);
+//     const year = parseInt(monthMatch[2]);
+//     return new Date(year, monthIndex, 1);
+//   }
+//   
+//   // Try to parse any date format
+//   const date = new Date(groupName.replace(/^(Saved|Opened) /, ''));
+//   if (!isNaN(date.getTime())) {
+//     return date;
+//   }
+//   
+//   // Default to current date if unable to parse
+//   return new Date();
+// }
 
-// Sort tabs within a group based on grouping type
-function sortTabsInGroup(tabs, groupingType) {
-  return tabs.sort((a, b) => {
-    const rootDomainA = getRootDomain(a.domain || '');
-    const rootDomainB = getRootDomain(b.domain || '');
-    const subdomainA = getSubdomain(a.domain || '', rootDomainA);
-    const subdomainB = getSubdomain(b.domain || '', rootDomainB);
-    
-    switch (groupingType) {
-      case 'category':
-        // Sort by root domain, subdomain, datetime opened desc
-        if (rootDomainA !== rootDomainB) {
-          return rootDomainA.localeCompare(rootDomainB);
-        }
-        if (subdomainA !== subdomainB) {
-          return subdomainA.localeCompare(subdomainB);
-        }
-        return (b.lastAccessed || b.savedAt) - (a.lastAccessed || a.savedAt);
-        
-      case 'domain':
-        // Sort by subdomain, datetime opened desc
-        if (subdomainA !== subdomainB) {
-          return subdomainA.localeCompare(subdomainB);
-        }
-        return (b.lastAccessed || b.savedAt) - (a.lastAccessed || a.savedAt);
-        
-      case 'savedDate':
-      case 'savedWeek':
-      case 'savedMonth':
-        // Sort by root domain, subdomain, datetime saved
-        if (rootDomainA !== rootDomainB) {
-          return rootDomainA.localeCompare(rootDomainB);
-        }
-        if (subdomainA !== subdomainB) {
-          return subdomainA.localeCompare(subdomainB);
-        }
-        return b.savedAt - a.savedAt;
-        
-      case 'lastAccessedDate':
-      case 'lastAccessedWeek':
-      case 'lastAccessedMonth':
-        // Sort by root domain, subdomain, datetime opened
-        if (rootDomainA !== rootDomainB) {
-          return rootDomainA.localeCompare(rootDomainB);
-        }
-        if (subdomainA !== subdomainB) {
-          return subdomainA.localeCompare(subdomainB);
-        }
-        return (b.lastAccessed || b.savedAt) - (a.lastAccessed || a.savedAt);
-        
-      default:
-        return 0;
-    }
-  });
-}
+// REFACTORING: Commented out - now using imported sortTabsInGroup from helpers.js
+// // Sort tabs within a group based on grouping type
+// function sortTabsInGroup(tabs, groupingType) {
+//   return tabs.sort((a, b) => {
+//     const rootDomainA = getRootDomain(a.domain || '');
+//     const rootDomainB = getRootDomain(b.domain || '');
+//     const subdomainA = getSubdomain(a.domain || '', rootDomainA);
+//     const subdomainB = getSubdomain(b.domain || '', rootDomainB);
+//     
+//     switch (groupingType) {
+//       case 'category':
+//         // Sort by root domain, subdomain, datetime opened desc
+//         if (rootDomainA !== rootDomainB) {
+//           return rootDomainA.localeCompare(rootDomainB);
+//         }
+//         if (subdomainA !== subdomainB) {
+//           return subdomainA.localeCompare(subdomainB);
+//         }
+//         return (b.lastAccessed || b.savedAt) - (a.lastAccessed || a.savedAt);
+//         
+//       case 'domain':
+//         // Sort by subdomain, datetime opened desc
+//         if (subdomainA !== subdomainB) {
+//           return subdomainA.localeCompare(subdomainB);
+//         }
+//         return (b.lastAccessed || b.savedAt) - (a.lastAccessed || a.savedAt);
+//         
+//       case 'savedDate':
+//       case 'savedWeek':
+//       case 'savedMonth':
+//         // Sort by root domain, subdomain, datetime saved
+//         if (rootDomainA !== rootDomainB) {
+//           return rootDomainA.localeCompare(rootDomainB);
+//         }
+//         if (subdomainA !== subdomainB) {
+//           return subdomainA.localeCompare(subdomainB);
+//         }
+//         return b.savedAt - a.savedAt;
+//         
+//       case 'lastAccessedDate':
+//       case 'lastAccessedWeek':
+//       case 'lastAccessedMonth':
+//         // Sort by root domain, subdomain, datetime opened
+//         if (rootDomainA !== rootDomainB) {
+//           return rootDomainA.localeCompare(rootDomainB);
+//         }
+//         if (subdomainA !== subdomainB) {
+//           return subdomainA.localeCompare(subdomainB);
+//         }
+//         return (b.lastAccessed || b.savedAt) - (a.lastAccessed || a.savedAt);
+//         
+//       default:
+//         return 0;
+//     }
+//   });
+// }
 
 function groupByDomain(tabs) {
   const groups = {};
@@ -1593,23 +1598,25 @@ function groupByMonth(tabs) {
   return groups;
 }
 
-function getWeekNumber(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-}
+// REFACTORING: Commented out - now using imported getWeekNumber from helpers.js
+// function getWeekNumber(date) {
+//   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+//   const dayNum = d.getUTCDay() || 7;
+//   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+//   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+//   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+// }
 
-// Get the Monday of the week for a given date
-function getWeekStartDate(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-  const monday = new Date(d.setDate(diff));
-  monday.setHours(0, 0, 0, 0);
-  return monday;
-}
+// REFACTORING: Commented out - now using imported getWeekStartDate from helpers.js
+// // Get the Monday of the week for a given date
+// function getWeekStartDate(date) {
+//   const d = new Date(date);
+//   const day = d.getDay();
+//   const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+//   const monday = new Date(d.setDate(diff));
+//   monday.setHours(0, 0, 0, 0);
+//   return monday;
+// }
 
 // Group by saved date
 function groupBySavedDate(tabs) {
