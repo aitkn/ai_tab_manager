@@ -5,7 +5,7 @@
 
 import { DOM_IDS, CSS_CLASSES, TAB_CATEGORIES, CATEGORY_NAMES, GROUPING_OPTIONS, URLS } from '../utils/constants.js';
 import { $, $id, show, hide, classes, createElement } from '../utils/dom-helpers.js';
-import { getRootDomain, getSubdomain, sortTabsInGroup, getWeekNumber, getWeekStartDate, formatDate } from '../utils/helpers.js';
+import { getRootDomain, getSubdomain, sortTabsInGroup, getWeekNumber, getWeekStartDate, formatDate, extractDateFromGroupName } from '../utils/helpers.js';
 import { state } from './state-manager.js';
 import { showStatus } from './ui-manager.js';
 
