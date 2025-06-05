@@ -42,10 +42,8 @@ export function initializeUnifiedToolbar() {
   // Get toolbar elements
   const searchInput = $id('unifiedSearchInput');
   const clearSearchBtn = $id('clearUnifiedSearchBtn');
-  const currentGroupingSelect = $id('groupingSelect2');
-  const savedGroupingSelect = $id('savedGroupingSelect2');
+  const groupingSelect = $id('unifiedGroupingSelect');
   const toggleBtn = $id('toggleGroupsBtn');
-  const toggleAllBtn = $id('toggleAllGroupsBtn2');
   const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN2);
   const closeAllBtn = $id(DOM_IDS.CLOSE_ALL_BTN2);
   const showAllCheckbox = $id('showAllCheckbox');
@@ -61,20 +59,12 @@ export function initializeUnifiedToolbar() {
     on(clearSearchBtn, 'click', clearSearch);
   }
   
-  if (currentGroupingSelect) {
-    on(currentGroupingSelect, 'change', handleGroupingChange);
-  }
-  
-  if (savedGroupingSelect) {
-    on(savedGroupingSelect, 'change', handleGroupingChange);
+  if (groupingSelect) {
+    on(groupingSelect, 'change', handleGroupingChange);
   }
   
   if (toggleBtn) {
     on(toggleBtn, 'click', toggleAllGroups);
-  }
-  
-  if (toggleAllBtn) {
-    on(toggleAllBtn, 'click', toggleAllGroups);
   }
   
   if (categorizeBtn) {
@@ -110,18 +100,18 @@ export function updateToolbarVisibility(tabType) {
   const currentTabControls = $id('currentTabControls');
   const savedTabControls = $id('savedTabControls');
   const searchInput = $id('unifiedSearchInput');
-  const currentGroupingSelect = $id('groupingSelect2');
-  const savedGroupingSelect = $id('savedGroupingSelect2');
+  const groupingSelect = $id('unifiedGroupingSelect');
   
   // Show/hide tab-specific controls
   if (tabType === 'categorize') {
     show(currentTabControls, 'flex');
     hide(savedTabControls);
     searchInput.placeholder = 'Search tabs by title or URL...';
+    populateGroupingOptions(CURRENT_TAB_GROUPING_OPTIONS);
     
     // Restore grouping selection
-    if (state.popupState.groupingSelections?.categorize && currentGroupingSelect) {
-      currentGroupingSelect.value = state.popupState.groupingSelections.categorize;
+    if (state.popupState.groupingSelections?.categorize) {
+      groupingSelect.value = state.popupState.groupingSelections.categorize;
     }
     
     // Update close all button color
@@ -139,10 +129,11 @@ export function updateToolbarVisibility(tabType) {
     hide(currentTabControls);
     show(savedTabControls, 'flex');
     searchInput.placeholder = 'Search saved tabs...';
+    populateGroupingOptions(SAVED_TAB_GROUPING_OPTIONS);
     
     // Restore grouping selection and checkbox
-    if (state.popupState.groupingSelections?.saved && savedGroupingSelect) {
-      savedGroupingSelect.value = state.popupState.groupingSelections.saved;
+    if (state.popupState.groupingSelections?.saved) {
+      groupingSelect.value = state.popupState.groupingSelections.saved;
     }
     
     const showAllCheckbox = $id('showAllCheckbox');
@@ -182,6 +173,21 @@ export function hideToolbar() {
   }
 }
 
+/**
+ * Populate grouping options based on active tab
+ */
+function populateGroupingOptions(options) {
+  const groupingSelect = $id('unifiedGroupingSelect');
+  if (!groupingSelect) return;
+  
+  groupingSelect.innerHTML = '';
+  options.forEach(option => {
+    const optionEl = document.createElement('option');
+    optionEl.value = option.value;
+    optionEl.textContent = option.text;
+    groupingSelect.appendChild(optionEl);
+  });
+}
 
 /**
  * Handle search input
@@ -219,14 +225,12 @@ function clearSearch() {
  */
 function handleGroupingChange(e) {
   const newGrouping = e.target.value;
-  const isCurrentTab = e.target.id === 'groupingSelect2';
-  const isSavedTab = e.target.id === 'savedGroupingSelect2';
   
-  if (isCurrentTab || currentActiveTab === 'categorize') {
+  if (currentActiveTab === 'categorize') {
     state.popupState.groupingSelections.categorize = newGrouping;
     savePopupState();
     displayTabs();
-  } else if (isSavedTab || currentActiveTab === 'saved') {
+  } else if (currentActiveTab === 'saved') {
     state.popupState.groupingSelections.saved = newGrouping;
     savePopupState();
     showSavedTabsContent(newGrouping, state.popupState.showAllCategories);
