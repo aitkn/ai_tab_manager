@@ -1659,7 +1659,7 @@ function createGroupSection(groupName, tabs, groupType, isFromSaved) {
     
     // Open All button with icon
     const openAllBtn = document.createElement('button');
-    openAllBtn.className = 'icon-btn';
+    openAllBtn.className = 'icon-btn-small';
     openAllBtn.title = `Open all ${tabs.length} tabs in this group`;
     openAllBtn.innerHTML = `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1675,7 +1675,7 @@ function createGroupSection(groupName, tabs, groupType, isFromSaved) {
     
     // Delete group button with icon
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'icon-btn delete-btn';
+    deleteBtn.className = 'icon-btn-small delete-btn';
     deleteBtn.title = `Delete all ${tabs.length} tabs in this group`;
     deleteBtn.innerHTML = `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
