@@ -49,6 +49,9 @@ import { $, $id, show, hide, toggle, on, createElement, classes, animate } from 
 // Import tab operations module
 import { closeTab, saveAndCloseCategory, saveAndCloseAll, closeAllInCategory, openAllInCategory, openAllTabsInGroup, moveTab, deleteSavedTab, deleteTabsInGroup, restoreSavedTab, markDuplicateTabs } from './src/modules/tab-operations.js';
 
+// Import saved tabs manager module
+import { showSavedTabsContent, showSavedTabs, loadSavedTabsCount, handleSavedTabSearch } from './src/modules/saved-tabs-manager.js';
+
 // Log that modules are loaded
 console.log('Modules loaded:', { 
   constants: !!TAB_CATEGORIES, 
@@ -2062,203 +2065,9 @@ async function openAllTabsInCategory(category) {
 }
 
 // Show saved tabs content in the saved tab
-async function showSavedTabsContent(groupingType) {
-  try {
-    // Make sure the saved tab pane exists and is ready
-    const savedTab = $id('savedTab');
-    if (!savedTab) {
-      console.error('Saved tab pane not found');
-      return;
-    }
-    
-    const allSavedTabs = await tabDatabase.getAllSavedTabs();
-    
-    // Get current grouping from dropdown if not passed
-    if (!groupingType) {
-      const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
-      groupingType = savedGroupingSelect ? savedGroupingSelect.value : 'category';
-    }
-    
-    // Store the saved tabs in a temporary object for display (don't overwrite categorizedTabs)
-    const savedTabsByCategory = { [TAB_CATEGORIES.CAN_CLOSE]: [], [TAB_CATEGORIES.SAVE_LATER]: [], [TAB_CATEGORIES.IMPORTANT]: [] };
-    allSavedTabs.forEach(tab => {
-      if (savedTabsByCategory[tab.category]) {
-        savedTabsByCategory[tab.category].push(tab);
-      }
-    });
-    
-    // Get the saved content container
-    const savedContent = $id(DOM_IDS.SAVED_CONTENT);
-    savedContent.innerHTML = '';
-    
-    if (groupingType === 'category') {
-      // Create a category view in saved content
-      const categoryView = document.createElement('div');
-      categoryView.className = 'grouping-view';
-      categoryView.id = 'savedCategoryView';
-    
-      // Display each category
-      [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
-        const tabs = savedTabsByCategory[category] || [];
-      if (tabs.length === 0) return; // Skip empty categories
-      
-      const section = document.createElement('div');
-      section.className = CSS_CLASSES.CATEGORY_SECTION;
-      section.id = `savedCategory${category}`;
-      
-      const header = document.createElement('h2');
-      header.className = `category-header ${category === TAB_CATEGORIES.IMPORTANT ? 'important' : category === TAB_CATEGORIES.SAVE_LATER ? 'somewhat-important' : 'not-important'}`;
-      
-      const iconSvg = category === TAB_CATEGORIES.IMPORTANT 
-        ? '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'
-        : category === TAB_CATEGORIES.SAVE_LATER
-        ? '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>'
-        : '<svg class="category-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
-      
-      const categoryName = category === TAB_CATEGORIES.IMPORTANT ? 'Important Links' : category === TAB_CATEGORIES.SAVE_LATER ? 'Save for Later' : 'Can Be Closed';
-      header.innerHTML = `
-        <div class="category-header-title">
-          ${iconSvg} ${categoryName} (<span class="count">${tabs.length}</span>)
-        </div>
-        <div class="category-header-actions"></div>
-      `;
-      
-      // Add action buttons to header
-      if (tabs.length > 0) {
-        const headerActions = header.querySelector('.category-header-actions');
-        
-        // Open All button with icon
-        const openAllBtn = document.createElement('button');
-        openAllBtn.className = 'icon-btn';
-        openAllBtn.title = `Open all ${tabs.length} tabs`;
-        openAllBtn.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-          </svg>
-        `;
-        openAllBtn.onclick = () => openAllTabsInGroup(tabs);
-        
-        // Delete all button with icon
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'icon-btn delete-btn';
-        deleteBtn.title = `Delete all ${tabs.length} tabs`;
-        deleteBtn.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            <line x1="10" y1="11" x2="10" y2="17"></line>
-            <line x1="14" y1="11" x2="14" y2="17"></line>
-          </svg>
-        `;
-        deleteBtn.onclick = () => deleteTabsInGroup(tabs, categoryName);
-        
-        headerActions.appendChild(openAllBtn);
-        headerActions.appendChild(deleteBtn);
-      }
-      
-      const listContainer = document.createElement('div');
-      listContainer.className = CSS_CLASSES.TABS_LIST;
-      
-      // Add tabs
-      tabs.forEach(tab => {
-        const tabElement = createTabElement(tab, category, true);
-        listContainer.appendChild(tabElement);
-      });
-      
-      section.appendChild(header);
-      section.appendChild(listContainer);
-      
-      // Make category header clickable to collapse/expand
-      header.style.cursor = 'pointer';
-      header.onclick = (e) => {
-        // Don't collapse if clicking on action buttons
-        if (e.target.closest('.category-header-actions')) return;
-        
-        section.classList.toggle(CSS_CLASSES.CATEGORY_COLLAPSED);
-        const isCollapsed = section.classList.contains('collapsed');
-        listContainer.style.display = isCollapsed ? 'none' : 'block';
-      };
-      
-      categoryView.appendChild(section);
-    });
-    
-    if (allSavedTabs.length === 0) {
-      // Show empty state message
-      const emptyMessage = document.createElement('div');
-      emptyMessage.style.textAlign = 'center';
-      emptyMessage.style.padding = '40px 20px';
-      emptyMessage.style.color = 'var(--text-secondary)';
-      emptyMessage.innerHTML = `
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 16px; display: block; opacity: 0.5;">
-          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-        </svg>
-        <h3 style="margin: 0 0 8px 0; font-weight: 500;">No saved tabs yet</h3>
-        <p style="margin: 0; font-size: 14px;">Categorize your tabs and save them to view here</p>
-      `;
-      savedContent.appendChild(emptyMessage);
-    } else {
-      savedContent.appendChild(categoryView);
-      // Count non-empty categories
-      const nonEmptyCategories = [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].filter(cat => savedTabsByCategory[cat].length > 0).length;
-      showStatus(`Viewing ${allSavedTabs.length} saved tabs in ${nonEmptyCategories} ${nonEmptyCategories === 1 ? 'category' : 'categories'}`, 'success');
-    }
-    } else {
-      // For grouped view, pass the saved tabs directly without modifying global categorizedTabs
-      const groupedView = displayGroupedView(groupingType, true, savedTabsByCategory);
-      if (groupedView) {
-        savedContent.appendChild(groupedView);
-        
-        // Count groups and update status
-        const groupElements = groupedView.querySelectorAll('.group-section');
-        const groupCount = groupElements.length;
-        let groupTypeLabel = 'groups';
-        
-        switch (groupingType) {
-          case 'domain':
-            groupTypeLabel = groupCount === 1 ? 'domain' : 'domains';
-            break;
-          case 'savedDate':
-            groupTypeLabel = groupCount === 1 ? 'save date' : 'save dates';
-            break;
-          case 'savedWeek':
-            groupTypeLabel = groupCount === 1 ? 'save week' : 'save weeks';
-            break;
-          case 'savedMonth':
-            groupTypeLabel = groupCount === 1 ? 'save month' : 'save months';
-            break;
-          case 'lastAccessedDate':
-            groupTypeLabel = groupCount === 1 ? 'open date' : 'open dates';
-            break;
-          case 'lastAccessedWeek':
-            groupTypeLabel = groupCount === 1 ? 'open week' : 'open weeks';
-            break;
-          case 'lastAccessedMonth':
-            groupTypeLabel = groupCount === 1 ? 'open month' : 'open months';
-            break;
-        }
-        
-        showStatus(`Viewing ${allSavedTabs.length} saved tabs in ${groupCount} ${groupTypeLabel}`, 'success');
-      }
-    }
-    
-    // Don't restore scroll during initialization - it's handled centrally
-    if (!isInitializing) {
-      restoreScrollPosition('saved', 100);
-      restoreScrollPosition('saved', 500);
-      restoreScrollPosition('saved', 1000);
-    }
-    
-  } catch (error) {
-    showStatus('Error loading saved tabs: ' + error.message, 'error');
-  }
-}
+// showSavedTabsContent function moved to saved-tabs-manager.js
 
-// Legacy function for compatibility
-async function showSavedTabs() {
-  switchToTab('saved');
-}
+// showSavedTabs function moved to saved-tabs-manager.js
 
 
 // Helper function to find the first visible tab in the viewport
@@ -2458,28 +2267,7 @@ function updateCategorizeBadge() {
   }
 }
 
-// Update the saved tab badge
-async function updateSavedBadge() {
-  const badge = $id(DOM_IDS.SAVED_BADGE);
-  if (!badge) return;
-  
-  try {
-    await tabDatabase.init();
-    const savedTabs = await tabDatabase.getAllSavedTabs();
-    const importantCount = savedTabs.filter(tab => tab.category === TAB_CATEGORIES.IMPORTANT).length;
-    const saveForLaterCount = savedTabs.filter(tab => tab.category === TAB_CATEGORIES.SAVE_LATER).length;
-    const total = importantCount + saveForLaterCount;
-    
-    if (total > 0) {
-      badge.textContent = total;
-      badge.style.display = '';
-    } else {
-      badge.style.display = DISPLAY.NONE;
-    }
-  } catch (error) {
-    console.error('Error updating saved badge:', error);
-  }
-}
+// updateSavedBadge function moved to ui-manager.js
 
 // Clear popup state on window unload
 window.addEventListener('beforeunload', () => {
