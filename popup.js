@@ -151,13 +151,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           document.querySelector('.action-buttons').style.display = 'flex';
           displayTabs();
           updateCategorizeBadge();
-          // Restore scroll position for categorize tab after content is displayed
-          if (!popupState.isViewingSaved) {
-            // Try multiple times to ensure content is fully rendered
-            restoreScrollPosition('categorize', 100);
-            restoreScrollPosition('categorize', 500);
-            restoreScrollPosition('categorize', 1000);
-          }
+          // Scroll restoration is handled centrally after initialization
         }
       }
       
@@ -178,18 +172,40 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize tab navigation
     initializeTabNavigation();
     
+    // Pre-render content for both tabs to enable immediate scroll restoration
+    // This ensures scroll containers exist and have content
+    if (stored.popupState) {
+      // Pre-load saved tabs content (even if not active)
+      const savedGrouping = popupState.groupingSelections?.saved || 'category';
+      showSavedTabsContent(savedGrouping).catch(console.error);
+    }
+    
     // Restore active tab if available
     if (stored.popupState && stored.popupState.activeTab) {
       // Set the active tab in popupState before switching
       popupState.activeTab = stored.popupState.activeTab;
       switchToTab(stored.popupState.activeTab);
-      // For saved tab, scroll restoration happens in showSavedTabsContent
-      // For categorize tab, restore scroll after a delay
-      if (stored.popupState.activeTab === 'categorize' && stored.popupState.categorizedTabs) {
-        // Additional scroll restoration attempts for categorize tab
-        restoreScrollPosition('categorize', 300);
-        restoreScrollPosition('categorize', 800);
-      }
+      
+      // Restore scroll positions for both tabs after a short delay
+      setTimeout(() => {
+        // Restore categorize tab scroll
+        if (popupState.scrollPositions?.categorize) {
+          const tabsContainer = document.getElementById('tabsContainer');
+          if (tabsContainer) {
+            tabsContainer.scrollTop = popupState.scrollPositions.categorize;
+            console.log('Restored categorize scroll to:', popupState.scrollPositions.categorize);
+          }
+        }
+        
+        // Restore saved tab scroll
+        if (popupState.scrollPositions?.saved) {
+          const savedContent = document.getElementById('savedContent');
+          if (savedContent) {
+            savedContent.scrollTop = popupState.scrollPositions.saved;
+            console.log('Restored saved scroll to:', popupState.scrollPositions.saved);
+          }
+        }
+      }, 200);
     }
     
     
@@ -944,8 +960,8 @@ function displayTabs(isFromSaved = false) {
       displayGroupedView(currentGrouping, isFromSaved);
     }
     
-    // Restore scroll position after content is rendered
-    if (!isFromSaved) {
+    // Don't restore scroll here during initialization - it's handled centrally
+    if (!isFromSaved && !isInitializing) {
       restoreScrollPosition('categorize');
     }
   } catch (error) {
@@ -2675,10 +2691,12 @@ async function showSavedTabsContent(groupingType) {
       categorizedTabs = originalCategorizedTabs;
     }
     
-    // Restore scroll position after content is loaded - try multiple times
-    restoreScrollPosition('saved', 100);
-    restoreScrollPosition('saved', 500);
-    restoreScrollPosition('saved', 1000);
+    // Don't restore scroll during initialization - it's handled centrally
+    if (!isInitializing) {
+      restoreScrollPosition('saved', 100);
+      restoreScrollPosition('saved', 500);
+      restoreScrollPosition('saved', 1000);
+    }
     
   } catch (error) {
     showStatus('Error loading saved tabs: ' + error.message, 'error');
