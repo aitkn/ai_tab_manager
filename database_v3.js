@@ -499,5 +499,6 @@ class TabDatabase {
 }
 
 // Create and expose the database instance
-window.tabDatabase = new TabDatabase();
+// Use globalThis to work in both service workers and regular scripts
+globalThis.tabDatabase = new TabDatabase();
 console.log('TabDatabase v3 initialized');

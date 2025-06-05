@@ -39,18 +39,18 @@ function extractDomain(url) {
 async function initializeTabTracking() {
   try {
     // Initialize database
-    await window.tabDatabase.init();
+    await globalThis.tabDatabase.init();
     console.log('Background: Database initialized');
     
     // Migrate from old database if needed
-    await window.tabDatabase.migrateFromOldDatabase();
+    await globalThis.tabDatabase.migrateFromOldDatabase();
     
     // Query all current tabs
     const tabs = await chrome.tabs.query({});
     console.log('Background: Initializing with', tabs.length, 'existing tabs');
     
     // Get all known URLs from database
-    const knownUrls = await window.tabDatabase.getAllUrls();
+    const knownUrls = await globalThis.tabDatabase.getAllUrls();
     const urlCategoryMap = new Map();
     knownUrls.forEach(urlInfo => {
       urlCategoryMap.set(urlInfo.url, urlInfo.category);
@@ -77,8 +77,8 @@ async function initializeTabTracking() {
         });
         
         // Record open event in database
-        const urlId = await window.tabDatabase.getOrCreateUrl(tab, category);
-        await window.tabDatabase.recordOpenEvent(urlId, tab.id);
+        const urlId = await globalThis.tabDatabase.getOrCreateUrl(tab, category);
+        await globalThis.tabDatabase.recordOpenEvent(urlId, tab.id);
       }
     }
     
@@ -225,7 +225,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
   if (tab.url && tab.url !== 'chrome://newtab/' && !tab.url.startsWith('chrome://')) {
     try {
       // Check if URL is known in database
-      const urlInfo = await window.tabDatabase.getUrlInfo(tab.url);
+      const urlInfo = await globalThis.tabDatabase.getUrlInfo(tab.url);
       const category = urlInfo ? urlInfo.category : 0; // Default to uncategorized
       
       // Check if this URL already exists in current tabs
@@ -257,8 +257,8 @@ chrome.tabs.onCreated.addListener(async (tab) => {
       }
       
       // Record open event in database
-      const urlId = await window.tabDatabase.getOrCreateUrl(tab, category);
-      await window.tabDatabase.recordOpenEvent(urlId, tab.id);
+      const urlId = await globalThis.tabDatabase.getOrCreateUrl(tab, category);
+      await globalThis.tabDatabase.recordOpenEvent(urlId, tab.id);
       
     } catch (error) {
       console.error('Background: Error processing new tab:', error);
@@ -273,7 +273,7 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   
   // Record close event in database
   try {
-    await window.tabDatabase.recordCloseEvent(tabId);
+    await globalThis.tabDatabase.recordCloseEvent(tabId);
   } catch (error) {
     console.error('Background: Error recording close event:', error);
   }
@@ -326,7 +326,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       }
       
       // Check if URL is known in database
-      const urlInfo = await window.tabDatabase.getUrlInfo(tab.url);
+      const urlInfo = await globalThis.tabDatabase.getUrlInfo(tab.url);
       const targetCategory = urlInfo ? urlInfo.category : 0; // Default to uncategorized
       
       // If tab is not tracked yet, add it
@@ -378,8 +378,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       }
       
       // Record in database
-      const urlId = await window.tabDatabase.getOrCreateUrl(tab, targetCategory);
-      await window.tabDatabase.recordOpenEvent(urlId, tab.id);
+      const urlId = await globalThis.tabDatabase.getOrCreateUrl(tab, targetCategory);
+      await globalThis.tabDatabase.recordOpenEvent(urlId, tab.id);
       
     } catch (error) {
       console.error('Background: Error handling URL update:', error);
@@ -511,7 +511,7 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
     
     // Save all categorized tabs to database (including category 1)
     try {
-      await window.tabDatabase.saveCategorizedTabs(expandedCategorized);
+      await globalThis.tabDatabase.saveCategorizedTabs(expandedCategorized);
       console.log('Background: Saved all categorized tabs to database');
     } catch (error) {
       console.error('Background: Error saving to database:', error);
