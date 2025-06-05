@@ -280,19 +280,6 @@
   
   <script src="config.js"></script>
   <script src="database_v2.js"></script>
-  <script>
-    // Wait for database to be ready before loading modules
-    window.addEventListener('DOMContentLoaded', function() {
-      if (window.tabDatabase) {
-        // Database is ready, load the module
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.src = 'popup.js';
-        document.body.appendChild(script);
-      } else {
-        console.error('Database not loaded');
-      }
-    });
-  </script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

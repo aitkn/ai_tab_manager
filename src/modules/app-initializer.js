@@ -25,11 +25,16 @@ async function waitForDatabase() {
   while (!window.tabDatabase && attempts < maxAttempts) {
     await new Promise(resolve => setTimeout(resolve, 100));
     attempts++;
+    if (attempts % 10 === 0) {
+      console.log(`Waiting for database... (${attempts * 100}ms)`);
+    }
   }
   
   if (!window.tabDatabase) {
     throw new Error('Database failed to load after 5 seconds');
   }
+  
+  console.log(`Database loaded after ${attempts * 100}ms`);
 }
 
 /**
