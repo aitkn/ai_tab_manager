@@ -432,23 +432,23 @@ h1 {
 /* Status bar */
 .status {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: var(--md-spacing-3) var(--md-spacing-4);
+  bottom: var(--md-spacing-4);
+  left: 50%;
+  transform: translateX(-50%) translateY(calc(100% + var(--md-spacing-4)));
+  padding: var(--md-spacing-3) var(--md-spacing-5);
   font-size: var(--md-sys-typescale-label-medium);
   font-weight: 500;
   text-align: center;
-  transform: translateY(100%);
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  border-top-left-radius: var(--md-sys-shape-corner-large);
-  border-top-right-radius: var(--md-sys-shape-corner-large);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  border-radius: var(--md-sys-shape-corner-large);
+  max-width: 90%;
+  min-width: 200px;
 }
 
 .status:not(:empty) {
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
 }
 
 .status.loading {
@@ -479,6 +479,14 @@ body[data-theme="dark"] .status.success {
 body[data-theme="dark"] .status.warning {
   background-color: #e65100;
   color: #fff3e0;
+}
+
+/* Enhanced shadow for dark theme */
+body[data-theme="dark"] .status,
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .status {
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+  }
 }
 
 /* Tab content */
