@@ -172,40 +172,48 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize tab navigation
     initializeTabNavigation();
     
-    // Pre-render content for both tabs to enable immediate scroll restoration
-    // This ensures scroll containers exist and have content
+    // Initialize both tabs' content to ensure containers exist
     if (stored.popupState) {
-      // Pre-load saved tabs content (even if not active)
+      // Pre-load saved tabs content
       const savedGrouping = popupState.groupingSelections?.saved || 'category';
-      showSavedTabsContent(savedGrouping).catch(console.error);
+      await showSavedTabsContent(savedGrouping).catch(console.error);
     }
     
     // Restore active tab if available
     if (stored.popupState && stored.popupState.activeTab) {
       // Set the active tab in popupState before switching
       popupState.activeTab = stored.popupState.activeTab;
-      switchToTab(stored.popupState.activeTab);
       
-      // Restore scroll positions for both tabs after a short delay
-      setTimeout(() => {
-        // Restore categorize tab scroll
-        if (popupState.scrollPositions?.categorize) {
-          const tabsContainer = document.getElementById('tabsContainer');
-          if (tabsContainer) {
-            tabsContainer.scrollTop = popupState.scrollPositions.categorize;
-            console.log('Restored categorize scroll to:', popupState.scrollPositions.categorize);
+      // Directly set scroll positions before making tabs visible
+      if (popupState.scrollPositions) {
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          // Set scroll for categorize tab
+          if (popupState.scrollPositions.categorize) {
+            const tabsContainer = document.getElementById('tabsContainer');
+            if (tabsContainer) {
+              tabsContainer.style.scrollBehavior = 'auto'; // Disable smooth scrolling
+              tabsContainer.scrollTop = popupState.scrollPositions.categorize;
+              console.log('Set categorize scroll to:', popupState.scrollPositions.categorize);
+            }
           }
-        }
-        
-        // Restore saved tab scroll
-        if (popupState.scrollPositions?.saved) {
-          const savedContent = document.getElementById('savedContent');
-          if (savedContent) {
-            savedContent.scrollTop = popupState.scrollPositions.saved;
-            console.log('Restored saved scroll to:', popupState.scrollPositions.saved);
+          
+          // Set scroll for saved tab
+          if (popupState.scrollPositions.saved) {
+            const savedContent = document.getElementById('savedContent');
+            if (savedContent) {
+              savedContent.style.scrollBehavior = 'auto'; // Disable smooth scrolling
+              savedContent.scrollTop = popupState.scrollPositions.saved;
+              console.log('Set saved scroll to:', popupState.scrollPositions.saved);
+            }
           }
-        }
-      }, 200);
+          
+          // Now switch to the active tab
+          switchToTab(stored.popupState.activeTab);
+        });
+      } else {
+        switchToTab(stored.popupState.activeTab);
+      }
     }
     
     
@@ -2507,6 +2515,13 @@ async function openAllTabsInCategory(category) {
 // Show saved tabs content in the saved tab
 async function showSavedTabsContent(groupingType) {
   try {
+    // Make sure the saved tab pane exists and is ready
+    const savedTab = document.getElementById('savedTab');
+    if (!savedTab) {
+      console.error('Saved tab pane not found');
+      return;
+    }
+    
     const allSavedTabs = await tabDatabase.getAllSavedTabs();
     
     // Get current grouping from dropdown if not passed

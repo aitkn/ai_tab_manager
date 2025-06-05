@@ -738,6 +738,7 @@ button svg {
   background-color: var(--md-sys-color-surface);
   display: flex;
   flex-direction: column;
+  scroll-behavior: auto; /* Disable smooth scrolling by default */
 }
 
 /* Category sections - Material Design 3 Cards */
@@ -1430,6 +1431,7 @@ input[type="checkbox"] {
   overflow-y: auto;
   padding: var(--md-spacing-3);
   background-color: var(--md-sys-color-surface);
+  scroll-behavior: auto; /* Disable smooth scrolling by default */
 }
 
 /* Animation */
