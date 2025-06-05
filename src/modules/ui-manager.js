@@ -75,14 +75,30 @@ export function initializeTabNavigation() {
  * @param {string} tabName - Tab to switch to
  */
 export function switchToTab(tabName) {
+  console.log('Switching to tab:', tabName);
+  
   // Update tab buttons
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    classes.toggle(btn, CSS_CLASSES.TAB_PANE_ACTIVE, btn.dataset.tab === tabName);
+    const shouldBeActive = btn.dataset.tab === tabName;
+    console.log('Tab button:', btn.dataset.tab, 'active:', shouldBeActive);
+    
+    if (shouldBeActive) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
   });
   
   // Update tab panes
   document.querySelectorAll('.tab-pane').forEach(pane => {
-    classes.toggle(pane, CSS_CLASSES.TAB_PANE_ACTIVE, pane.id === `${tabName}Tab`);
+    const shouldBeActive = pane.id === `${tabName}Tab`;
+    console.log('Tab pane:', pane.id, 'active:', shouldBeActive);
+    
+    if (shouldBeActive) {
+      pane.classList.add('active');
+    } else {
+      pane.classList.remove('active');
+    }
   });
   
   // Clear status message when switching tabs (except saved which sets its own)

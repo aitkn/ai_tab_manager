@@ -88,7 +88,25 @@ export function setupEventListeners() {
   
   // Tab navigation
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    on(btn, EVENTS.CLICK, () => switchToTab(btn.dataset.tab));
+    on(btn, EVENTS.CLICK, async () => {
+      const tabName = btn.dataset.tab;
+      switchToTab(tabName);
+      
+      if (tabName === 'saved') {
+        const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
+        const includeCanClose = $id('showAllCategoriesCheckbox')?.checked || false;
+        await showSavedTabsContent(savedGroupingSelect?.value, includeCanClose);
+      } else if (tabName === 'categorize') {
+        // Check if we have categorized tabs to display
+        const hasCategories = state.categorizedTabs && 
+          Object.values(state.categorizedTabs).some(tabs => tabs.length > 0);
+        
+        if (hasCategories) {
+          const { displayTabs } = await import('./tab-display.js');
+          displayTabs();
+        }
+      }
+    });
   });
   
   // Window visibility change
