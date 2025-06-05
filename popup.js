@@ -38,8 +38,17 @@ import {
   debounce
 } from './src/utils/helpers.js';
 
+// Import services - REFACTORING STEP 1.3
+import ChromeAPIService from './src/services/ChromeAPIService.js';
+import StorageService from './src/services/StorageService.js';
+import MessageService from './src/services/MessageService.js';
+
 // Log that modules are loaded
-console.log('Modules loaded:', { constants: !!TAB_CATEGORIES, helpers: !!getRootDomain });
+console.log('Modules loaded:', { 
+  constants: !!TAB_CATEGORIES, 
+  helpers: !!getRootDomain,
+  services: { chrome: !!ChromeAPIService, storage: !!StorageService, message: !!MessageService }
+});
 
 let categorizedTabs = { 1: [], 2: [], 3: [] };
 let isViewingSaved = false;
