@@ -437,12 +437,10 @@ async function handleTabChange(data) {
           }
         }
         
-        state.categorizedTabs = response.categorizedTabs;
-        state.urlToDuplicateIds = response.urlToDuplicateIds || {};
-        
-        // Update display
-        displayTabs();
-        updateCategorizeBadge();
+        // Just update display - data will be fetched from background
+        const { displayTabs } = await import('./tab-display.js');
+        await displayTabs();
+        await updateCategorizeBadge();
         
         // Update categorize button state
         const hasUncategorized = response.categorizedTabs[0] && response.categorizedTabs[0].length > 0;

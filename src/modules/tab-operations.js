@@ -248,8 +248,8 @@ export async function saveAndCloseAll() {
     const currentWindowTabsToClose = [];
     const otherWindowTabsToClose = [];
     
-    // Close all tabs, but organize by window
-    for (const category of [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE]) {
+    // Close all tabs, but organize by window (including uncategorized)
+    for (const category of [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE]) {
       const tabs = categorizedTabs[category] || [];
       
       for (const tab of tabs) {
@@ -263,6 +263,12 @@ export async function saveAndCloseAll() {
         }
       }
     }
+    
+    console.log('Tabs to close:', {
+      total: tabIdsToClose.size,
+      otherWindows: otherWindowTabsToClose.length,
+      currentWindow: currentWindowTabsToClose.length
+    });
     
     // Close tabs in other windows first
     for (const tabId of otherWindowTabsToClose) {
@@ -289,7 +295,10 @@ export async function saveAndCloseAll() {
       action: 'clearAllCategories'
     });
     
-    updateCategorizeBadge();
+    // Add small delay to ensure background has processed the changes
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    await updateCategorizeBadge();
     
     showStatus(`Closed ${totalClosed} tabs`, 'success');
     
