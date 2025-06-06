@@ -496,11 +496,11 @@ export function createTabElement(tab, category) {
         if (tab.windowId) {
           chrome.windows.update(tab.windowId, { focused: true }, () => {
             chrome.tabs.update(tab.id, { active: true });
-            window.close();
+            // Keep popup open
           });
         } else {
           chrome.tabs.update(tab.id, { active: true });
-          window.close();
+          // Keep popup open
         }
       }
     }
