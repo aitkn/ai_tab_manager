@@ -60,15 +60,25 @@ async function initializeTabTracking() {
     const urlToTabsMap = new Map();
     
     for (const tab of tabs) {
-      // Skip empty tabs, chrome:// URLs, and about:blank
-      if (tab.url && 
-          !tab.url.startsWith('chrome://') &&
-          tab.url !== 'about:blank' &&
-          tab.url !== '') {
-        if (!urlToTabsMap.has(tab.url)) {
-          urlToTabsMap.set(tab.url, []);
+      // Include all tabs with URLs (including chrome://newtab and about:blank)
+      if (tab.url) {
+        // Special handling for new tab pages and empty tabs - put them in Ignore category
+        if (tab.url === 'chrome://newtab/' || 
+            tab.url === 'about:blank' ||
+            tab.url === '' ||
+            tab.url.startsWith('chrome://')) {
+          // Add these directly to the Ignore category (category 1)
+          if (!categorizedTabs[1]) {
+            categorizedTabs[1] = [];
+          }
+          categorizedTabs[1].push(tab);
+        } else {
+          // Normal tab processing
+          if (!urlToTabsMap.has(tab.url)) {
+            urlToTabsMap.set(tab.url, []);
+          }
+          urlToTabsMap.get(tab.url).push(tab);
         }
-        urlToTabsMap.get(tab.url).push(tab);
       }
     }
     
@@ -269,14 +279,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.tabs.onCreated.addListener(async (tab) => {
   console.log('Background: Tab created:', tab.id, tab.url, 'Popup open:', isPopupOpen);
   
-  // Add new tab to appropriate category based on database
-  // Skip empty tabs, chrome:// URLs, and about:blank
+  // Add new tab to appropriate category
   let isDuplicate = false;
-  if (tab.url && 
-      tab.url !== 'chrome://newtab/' && 
-      !tab.url.startsWith('chrome://') &&
-      tab.url !== 'about:blank' &&
-      tab.url !== '') {
+  
+  // Special handling for chrome:// URLs and empty tabs
+  if (!tab.url || 
+      tab.url === 'chrome://newtab/' || 
+      tab.url === 'about:blank' ||
+      tab.url === '' ||
+      tab.url.startsWith('chrome://')) {
+    // Add to Ignore category (category 1)
+    if (!categorizedTabs[1]) {
+      categorizedTabs[1] = [];
+    }
+    categorizedTabs[1].push({
+      id: tab.id,
+      url: tab.url || 'chrome://newtab/',
+      title: tab.title || 'New Tab',
+      domain: 'browser',
+      windowId: tab.windowId,
+      alreadyCategorized: true,
+      knownCategory: 1
+    });
+    console.log('Background: Added new/empty tab to Ignore category:', tab.id);
+    notifyPopupOfTabChange('created', tab);
+    return;
+  }
+  
+  // Normal tab processing
+  if (tab.url) {
     try {
       // Check if URL is known in database
       const urlInfo = await globalThis.tabDatabase.getUrlInfo(tab.url);
@@ -447,12 +478,39 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // Handle URL changes (e.g., from chrome://newtab/ to a real URL)
-  // Skip empty tabs, chrome:// URLs, and about:blank
-  if (changeInfo.url && tab.url && 
-      !tab.url.startsWith('chrome://') &&
-      tab.url !== 'about:blank' &&
-      tab.url !== '') {
+  if (changeInfo.url && tab.url) {
     try {
+      // Special handling for chrome:// URLs and empty tabs
+      if (tab.url === 'chrome://newtab/' || 
+          tab.url === 'about:blank' ||
+          tab.url === '' ||
+          tab.url.startsWith('chrome://')) {
+        // Remove from any existing category first
+        for (const category of Object.keys(categorizedTabs)) {
+          const index = categorizedTabs[category].findIndex(t => t.id === tabId);
+          if (index > -1) {
+            categorizedTabs[category].splice(index, 1);
+          }
+        }
+        
+        // Add to Ignore category (category 1)
+        if (!categorizedTabs[1]) {
+          categorizedTabs[1] = [];
+        }
+        categorizedTabs[1].push({
+          id: tab.id,
+          url: tab.url,
+          title: tab.title || 'New Tab',
+          domain: 'browser',
+          windowId: tab.windowId,
+          alreadyCategorized: true,
+          knownCategory: 1
+        });
+        
+        notifyPopupOfTabChange('updated', tab);
+        return; // Exit early for these special URLs
+      }
+      
       // Check if this tab is already in any category
       let currentCategory = null;
       let currentIndex = -1;
