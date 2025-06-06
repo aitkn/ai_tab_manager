@@ -249,42 +249,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // Get categorized tabs for popup
   if (request.action === 'getCategorizedTabs') {
-    // Clean up any duplicate entries before sending
-    console.log('Background: Cleaning up categorizedTabs before sending to popup');
-    const cleanedTabs = {};
-    
-    for (const category of Object.keys(categorizedTabs)) {
-      cleanedTabs[category] = [];
-      const urlToEntry = new Map();
-      
-      for (const tab of categorizedTabs[category]) {
-        if (!urlToEntry.has(tab.url)) {
-          // First occurrence of this URL
-          urlToEntry.set(tab.url, tab);
-          cleanedTabs[category].push(tab);
-        } else {
-          // Duplicate URL - merge with existing entry
-          const existingTab = urlToEntry.get(tab.url);
-          console.log(`Background: Found duplicate entry for ${tab.url}, merging...`);
-          
-          // Ensure duplicateIds array exists and is correct
-          if (!existingTab.duplicateIds) {
-            existingTab.duplicateIds = [existingTab.id];
-          }
-          if (!existingTab.duplicateIds.includes(tab.id)) {
-            existingTab.duplicateIds.push(tab.id);
-          }
-          existingTab.duplicateCount = existingTab.duplicateIds.length;
-          
-          // Update urlToDuplicateIds
-          urlToDuplicateIds[tab.url] = existingTab.duplicateIds;
-        }
-      }
-    }
-    
-    // Replace with cleaned version
-    categorizedTabs = cleanedTabs;
-    
     sendResponse({ 
       categorizedTabs: categorizedTabs,
       urlToDuplicateIds: urlToDuplicateIds
