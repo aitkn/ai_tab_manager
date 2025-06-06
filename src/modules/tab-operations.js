@@ -128,21 +128,62 @@ export async function saveAndCloseCategory(category) {
       savedCount = tabsToSave[category].length;
     }
     
+    // Get current window info
+    const currentWindow = await ChromeAPIService.getCurrentWindow();
+    const currentWindowTabs = await ChromeAPIService.queryTabs({ windowId: currentWindow.id });
+    const currentWindowTabIds = new Set(currentWindowTabs.map(t => t.id));
+    
+    // Separate tabs by window
+    const currentWindowTabsToClose = [];
+    const otherWindowTabsToClose = [];
+    
     // Close all tabs in category
     for (const tab of tabs) {
       try {
-        // Close all duplicate tabs
+        // Get all duplicate tabs
         const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
         for (const tabId of duplicateIds) {
-          try {
-            await ChromeAPIService.removeTabs(tabId);
-            closedCount++;
-          } catch (error) {
-            console.error(`Error closing tab ${tabId}:`, error);
+          if (currentWindowTabIds.has(tabId)) {
+            currentWindowTabsToClose.push(tabId);
+          } else {
+            otherWindowTabsToClose.push(tabId);
           }
         }
       } catch (error) {
         console.error('Error processing tab:', error);
+      }
+    }
+    
+    // Check if we're closing all tabs in current window
+    const closingAllCurrentWindowTabs = currentWindowTabIds.size > 0 && 
+      Array.from(currentWindowTabIds).every(id => 
+        currentWindowTabsToClose.includes(id) || 
+        !tabs.some(tab => tab.id === id)
+      );
+    
+    // If closing all tabs in current window, create new tab first
+    if (closingAllCurrentWindowTabs) {
+      console.log('Creating new tab to keep window open');
+      await ChromeAPIService.createTab({ windowId: currentWindow.id });
+    }
+    
+    // Close tabs in other windows first
+    for (const tabId of otherWindowTabsToClose) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        closedCount++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
+      }
+    }
+    
+    // Then close tabs in current window
+    for (const tabId of currentWindowTabsToClose) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        closedCount++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
       }
     }
     
@@ -193,34 +234,53 @@ export async function saveAndCloseAll() {
     }
     
     // Check if we're closing all tabs in the current window
-    const currentWindowTabIds = currentWindowTabs.map(t => t.id);
-    const closingAllCurrentWindowTabs = currentWindowTabIds.every(id => tabIdsToClose.has(id));
+    const currentWindowTabIds = new Set(currentWindowTabs.map(t => t.id));
+    const closingAllCurrentWindowTabs = currentWindowTabIds.size > 0 && 
+      Array.from(currentWindowTabIds).every(id => tabIdsToClose.has(id));
     
     // If we're closing all tabs in current window, create a new empty tab first
-    if (closingAllCurrentWindowTabs && currentWindowTabs.length > 0) {
+    if (closingAllCurrentWindowTabs) {
       console.log('Creating new tab to keep window open');
       await ChromeAPIService.createTab({ windowId: currentWindow.id });
     }
     
-    // Close all tabs
+    // Separate tabs into current window and other windows
+    const currentWindowTabsToClose = [];
+    const otherWindowTabsToClose = [];
+    
+    // Close all tabs, but organize by window
     for (const category of [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE]) {
       const tabs = categorizedTabs[category] || [];
       
       for (const tab of tabs) {
-        try {
-          // Close all duplicate tabs
-          const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
-          for (const tabId of duplicateIds) {
-            try {
-              await ChromeAPIService.removeTabs(tabId);
-              totalClosed++;
-            } catch (error) {
-              console.error(`Error closing tab ${tabId}:`, error);
-            }
+        const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
+        for (const tabId of duplicateIds) {
+          if (currentWindowTabIds.has(tabId)) {
+            currentWindowTabsToClose.push(tabId);
+          } else {
+            otherWindowTabsToClose.push(tabId);
           }
-        } catch (error) {
-          console.error('Error processing tab:', error);
         }
+      }
+    }
+    
+    // Close tabs in other windows first
+    for (const tabId of otherWindowTabsToClose) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        totalClosed++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
+      }
+    }
+    
+    // Then close tabs in current window
+    for (const tabId of currentWindowTabsToClose) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        totalClosed++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
       }
     }
     
@@ -256,17 +316,58 @@ export async function closeAllInCategory(category) {
     
     showStatus('Closing tabs...', 'loading');
     
+    // Get current window info
+    const currentWindow = await ChromeAPIService.getCurrentWindow();
+    const currentWindowTabs = await ChromeAPIService.queryTabs({ windowId: currentWindow.id });
+    const currentWindowTabIds = new Set(currentWindowTabs.map(t => t.id));
+    
+    // Separate tabs by window
+    const currentWindowTabsToClose = [];
+    const otherWindowTabsToClose = [];
+    
     let closedCount = 0;
     
     for (const tab of tabs) {
       const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
       for (const tabId of duplicateIds) {
-        try {
-          await ChromeAPIService.removeTabs(tabId);
-          closedCount++;
-        } catch (error) {
-          console.error(`Error closing tab ${tabId}:`, error);
+        if (currentWindowTabIds.has(tabId)) {
+          currentWindowTabsToClose.push(tabId);
+        } else {
+          otherWindowTabsToClose.push(tabId);
         }
+      }
+    }
+    
+    // Check if we're closing all tabs in current window
+    const closingAllCurrentWindowTabs = currentWindowTabIds.size > 0 && 
+      Array.from(currentWindowTabIds).every(id => 
+        currentWindowTabsToClose.includes(id) || 
+        !tabs.some(tab => tab.id === id)
+      );
+    
+    // If closing all tabs in current window, create new tab first
+    if (closingAllCurrentWindowTabs) {
+      console.log('Creating new tab to keep window open');
+      await ChromeAPIService.createTab({ windowId: currentWindow.id });
+    }
+    
+    // Close tabs in other windows first
+    for (const tabId of otherWindowTabsToClose) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        closedCount++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
+      }
+    }
+    
+    // Then close tabs in current window
+    for (const tabId of currentWindowTabsToClose) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        closedCount++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
       }
     }
     
@@ -343,22 +444,57 @@ export async function closeTabsInGroup(tabs) {
     
     showStatus('Closing tabs...', 'loading');
     
-    let closedCount = 0;
-    const allTabIds = [];
+    // Get current window info
+    const currentWindow = await ChromeAPIService.getCurrentWindow();
+    const currentWindowTabs = await ChromeAPIService.queryTabs({ windowId: currentWindow.id });
+    const currentWindowTabIds = new Set(currentWindowTabs.map(t => t.id));
     
-    // Collect all tab IDs including duplicates
+    let closedCount = 0;
+    const currentWindowTabsToClose = [];
+    const otherWindowTabsToClose = [];
+    
+    // Collect all tab IDs including duplicates, separated by window
     for (const tab of tabs) {
+      let tabIds = [];
       if (tab.duplicateIds && tab.duplicateIds.length > 0) {
         // If tab has duplicate IDs, use those
-        allTabIds.push(...tab.duplicateIds);
+        tabIds = tab.duplicateIds;
       } else {
         // Otherwise just use the tab ID
-        allTabIds.push(tab.id);
+        tabIds = [tab.id];
+      }
+      
+      for (const tabId of tabIds) {
+        if (currentWindowTabIds.has(tabId)) {
+          currentWindowTabsToClose.push(tabId);
+        } else {
+          otherWindowTabsToClose.push(tabId);
+        }
       }
     }
     
-    // Close all tabs
-    for (const tabId of allTabIds) {
+    // Check if we're closing all tabs in current window
+    const closingAllCurrentWindowTabs = currentWindowTabIds.size > 0 && 
+      Array.from(currentWindowTabIds).every(id => currentWindowTabsToClose.includes(id));
+    
+    // If closing all tabs in current window, create new tab first
+    if (closingAllCurrentWindowTabs) {
+      console.log('Creating new tab to keep window open');
+      await ChromeAPIService.createTab({ windowId: currentWindow.id });
+    }
+    
+    // Close tabs in other windows first
+    for (const tabId of otherWindowTabsToClose) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        closedCount++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
+      }
+    }
+    
+    // Then close tabs in current window
+    for (const tabId of currentWindowTabsToClose) {
       try {
         await ChromeAPIService.removeTabs(tabId);
         closedCount++;
@@ -401,9 +537,15 @@ export async function saveAndCloseTabsInGroup(tabs) {
     
     showStatus('Saving tabs...', 'loading');
     
+    // Get current window info
+    const currentWindow = await ChromeAPIService.getCurrentWindow();
+    const currentWindowTabs = await ChromeAPIService.queryTabs({ windowId: currentWindow.id });
+    const currentWindowTabIds = new Set(currentWindowTabs.map(t => t.id));
+    
     let savedCount = 0;
     let closedCount = 0;
-    const allTabIds = [];
+    const currentWindowTabsToClose = [];
+    const otherWindowTabsToClose = [];
     
     // Group tabs by category for saving
     const tabsByCategory = {};
@@ -418,11 +560,20 @@ export async function saveAndCloseTabsInGroup(tabs) {
         savedCount++;
       }
       
-      // Collect all tab IDs including duplicates
+      // Collect all tab IDs including duplicates, separated by window
+      let tabIds = [];
       if (tab.duplicateIds && tab.duplicateIds.length > 0) {
-        allTabIds.push(...tab.duplicateIds);
+        tabIds = tab.duplicateIds;
       } else {
-        allTabIds.push(tab.id);
+        tabIds = [tab.id];
+      }
+      
+      for (const tabId of tabIds) {
+        if (currentWindowTabIds.has(tabId)) {
+          currentWindowTabsToClose.push(tabId);
+        } else {
+          otherWindowTabsToClose.push(tabId);
+        }
       }
     }
     
@@ -431,8 +582,28 @@ export async function saveAndCloseTabsInGroup(tabs) {
       await window.tabDatabase.saveCategorizedTabs(tabsByCategory);
     }
     
-    // Close all tabs
-    for (const tabId of allTabIds) {
+    // Check if we're closing all tabs in current window
+    const closingAllCurrentWindowTabs = currentWindowTabIds.size > 0 && 
+      Array.from(currentWindowTabIds).every(id => currentWindowTabsToClose.includes(id));
+    
+    // If closing all tabs in current window, create new tab first
+    if (closingAllCurrentWindowTabs) {
+      console.log('Creating new tab to keep window open');
+      await ChromeAPIService.createTab({ windowId: currentWindow.id });
+    }
+    
+    // Close tabs in other windows first
+    for (const tabId of otherWindowTabsToClose) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        closedCount++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error);
+      }
+    }
+    
+    // Then close tabs in current window
+    for (const tabId of currentWindowTabsToClose) {
       try {
         await ChromeAPIService.removeTabs(tabId);
         closedCount++;
