@@ -615,14 +615,39 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             console.log('Background: Merged navigated tab with existing entry. Total duplicates:', existingTab.duplicateCount);
           }
           
-          // Clean up old URL from urlToDuplicateIds if needed
+          // Clean up old URL duplicates if needed
           if (urlChanged && currentTabData.duplicateIds && currentTabData.duplicateIds.length > 1) {
             // Remove this tab ID from the old URL's duplicate list
             const remainingIds = currentTabData.duplicateIds.filter(id => id !== tab.id);
+            
+            // Update the remaining tabs with the old URL
+            for (const cat of Object.keys(categorizedTabs)) {
+              for (const remainingTab of categorizedTabs[cat]) {
+                if (remainingTab.url === currentTabData.url && remainingTab.id !== tab.id) {
+                  // Update the duplicate info
+                  remainingTab.duplicateIds = remainingIds;
+                  remainingTab.duplicateCount = remainingIds.length;
+                  console.log('Background: Updated duplicate count for remaining tab with old URL:', 
+                    remainingTab.url, 'New count:', remainingTab.duplicateCount);
+                }
+              }
+            }
+            
+            // Update urlToDuplicateIds
             if (remainingIds.length > 1) {
               urlToDuplicateIds[currentTabData.url] = remainingIds;
             } else {
               delete urlToDuplicateIds[currentTabData.url];
+              // If only one tab remains, clear its duplicate info
+              for (const cat of Object.keys(categorizedTabs)) {
+                for (const remainingTab of categorizedTabs[cat]) {
+                  if (remainingTab.url === currentTabData.url && remainingTab.id !== tab.id) {
+                    delete remainingTab.duplicateIds;
+                    delete remainingTab.duplicateCount;
+                    console.log('Background: Cleared duplicate info for last remaining tab with old URL');
+                  }
+                }
+              }
             }
           }
           
