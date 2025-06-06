@@ -489,6 +489,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       const urlInfo = await globalThis.tabDatabase.getUrlInfo(tab.url);
       const targetCategory = urlInfo ? urlInfo.category : 0; // Default to uncategorized
       
+      // Get the current tab data if it exists
+      let currentTabData = null;
+      if (currentCategory !== null && currentIndex !== -1) {
+        currentTabData = categorizedTabs[currentCategory][currentIndex];
+      }
+      
       // If tab is not tracked yet, add it
       if (currentCategory === null) {
         // Check if URL is a duplicate in current tabs
@@ -549,25 +555,82 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             }, 100);
           }
         }
-      } else if (currentCategory !== targetCategory.toString()) {
-        // Move tab to correct category if it changed
-        const tabData = categorizedTabs[currentCategory][currentIndex];
-        categorizedTabs[currentCategory].splice(currentIndex, 1);
+      } else {
+        // Tab is already tracked - check if URL changed or category changed
+        const urlChanged = currentTabData && currentTabData.url !== tab.url;
+        const categoryChanged = currentCategory !== targetCategory.toString();
         
-        if (!categorizedTabs[targetCategory]) {
-          categorizedTabs[targetCategory] = [];
+        if (urlChanged || categoryChanged) {
+          console.log('Background: Tab URL or category changed. Old URL:', currentTabData.url, 'New URL:', tab.url);
+          
+          // Remove the old entry
+          categorizedTabs[currentCategory].splice(currentIndex, 1);
+          
+          // Check if new URL is a duplicate
+          let isDuplicate = false;
+          let existingTab = null;
+          let existingCategory = null;
+          
+          for (const cat of Object.keys(categorizedTabs)) {
+            const existing = categorizedTabs[cat].find(t => t.url === tab.url);
+            if (existing) {
+              isDuplicate = true;
+              existingTab = existing;
+              existingCategory = cat;
+              console.log('Background: New URL is duplicate of existing tab in category', cat);
+              break;
+            }
+          }
+          
+          if (!isDuplicate) {
+            // Add as new entry in target category
+            if (!categorizedTabs[targetCategory]) {
+              categorizedTabs[targetCategory] = [];
+            }
+            
+            categorizedTabs[targetCategory].push({
+              id: tab.id,
+              url: tab.url,
+              title: tab.title || 'Loading...',
+              domain: extractDomain(tab.url),
+              windowId: tab.windowId,
+              alreadyCategorized: targetCategory !== 0,
+              knownCategory: targetCategory
+            });
+            
+            console.log('Background: Added tab with new URL to category', targetCategory);
+          } else {
+            // Update existing tab with duplicate info
+            if (!existingTab.duplicateIds) {
+              existingTab.duplicateIds = [existingTab.id];
+            }
+            if (!existingTab.duplicateIds.includes(tab.id)) {
+              existingTab.duplicateIds.push(tab.id);
+            }
+            existingTab.duplicateCount = existingTab.duplicateIds.length;
+            
+            // Update urlToDuplicateIds
+            urlToDuplicateIds[tab.url] = existingTab.duplicateIds;
+            
+            console.log('Background: Merged navigated tab with existing entry. Total duplicates:', existingTab.duplicateCount);
+          }
+          
+          // Clean up old URL from urlToDuplicateIds if needed
+          if (urlChanged && currentTabData.duplicateIds && currentTabData.duplicateIds.length > 1) {
+            // Remove this tab ID from the old URL's duplicate list
+            const remainingIds = currentTabData.duplicateIds.filter(id => id !== tab.id);
+            if (remainingIds.length > 1) {
+              urlToDuplicateIds[currentTabData.url] = remainingIds;
+            } else {
+              delete urlToDuplicateIds[currentTabData.url];
+            }
+          }
+          
+          // Notify popup of the change
+          setTimeout(() => {
+            notifyPopupOfTabChange('updated', tab);
+          }, 100);
         }
-        
-        categorizedTabs[targetCategory].push({
-          ...tabData,
-          url: tab.url,
-          title: tab.title || tabData.title,
-          domain: extractDomain(tab.url),
-          alreadyCategorized: targetCategory !== 0,
-          knownCategory: targetCategory
-        });
-        
-        console.log('Background: Moved tab from category', currentCategory, 'to', targetCategory);
       }
       
       // Record in database
