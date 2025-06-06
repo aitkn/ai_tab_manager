@@ -481,13 +481,32 @@ export function createTabElement(tab, category) {
     className: 'tab-info',
     onclick: async () => {
       if (state.isViewingSaved) {
-        // For saved tabs, open in current window
+        // For saved tabs, open in a different window to keep popup open
         try {
-          await chrome.tabs.create({ 
-            url: tab.url,
-            active: true 
-          });
-          // Don't close the popup
+          // Get all windows
+          const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+          const currentWindow = await chrome.windows.getCurrent();
+          
+          // Find a window that's not the current one
+          const otherWindow = windows.find(w => w.id !== currentWindow.id);
+          
+          if (otherWindow) {
+            // Open in the other window
+            await chrome.tabs.create({ 
+              url: tab.url,
+              active: true,
+              windowId: otherWindow.id
+            });
+            // Focus that window
+            await chrome.windows.update(otherWindow.id, { focused: true });
+          } else {
+            // No other window, create a new one
+            await chrome.windows.create({
+              url: tab.url,
+              focused: true
+            });
+          }
+          // Popup stays open
         } catch (error) {
           console.error('Error opening saved tab:', error);
         }

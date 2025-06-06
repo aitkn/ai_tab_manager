@@ -12,6 +12,44 @@ import { moveTabToCategory } from './categorization-service.js';
 // Import database - using window.window.tabDatabase since it's a global
 
 /**
+ * Smart tab opening that keeps popup open
+ * Opens in another window or creates new window to prevent popup from closing
+ * @param {string} url - URL to open
+ * @param {boolean} focusWindow - Whether to focus the window
+ * @returns {Promise<Object>} Created tab
+ */
+async function openTabKeepingPopupOpen(url, focusWindow = true) {
+  // Get all windows
+  const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+  const currentWindow = await chrome.windows.getCurrent();
+  
+  // Find a window that's not the current one
+  const otherWindow = windows.find(w => w.id !== currentWindow.id);
+  
+  if (otherWindow) {
+    // Open in the other window
+    const tab = await ChromeAPIService.createTab({ 
+      url: url,
+      active: true,
+      windowId: otherWindow.id
+    });
+    
+    if (focusWindow) {
+      await chrome.windows.update(otherWindow.id, { focused: true });
+    }
+    
+    return tab;
+  } else {
+    // No other window, create a new one
+    const newWindow = await chrome.windows.create({
+      url: url,
+      focused: focusWindow
+    });
+    return newWindow.tabs[0];
+  }
+}
+
+/**
  * Close a single tab
  */
 export async function closeTab(tab, category) {
@@ -275,10 +313,18 @@ export async function openAllInCategory(category) {
     
     for (const tab of tabs.slice(0, maxTabs)) {
       try {
-        await ChromeAPIService.createTab({ url: tab.url });
+        await openTabKeepingPopupOpen(tab.url, false); // Don't focus each individual tab
       } catch (error) {
         console.error('Error opening tab:', error);
       }
+    }
+    
+    // Focus the window at the end
+    const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+    const currentWindow = await chrome.windows.getCurrent();
+    const otherWindow = windows.find(w => w.id !== currentWindow.id);
+    if (otherWindow) {
+      await chrome.windows.update(otherWindow.id, { focused: true });
     }
     
     showStatus(`Opened ${Math.min(tabs.length, maxTabs)} tabs`, 'success');
@@ -457,10 +503,18 @@ export async function openAllTabsInGroup(groupName) {
     
     for (const tab of groupTabs.slice(0, maxTabs)) {
       try {
-        await ChromeAPIService.createTab({ url: tab.url });
+        await openTabKeepingPopupOpen(tab.url, false); // Don't focus each individual tab
       } catch (error) {
         console.error('Error opening tab:', error);
       }
+    }
+    
+    // Focus the window at the end
+    const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+    const currentWindow = await chrome.windows.getCurrent();
+    const otherWindow = windows.find(w => w.id !== currentWindow.id);
+    if (otherWindow) {
+      await chrome.windows.update(otherWindow.id, { focused: true });
     }
     
     showStatus(`Opened ${Math.min(groupTabs.length, maxTabs)} tabs`, 'success');
@@ -564,7 +618,7 @@ export async function deleteTabsInGroup(groupName) {
  */
 export async function restoreSavedTab(tab, deleteAfterRestore = false) {
   try {
-    const newTab = await ChromeAPIService.createTab({ url: tab.url });
+    const newTab = await openTabKeepingPopupOpen(tab.url);
     
     // Record open event in database
     if (window.tabDatabase) {
