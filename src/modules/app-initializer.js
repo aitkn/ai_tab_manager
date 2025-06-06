@@ -3,7 +3,7 @@
  * App Initializer - handles application initialization
  */
 
-import { DOM_IDS, CSS_CLASSES, EVENTS, TAB_TYPES } from '../utils/constants.js';
+import { DOM_IDS, CSS_CLASSES, EVENTS, TAB_TYPES, TAB_CATEGORIES, CATEGORY_NAMES } from '../utils/constants.js';
 import { $id, show, hide, on } from '../utils/dom-helpers.js';
 import { initializeTheme, switchToTab, showStatus, updateCategorizeBadge, showApiKeyPrompt } from './ui-manager.js';
 import { state, loadSavedState, setInitializationComplete, restoreScrollPosition, savePopupState } from './state-manager.js';
@@ -14,6 +14,28 @@ import { showSavedTabsContent, loadSavedTabsCount } from './saved-tabs-manager.j
 // Database is available as window.window.tabDatabase
 import StorageService from '../services/StorageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
+
+/**
+ * Initialize category names from constants
+ */
+function initializeCategoryNames() {
+  // Update category names in the DOM from constants
+  const categoryElements = [
+    { id: DOM_IDS.CATEGORY_1, category: TAB_CATEGORIES.CAN_CLOSE },
+    { id: DOM_IDS.CATEGORY_2, category: TAB_CATEGORIES.SAVE_LATER },
+    { id: DOM_IDS.CATEGORY_3, category: TAB_CATEGORIES.IMPORTANT }
+  ];
+  
+  categoryElements.forEach(({ id, category }) => {
+    const categorySection = $id(id);
+    if (categorySection) {
+      const nameElement = categorySection.querySelector('.category-name');
+      if (nameElement) {
+        nameElement.textContent = CATEGORY_NAMES[category];
+      }
+    }
+  });
+}
 
 /**
  * Wait for database to be loaded
@@ -55,6 +77,9 @@ export async function initializeApp() {
     
     // Initialize theme
     initializeTheme();
+    
+    // Initialize category names from constants
+    initializeCategoryNames();
     
     // Initialize database
     await window.tabDatabase.init();

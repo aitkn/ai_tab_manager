@@ -78,9 +78,9 @@ const CONFIG = {
   // Default categorization prompt
   DEFAULT_PROMPT: `You are a tab categorization assistant. Categorize the following browser tabs into exactly 3 categories:
 
-1. Not Important (can be closed): Empty tabs, new tabs, error pages (404, 500, etc.), login/signin pages, authentication pages, frequently opened sites (Gmail, X/Twitter homepage, YouTube homepage, etc.), default pages, inbox pages
-2. Somewhat Important (save for later): Interesting articles/videos that aren't too old, useful posts that might be referenced later, general browsing
-3. Important (must save): Unique websites HARD to find again, important articles/documentation, active LLM conversations that may need continuation, work-related tabs, specific tweets/posts, GitHub repos with code
+1. Ignore: Empty tabs, new tabs, error pages (404, 500, etc.), login/signin pages, authentication pages, frequently opened sites (Gmail, X/Twitter homepage, YouTube homepage, etc.), default pages, inbox pages
+2. Useful: Interesting articles/videos that aren't too old, useful posts that might be referenced later, general browsing
+3. Important: Unique websites HARD to find again, important articles/documentation, active LLM conversations that may need continuation, work-related tabs, specific tweets/posts, GitHub repos with code
 
 Consider these domains as category 1 when they're just the homepage/inbox: {FREQUENT_DOMAINS}
 

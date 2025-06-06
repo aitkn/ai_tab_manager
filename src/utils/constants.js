@@ -6,15 +6,15 @@
 // Tab Categories
 export const TAB_CATEGORIES = {
   UNCATEGORIZED: 0,
-  CAN_CLOSE: 1,
-  SAVE_LATER: 2,
-  IMPORTANT: 3
+  CAN_CLOSE: 1,    // Ignore - Easy to refind (< 10 seconds)
+  SAVE_LATER: 2,   // Useful - Moderate effort (10s - 2min)
+  IMPORTANT: 3     // Important - Hard to refind (> 2 minutes)
 };
 
 export const CATEGORY_NAMES = {
   [TAB_CATEGORIES.UNCATEGORIZED]: 'Uncategorized',
-  [TAB_CATEGORIES.CAN_CLOSE]: 'Can Be Closed',
-  [TAB_CATEGORIES.SAVE_LATER]: 'Save for Later',
+  [TAB_CATEGORIES.CAN_CLOSE]: 'Ignore',
+  [TAB_CATEGORIES.SAVE_LATER]: 'Useful',
   [TAB_CATEGORIES.IMPORTANT]: 'Important'
 };
 
