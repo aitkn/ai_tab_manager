@@ -256,6 +256,79 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return false;
   }
   
+  // Handle tab closed from popup
+  if (request.action === 'tabClosed') {
+    const { tabId, category } = request.data;
+    if (categorizedTabs[category]) {
+      categorizedTabs[category] = categorizedTabs[category].filter(t => t.id !== tabId);
+    }
+    console.log('Background: Tab closed, updated category', category);
+    sendResponse({ status: 'updated' });
+    return false;
+  }
+  
+  // Handle clear category
+  if (request.action === 'clearCategory') {
+    const { category } = request.data;
+    if (categorizedTabs[category]) {
+      categorizedTabs[category] = [];
+    }
+    console.log('Background: Cleared category', category);
+    sendResponse({ status: 'cleared' });
+    return false;
+  }
+  
+  // Handle clear all categories
+  if (request.action === 'clearAllCategories') {
+    categorizedTabs = {
+      0: [], // Uncategorized
+      1: [], // Can close
+      2: [], // Save for later
+      3: []  // Important
+    };
+    urlToDuplicateIds = {};
+    console.log('Background: Cleared all categories');
+    sendResponse({ status: 'cleared' });
+    return false;
+  }
+  
+  // Handle move tab to category
+  if (request.action === 'moveTabToCategory') {
+    const { tabId, fromCategory, toCategory } = request.data;
+    
+    // Find tab in source category
+    let movedTab = null;
+    if (categorizedTabs[fromCategory]) {
+      const tabIndex = categorizedTabs[fromCategory].findIndex(t => t.id === tabId);
+      if (tabIndex > -1) {
+        movedTab = categorizedTabs[fromCategory].splice(tabIndex, 1)[0];
+      }
+    }
+    
+    // Add to target category
+    if (movedTab && categorizedTabs[toCategory]) {
+      categorizedTabs[toCategory].push(movedTab);
+      console.log('Background: Moved tab from category', fromCategory, 'to', toCategory);
+      
+      // Notify popup if connected
+      if (popupPort) {
+        popupPort.postMessage({
+          action: 'tabChanged',
+          data: {
+            changeType: 'moved',
+            tab: movedTab,
+            fromCategory,
+            toCategory,
+            timestamp: Date.now()
+          }
+        });
+      }
+    }
+    
+    sendResponse({ status: 'moved' });
+    return false;
+  }
+  
   
   // Default response for unknown actions
   sendResponse({ error: 'Unknown action: ' + request.action });

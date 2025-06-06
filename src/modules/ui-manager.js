@@ -74,7 +74,7 @@ export function initializeTabNavigation() {
  * Switch to a specific tab
  * @param {string} tabName - Tab to switch to
  */
-export function switchToTab(tabName) {
+export async function switchToTab(tabName) {
   console.log('Switching to tab:', tabName);
   
   // Update tab buttons
@@ -123,9 +123,8 @@ export function switchToTab(tabName) {
   }
   
   // Update unified toolbar visibility
-  import('./unified-toolbar.js').then(({ updateToolbarVisibility }) => {
-    updateToolbarVisibility(tabName);
-  });
+  const { updateToolbarVisibility } = await import('./unified-toolbar.js');
+  await updateToolbarVisibility(tabName);
 }
 
 /**
@@ -183,12 +182,16 @@ export function clearStatus() {
 /**
  * Update badge on categorize tab
  */
-export function updateCategorizeBadge() {
+export async function updateCategorizeBadge() {
   const badge = $id(DOM_IDS.CATEGORIZE_BADGE);
   if (!badge) return;
   
-  const totalCategorized = Object.values(state.categorizedTabs)
-    .reduce((sum, tabs) => sum + tabs.length, 0);
+  // Get current tabs from background
+  const { getCurrentTabs } = await import('./tab-data-source.js');
+  const { categorizedTabs } = await getCurrentTabs();
+  
+  const totalCategorized = Object.values(categorizedTabs)
+    .reduce((sum, tabs) => sum + (tabs ? tabs.length : 0), 0);
   
   if (totalCategorized > 0) {
     badge.textContent = totalCategorized;
@@ -198,18 +201,22 @@ export function updateCategorizeBadge() {
   }
   
   // Also update categorize button state
-  updateCategorizeButtonState();
+  await updateCategorizeButtonState();
 }
 
 /**
  * Update categorize button enable/disable state
  */
-export function updateCategorizeButtonState() {
+export async function updateCategorizeButtonState() {
   const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
   if (!categorizeBtn) return;
   
-  const uncategorizedCount = state.categorizedTabs && state.categorizedTabs[0] 
-    ? state.categorizedTabs[0].length 
+  // Get current tabs from background
+  const { getCurrentTabs } = await import('./tab-data-source.js');
+  const { categorizedTabs } = await getCurrentTabs();
+  
+  const uncategorizedCount = categorizedTabs && categorizedTabs[0] 
+    ? categorizedTabs[0].length 
     : 0;
   
   const hasUncategorized = uncategorizedCount > 0;

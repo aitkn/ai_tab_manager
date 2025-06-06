@@ -389,14 +389,15 @@ async function handleTabChange(data) {
   console.log('Popup: handleTabChange called with:', data);
   const { changeType, tab, timestamp } = data;
   
-  // Only handle changes if we're on the categorize tab and have categorized tabs
-  if (state.popupState.activeTab !== TAB_TYPES.CATEGORIZE || !state.categorizedTabs) {
-    console.log('Popup: Skipping - not on categorize tab or no categorized tabs');
+  // Only handle changes if we're on the categorize tab
+  if (state.popupState.activeTab !== TAB_TYPES.CATEGORIZE) {
+    console.log('Popup: Skipping - not on categorize tab');
     return;
   }
   
-  const hasCategorizedTabs = Object.values(state.categorizedTabs)
-    .some(tabs => tabs.length > 0);
+  // Check if we have categorized tabs
+  const { hasCurrentTabs } = await import('./tab-data-source.js');
+  const hasCategorizedTabs = await hasCurrentTabs();
   
   if (!hasCategorizedTabs && changeType !== 'created') {
     console.log('Popup: Skipping - no categorized tabs and not a create event');

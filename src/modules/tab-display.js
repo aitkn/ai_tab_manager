@@ -8,6 +8,7 @@ import { $, $id, show, hide, classes, createElement } from '../utils/dom-helpers
 import { getRootDomain, getSubdomain, sortTabsInGroup, getWeekNumber, getWeekStartDate, formatDate, extractDateFromGroupName } from '../utils/helpers.js';
 import { state } from './state-manager.js';
 import { showStatus } from './ui-manager.js';
+import { getCurrentTabs } from './tab-data-source.js';
 
 /**
  * Display tabs based on current state and grouping
@@ -23,14 +24,14 @@ export async function displayTabs(isFromSaved = false) {
       console.log('Displaying tabs with grouping:', groupingType);
       
       if (groupingType === 'category') {
-        displayCategoryView();
+        await displayCategoryView();
       } else {
-        displayGroupedView(groupingType, false);
+        await displayGroupedView(groupingType, false);
       }
       
       // Update Close All button color
       const { updateCloseAllButtonColor } = await import('./ui-utilities.js');
-      updateCloseAllButtonColor();
+      await updateCloseAllButtonColor();
     }
   } catch (error) {
     console.error('Error displaying tabs:', error);
@@ -41,7 +42,7 @@ export async function displayTabs(isFromSaved = false) {
 /**
  * Display tabs grouped by category
  */
-export function displayCategoryView() {
+export async function displayCategoryView() {
   const container = $id(DOM_IDS.TABS_CONTAINER);
   if (!container) {
     console.error('Tabs container not found');
@@ -51,6 +52,9 @@ export function displayCategoryView() {
   // Show category view, hide grouped view
   show($id(DOM_IDS.CATEGORY_VIEW));
   hide($id(DOM_IDS.GROUPED_VIEW));
+  
+  // Fetch current tabs from background
+  const { categorizedTabs } = await getCurrentTabs();
   
   // Display each category in order of importance
   [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
@@ -62,7 +66,7 @@ export function displayCategoryView() {
     
     const tabsList = categorySection.querySelector('.tabs-list');
     const countElement = categorySection.querySelector('.count');
-    const tabs = state.categorizedTabs[category] || [];
+    const tabs = categorizedTabs[category] || [];
     
     // Show/hide uncategorized section based on whether it has tabs
     if (category === TAB_CATEGORIES.UNCATEGORIZED) {
@@ -145,8 +149,16 @@ export function displayCategoryView() {
  * @param {boolean} isFromSaved - Whether displaying saved tabs
  * @param {Object} tabsToDisplay - Optional tabs to display (for saved tabs)
  */
-export function displayGroupedView(groupingType, isFromSaved = false, tabsToDisplay = null) {
-  const tabs = tabsToDisplay || state.categorizedTabs;
+export async function displayGroupedView(groupingType, isFromSaved = false, tabsToDisplay = null) {
+  // Fetch current tabs if not provided
+  let tabs = tabsToDisplay;
+  if (!tabs && !isFromSaved) {
+    const { categorizedTabs } = await getCurrentTabs();
+    tabs = categorizedTabs;
+  } else if (!tabs) {
+    tabs = {};
+  }
+  
   const container = isFromSaved ? $id(DOM_IDS.SAVED_CONTENT) : $id(DOM_IDS.TABS_CONTAINER);
   if (!container) return;
   

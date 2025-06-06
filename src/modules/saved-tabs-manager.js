@@ -79,7 +79,7 @@ export async function showSavedTabsContent(groupingType, includeCanClose = false
         [TAB_CATEGORIES.IMPORTANT]: savedTabsByCategory[TAB_CATEGORIES.IMPORTANT] || []
       };
       
-      const groupedView = displayGroupedView(groupingType, true, tabsForDisplay);
+      const groupedView = await displayGroupedView(groupingType, true, tabsForDisplay);
       if (groupedView) {
         savedContent.appendChild(groupedView);
         

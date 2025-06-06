@@ -16,25 +16,19 @@ import { moveTabToCategory } from './categorization-service.js';
  */
 export async function closeTab(tab, category) {
   try {
-    // Get the latest tab data from state in case duplicates were added after element creation
-    const categoryTabs = state.categorizedTabs[category];
+    // Get the latest tab data from background
+    const { getCurrentTabs } = await import('./tab-data-source.js');
+    const { categorizedTabs } = await getCurrentTabs();
+    const categoryTabs = categorizedTabs[category] || [];
     const currentTab = categoryTabs.find(t => t.id === tab.id);
     
     // Use current tab data if available, otherwise fall back to passed tab
     const tabToClose = currentTab || tab;
     
     // Get all duplicate tabs - check both sources
-    const duplicateIds = tabToClose.duplicateIds || state.urlToDuplicateIds[tabToClose.url] || [tabToClose.id];
+    const duplicateIds = tabToClose.duplicateIds || [tabToClose.id];
     
     console.log('Closing tab with duplicates:', tabToClose.url, 'duplicateIds:', duplicateIds, 'from currentTab:', !!currentTab);
-    
-    // Remove from UI state
-    const index = categoryTabs.findIndex(t => t.id === tabToClose.id);
-    
-    if (index > -1) {
-      categoryTabs.splice(index, 1);
-      updateState('categorizedTabs', state.categorizedTabs);
-    }
     
     // Close all duplicate tabs
     for (const tabId of duplicateIds) {
@@ -45,31 +39,21 @@ export async function closeTab(tab, category) {
       }
     }
     
-    // Clean up duplicate tracking
-    if (state.urlToDuplicateIds[tabToClose.url]) {
-      delete state.urlToDuplicateIds[tabToClose.url];
-    }
-    
-    updateCategorizeBadge();
-    await savePopupState();
-    
-    // Sync with background
+    // Notify background to update its state
     await chrome.runtime.sendMessage({
-      action: 'storeCategorizedTabs',
+      action: 'tabClosed',
       data: {
-        categorizedTabs: state.categorizedTabs,
-        urlToDuplicateIds: state.urlToDuplicateIds
+        tabId: tab.id,
+        category: category
       }
     });
     
-    // If no more tabs, trigger re-display
-    const totalTabs = Object.values(state.categorizedTabs)
-      .reduce((sum, tabs) => sum + tabs.length, 0);
+    updateCategorizeBadge();
     
-    if (totalTabs === 0) {
-      // Trigger display update
-      window.dispatchEvent(new CustomEvent('tabsChanged'));
-    }
+    // Trigger display update
+    const { displayTabs } = await import('./tab-display.js');
+    await displayTabs();
+    
   } catch (error) {
     console.error('Error closing tab:', error);
     showStatus('Error closing tab', 'error');
@@ -83,7 +67,11 @@ export async function saveAndCloseCategory(category) {
   try {
     showStatus('Saving tabs...', 'loading');
     
-    const tabs = state.categorizedTabs[category] || [];
+    // Get current tabs from background
+    const { getCurrentTabs } = await import('./tab-data-source.js');
+    const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
+    const tabs = categorizedTabs[category] || [];
+    
     if (tabs.length === 0) {
       showStatus('No tabs to save', 'warning');
       return;
@@ -106,7 +94,7 @@ export async function saveAndCloseCategory(category) {
     for (const tab of tabs) {
       try {
         // Close all duplicate tabs
-        const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
+        const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
         for (const tabId of duplicateIds) {
           try {
             await ChromeAPIService.removeTabs(tabId);
@@ -120,17 +108,19 @@ export async function saveAndCloseCategory(category) {
       }
     }
     
-    // Clear the category
-    state.categorizedTabs[category] = [];
-    updateState('categorizedTabs', state.categorizedTabs);
+    // Notify background to clear the category
+    await chrome.runtime.sendMessage({
+      action: 'clearCategory',
+      data: { category }
+    });
     
     updateCategorizeBadge();
-    await savePopupState();
     
     showStatus(`Saved ${savedCount} tabs, closed ${closedCount} tabs`, 'success');
     
     // Trigger display update
-    window.dispatchEvent(new CustomEvent('tabsChanged'));
+    const { displayTabs } = await import('./tab-display.js');
+    await displayTabs();
   } catch (error) {
     console.error('Error saving and closing category:', error);
     showStatus('Error saving tabs', 'error');
@@ -146,6 +136,10 @@ export async function saveAndCloseAll() {
     
     let totalClosed = 0;
     
+    // Get current tabs from background
+    const { getCurrentTabs } = await import('./tab-data-source.js');
+    const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
+    
     // Check if we're about to close all tabs in the current window
     const currentWindow = await ChromeAPIService.getCurrentWindow();
     const currentWindowTabs = await ChromeAPIService.queryTabs({ windowId: currentWindow.id });
@@ -153,9 +147,9 @@ export async function saveAndCloseAll() {
     // Collect all tab IDs we're about to close (including uncategorized)
     const tabIdsToClose = new Set();
     for (const category of [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT]) {
-      const tabs = state.categorizedTabs[category] || [];
+      const tabs = categorizedTabs[category] || [];
       for (const tab of tabs) {
-        const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
+        const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
         duplicateIds.forEach(id => tabIdsToClose.add(id));
       }
     }
@@ -172,12 +166,12 @@ export async function saveAndCloseAll() {
     
     // Close all tabs
     for (const category of [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE]) {
-      const tabs = state.categorizedTabs[category] || [];
+      const tabs = categorizedTabs[category] || [];
       
       for (const tab of tabs) {
         try {
           // Close all duplicate tabs
-          const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
+          const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
           for (const tabId of duplicateIds) {
             try {
               await ChromeAPIService.removeTabs(tabId);
@@ -192,23 +186,18 @@ export async function saveAndCloseAll() {
       }
     }
     
-    // Clear all categories
-    state.categorizedTabs = {
-      [TAB_CATEGORIES.UNCATEGORIZED]: [],
-      [TAB_CATEGORIES.CAN_CLOSE]: [],
-      [TAB_CATEGORIES.SAVE_LATER]: [],
-      [TAB_CATEGORIES.IMPORTANT]: []
-    };
-    state.urlToDuplicateIds = {};
+    // Notify background to clear all categories
+    await chrome.runtime.sendMessage({
+      action: 'clearAllCategories'
+    });
     
-    updateState('categorizedTabs', state.categorizedTabs);
     updateCategorizeBadge();
-    await savePopupState();
     
     showStatus(`Closed ${totalClosed} tabs`, 'success');
     
     // Trigger display update
-    window.dispatchEvent(new CustomEvent('tabsChanged'));
+    const { displayTabs } = await import('./tab-display.js');
+    await displayTabs();
   } catch (error) {
     console.error('Error saving and closing all tabs:', error);
     showStatus('Error saving tabs', 'error');
@@ -220,7 +209,11 @@ export async function saveAndCloseAll() {
  */
 export async function closeAllInCategory(category) {
   try {
-    const tabs = state.categorizedTabs[category] || [];
+    // Get current tabs from background
+    const { getCurrentTabs } = await import('./tab-data-source.js');
+    const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
+    const tabs = categorizedTabs[category] || [];
+    
     if (tabs.length === 0) return;
     
     showStatus('Closing tabs...', 'loading');
@@ -228,7 +221,7 @@ export async function closeAllInCategory(category) {
     let closedCount = 0;
     
     for (const tab of tabs) {
-      const duplicateIds = state.urlToDuplicateIds[tab.url] || [tab.id];
+      const duplicateIds = urlToDuplicateIds[tab.url] || [tab.id];
       for (const tabId of duplicateIds) {
         try {
           await ChromeAPIService.removeTabs(tabId);
@@ -239,17 +232,19 @@ export async function closeAllInCategory(category) {
       }
     }
     
-    // Clear the category
-    state.categorizedTabs[category] = [];
-    updateState('categorizedTabs', state.categorizedTabs);
+    // Notify background to clear the category
+    await chrome.runtime.sendMessage({
+      action: 'clearCategory',
+      data: { category }
+    });
     
     updateCategorizeBadge();
-    await savePopupState();
     
     showStatus(`Closed ${closedCount} tabs`, 'success');
     
     // Trigger display update
-    window.dispatchEvent(new CustomEvent('tabsChanged'));
+    const { displayTabs } = await import('./tab-display.js');
+    await displayTabs();
   } catch (error) {
     console.error('Error closing category:', error);
     showStatus('Error closing tabs', 'error');
@@ -261,7 +256,11 @@ export async function closeAllInCategory(category) {
  */
 export async function openAllInCategory(category) {
   try {
-    const tabs = state.categorizedTabs[category] || [];
+    // Get current tabs from background
+    const { getCurrentTabs } = await import('./tab-data-source.js');
+    const { categorizedTabs } = await getCurrentTabs();
+    const tabs = categorizedTabs[category] || [];
+    
     if (tabs.length === 0) return;
     
     const maxTabs = state.settings.maxTabsToOpen || LIMITS.MAX_TABS_DEFAULT;
@@ -322,24 +321,24 @@ export async function closeTabsInGroup(tabs) {
       }
     }
     
-    // Remove tabs from state
+    // Notify background about closed tabs
     for (const tab of tabs) {
-      // Find and remove from categorized tabs
-      for (const category of Object.keys(state.categorizedTabs)) {
-        state.categorizedTabs[category] = state.categorizedTabs[category]
-          .filter(t => t.id !== tab.id);
-      }
+      await chrome.runtime.sendMessage({
+        action: 'tabClosed',
+        data: {
+          tabId: tab.id,
+          category: tab.category
+        }
+      });
     }
     
-    updateState('categorizedTabs', state.categorizedTabs);
     updateCategorizeBadge();
-    await savePopupState();
     
     showStatus(`Closed ${closedCount} tabs`, 'success');
     
     // Trigger display update
     const { displayTabs } = await import('./tab-display.js');
-    displayTabs();
+    await displayTabs();
     
   } catch (error) {
     console.error('Error closing group tabs:', error);
@@ -396,17 +395,18 @@ export async function saveAndCloseTabsInGroup(tabs) {
       }
     }
     
-    // Remove tabs from state
+    // Notify background about closed tabs
     for (const tab of tabs) {
-      for (const category of Object.keys(state.categorizedTabs)) {
-        state.categorizedTabs[category] = state.categorizedTabs[category]
-          .filter(t => t.id !== tab.id);
-      }
+      await chrome.runtime.sendMessage({
+        action: 'tabClosed',
+        data: {
+          tabId: tab.id,
+          category: tab.category
+        }
+      });
     }
     
-    updateState('categorizedTabs', state.categorizedTabs);
     updateCategorizeBadge();
-    await savePopupState();
     
     showStatus(`Saved ${savedCount} tabs, closed ${closedCount} tabs`, 'success');
     
@@ -415,7 +415,7 @@ export async function saveAndCloseTabsInGroup(tabs) {
     
     // Trigger display update
     const { displayTabs } = await import('./tab-display.js');
-    displayTabs();
+    await displayTabs();
     
   } catch (error) {
     console.error('Error saving group tabs:', error);
@@ -428,9 +428,13 @@ export async function saveAndCloseTabsInGroup(tabs) {
  */
 export async function openAllTabsInGroup(groupName) {
   try {
+    // Get current tabs from background
+    const { getCurrentTabs } = await import('./tab-data-source.js');
+    const { categorizedTabs } = await getCurrentTabs();
+    
     // Get all tabs in this group
     const groupTabs = [];
-    const allTabs = Object.values(state.categorizedTabs).flat();
+    const allTabs = Object.values(categorizedTabs).flat();
     
     allTabs.forEach(tab => {
       const domain = getRootDomain(tab.domain);

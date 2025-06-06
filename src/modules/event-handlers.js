@@ -87,10 +87,9 @@ export function setupEventListeners() {
         await showSavedTabsContent(savedGroupingSelect?.value, includeCanClose);
       } else if (tabName === 'categorize') {
         // Check if we have categorized tabs to display
-        const hasCategories = state.categorizedTabs && 
-          Object.values(state.categorizedTabs).some(tabs => tabs.length > 0);
+        const { hasCurrentTabs } = await import('./tab-data-source.js');
         
-        if (hasCategories) {
+        if (await hasCurrentTabs()) {
           const { displayTabs } = await import('./tab-display.js');
           displayTabs();
         }

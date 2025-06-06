@@ -8,6 +8,7 @@ import { $id, classes } from '../utils/dom-helpers.js';
 import { state, savePopupState } from './state-manager.js';
 import { displayTabs } from './tab-display.js';
 import { showSavedTabsContent } from './saved-tabs-manager.js';
+import { getCurrentTabs } from './tab-data-source.js';
 
 /**
  * Find first visible tab in viewport
@@ -257,13 +258,15 @@ export function downloadFile(filename, content) {
 /**
  * Update Close All button color based on uncategorized tabs
  */
-export function updateCloseAllButtonColor() {
+export async function updateCloseAllButtonColor() {
   // Check both old and new button IDs
   let closeAllBtn = $id(DOM_IDS.CLOSE_ALL_BTN2) || $id(DOM_IDS.SAVE_AND_CLOSE_ALL_BTN);
   if (!closeAllBtn) return;
   
-  const hasUncategorized = state.categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED] && 
-                          state.categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED].length > 0;
+  // Fetch current tabs from background
+  const { categorizedTabs } = await getCurrentTabs();
+  const hasUncategorized = categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED] && 
+                          categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED].length > 0;
   
   if (hasUncategorized) {
     classes.add(closeAllBtn, 'has-uncategorized');

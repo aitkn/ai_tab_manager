@@ -224,24 +224,29 @@ export async function refreshCategorization() {
  * @param {number} fromCategory - Source category
  * @param {number} toCategory - Target category
  */
-export function moveTabToCategory(tab, fromCategory, toCategory) {
+export async function moveTabToCategory(tab, fromCategory, toCategory) {
   if (fromCategory === toCategory) return;
   
-  // Remove from source category
-  const sourceIndex = state.categorizedTabs[fromCategory].findIndex(t => t.id === tab.id);
-  if (sourceIndex > -1) {
-    state.categorizedTabs[fromCategory].splice(sourceIndex, 1);
+  try {
+    // Send move request to background
+    await chrome.runtime.sendMessage({
+      action: 'moveTabToCategory',
+      data: {
+        tabId: tab.id,
+        fromCategory,
+        toCategory
+      }
+    });
+    
+    updateCategorizeBadge();
+    
+    // Trigger UI update
+    const { displayTabs } = await import('./tab-display.js');
+    await displayTabs();
+  } catch (error) {
+    console.error('Error moving tab:', error);
+    showStatus('Error moving tab', 'error');
   }
-  
-  // Add to target category
-  state.categorizedTabs[toCategory].push(tab);
-  
-  // Update state
-  updateState('categorizedTabs', state.categorizedTabs);
-  updateCategorizeBadge();
-  
-  // Save state
-  savePopupState();
 }
 
 /**
@@ -261,17 +266,20 @@ export async function isTabSaved(url) {
 
 /**
  * Get categorization stats
- * @returns {Object} Stats object
+ * @returns {Promise<Object>} Stats object
  */
-export function getCategorizationStats() {
+export async function getCategorizationStats() {
+  const { getCurrentTabs } = await import('./tab-data-source.js');
+  const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
+  
   const stats = {
     total: 0,
     byCategory: {
-      [TAB_CATEGORIES.CAN_CLOSE]: state.categorizedTabs[TAB_CATEGORIES.CAN_CLOSE].length,
-      [TAB_CATEGORIES.SAVE_LATER]: state.categorizedTabs[TAB_CATEGORIES.SAVE_LATER].length,
-      [TAB_CATEGORIES.IMPORTANT]: state.categorizedTabs[TAB_CATEGORIES.IMPORTANT].length
+      [TAB_CATEGORIES.CAN_CLOSE]: categorizedTabs[TAB_CATEGORIES.CAN_CLOSE]?.length || 0,
+      [TAB_CATEGORIES.SAVE_LATER]: categorizedTabs[TAB_CATEGORIES.SAVE_LATER]?.length || 0,
+      [TAB_CATEGORIES.IMPORTANT]: categorizedTabs[TAB_CATEGORIES.IMPORTANT]?.length || 0
     },
-    duplicates: Object.keys(state.urlToDuplicateIds).length,
+    duplicates: Object.keys(urlToDuplicateIds).length,
     saved: 0
   };
   
@@ -280,10 +288,12 @@ export function getCategorizationStats() {
                 stats.byCategory[TAB_CATEGORIES.IMPORTANT];
   
   // Count saved tabs
-  Object.values(state.categorizedTabs).forEach(tabs => {
-    tabs.forEach(tab => {
-      if (tab.alreadySaved) stats.saved++;
-    });
+  Object.values(categorizedTabs).forEach(tabs => {
+    if (tabs) {
+      tabs.forEach(tab => {
+        if (tab.alreadySaved) stats.saved++;
+      });
+    }
   });
   
   return stats;

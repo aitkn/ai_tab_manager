@@ -94,7 +94,7 @@ export function initializeUnifiedToolbar() {
 /**
  * Update toolbar when switching tabs
  */
-export function updateToolbarVisibility(tabType) {
+export async function updateToolbarVisibility(tabType) {
   currentActiveTab = tabType;
   
   const currentTabControls = $id('currentTabControls');
@@ -121,11 +121,11 @@ export function updateToolbarVisibility(tabType) {
     }
     
     // Update close all button color
-    updateCloseAllButtonColor();
+    await updateCloseAllButtonColor();
     
     // Only show toolbar if we have tabs
-    const hasTabs = Object.values(state.categorizedTabs).some(tabs => tabs.length > 0);
-    if (hasTabs) {
+    const { hasCurrentTabs } = await import('./tab-data-source.js');
+    if (await hasCurrentTabs()) {
       showToolbar();
     } else {
       hideToolbar();

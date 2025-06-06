@@ -52,7 +52,7 @@ export function matchesSearch(tab, query) {
 /**
  * Apply search filter to all displayed tabs
  */
-export function applySearchFilter() {
+export async function applySearchFilter() {
   const allTabs = document.querySelectorAll('.tab-item');
   let visibleCount = 0;
   const visibleByCategory = { 
@@ -61,14 +61,18 @@ export function applySearchFilter() {
     [TAB_CATEGORIES.IMPORTANT]: 0 
   };
   
+  // Get current tabs data
+  const { getCurrentTabs } = await import('./tab-data-source.js');
+  const { categorizedTabs } = await getCurrentTabs();
+  
   allTabs.forEach(tabElement => {
     const tabId = parseInt(tabElement.dataset.tabId);
     const category = parseInt(tabElement.dataset.category);
     
     // Find the tab data
     let tab = null;
-    if (state.categorizedTabs[category]) {
-      tab = state.categorizedTabs[category].find(t => t.id === tabId);
+    if (categorizedTabs[category]) {
+      tab = categorizedTabs[category].find(t => t.id === tabId);
     }
     
     if (tab && matchesSearch(tab, state.searchQuery)) {
@@ -83,7 +87,7 @@ export function applySearchFilter() {
   });
   
   // Update category counts
-  updateCategoryCountsWithSearch(visibleByCategory);
+  updateCategoryCountsWithSearch(visibleByCategory, categorizedTabs);
   
   // Update categorize tab badge
   updateCategorizeBadge();
@@ -97,15 +101,15 @@ export function applySearchFilter() {
 /**
  * Update category counts to show filtered results
  */
-function updateCategoryCountsWithSearch(visibleByCategory) {
+function updateCategoryCountsWithSearch(visibleByCategory, categorizedTabs) {
   [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
     const countElement = document.querySelector(`#category${category} .count`);
     if (countElement) {
       if (state.searchQuery) {
-        const total = state.categorizedTabs[category] ? state.categorizedTabs[category].length : 0;
+        const total = categorizedTabs[category] ? categorizedTabs[category].length : 0;
         countElement.textContent = `${visibleByCategory[category]} of ${total}`;
       } else {
-        countElement.textContent = state.categorizedTabs[category] ? state.categorizedTabs[category].length : 0;
+        countElement.textContent = categorizedTabs[category] ? categorizedTabs[category].length : 0;
       }
     }
   });
@@ -114,11 +118,14 @@ function updateCategoryCountsWithSearch(visibleByCategory) {
 /**
  * Reset category counts to show all tabs
  */
-function resetCategoryCounts() {
+async function resetCategoryCounts() {
+  const { getCurrentTabs } = await import('./tab-data-source.js');
+  const { categorizedTabs } = await getCurrentTabs();
+  
   [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
     const countElement = document.querySelector(`#category${category} .count`);
-    if (countElement && state.categorizedTabs[category]) {
-      countElement.textContent = state.categorizedTabs[category].length;
+    if (countElement && categorizedTabs[category]) {
+      countElement.textContent = categorizedTabs[category].length;
     }
   });
 }

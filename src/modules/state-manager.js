@@ -8,18 +8,12 @@ import StorageService from '../services/StorageService.js';
 
 // Global state object
 export const state = {
-  categorizedTabs: { 
-    [TAB_CATEGORIES.CAN_CLOSE]: [], 
-    [TAB_CATEGORIES.SAVE_LATER]: [], 
-    [TAB_CATEGORIES.IMPORTANT]: [] 
-  },
   isViewingSaved: false,
   searchQuery: '',
   isInitializing: true,
   popupState: {
     isViewingSaved: false,
     searchQuery: '',
-    categorizedTabs: null,
     activeTab: 'categorize',
     groupingSelections: {
       categorize: 'category',
@@ -28,7 +22,6 @@ export const state = {
     scrollPositions: {},
     showAllCategories: false
   },
-  urlToDuplicateIds: {},
   settings: {
     provider: 'Claude',
     model: '',
@@ -107,15 +100,6 @@ export async function savePopupState() {
   // Update popup state object
   state.popupState.isViewingSaved = state.isViewingSaved;
   state.popupState.searchQuery = state.searchQuery;
-  state.popupState.categorizedTabs = state.categorizedTabs;
-  
-  // Log categorized tabs to debug
-  const tabCounts = {
-    canClose: state.categorizedTabs[TAB_CATEGORIES.CAN_CLOSE]?.length || 0,
-    saveLater: state.categorizedTabs[TAB_CATEGORIES.SAVE_LATER]?.length || 0,
-    important: state.categorizedTabs[TAB_CATEGORIES.IMPORTANT]?.length || 0
-  };
-  console.log('Saving categorized tabs:', tabCounts);
   
   // Get current scroll positions for all scrollable containers
   const tabsContainer = document.getElementById('tabsContainer');
@@ -145,22 +129,6 @@ export async function loadSavedState() {
     const savedPopupState = await StorageService.loadPopupState();
     if (savedPopupState) {
       Object.assign(state.popupState, savedPopupState);
-      
-      // Restore categorized tabs if they exist
-      if (savedPopupState.categorizedTabs) {
-        state.categorizedTabs = {
-          [TAB_CATEGORIES.CAN_CLOSE]: savedPopupState.categorizedTabs[TAB_CATEGORIES.CAN_CLOSE] || [],
-          [TAB_CATEGORIES.SAVE_LATER]: savedPopupState.categorizedTabs[TAB_CATEGORIES.SAVE_LATER] || [],
-          [TAB_CATEGORIES.IMPORTANT]: savedPopupState.categorizedTabs[TAB_CATEGORIES.IMPORTANT] || []
-        };
-        
-        const loadedCounts = {
-          canClose: state.categorizedTabs[TAB_CATEGORIES.CAN_CLOSE]?.length || 0,
-          saveLater: state.categorizedTabs[TAB_CATEGORIES.SAVE_LATER]?.length || 0,
-          important: state.categorizedTabs[TAB_CATEGORIES.IMPORTANT]?.length || 0
-        };
-        console.log('Loaded categorized tabs:', loadedCounts);
-      }
       
       state.isViewingSaved = savedPopupState.isViewingSaved || false;
       state.searchQuery = savedPopupState.searchQuery || '';
