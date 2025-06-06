@@ -146,7 +146,7 @@ function createCategorySection(category, tabs) {
   });
   
   const header = createElement('h2', {
-    className: `category-header ${category === TAB_CATEGORIES.IMPORTANT ? 'important' : category === TAB_CATEGORIES.SAVE_LATER ? 'somewhat-important' : 'not-important'}`
+    className: 'category-header'
   });
   
   const iconSvg = getCategoryIcon(category);

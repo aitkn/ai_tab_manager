@@ -1076,36 +1076,44 @@ button svg {
 }
 
 /* Category header colors to match tab title colors */
-#category0 .category-header {
+#category0 .category-header,
+#savedCategory0 .category-header {
   color: #9c27b0; /* Purple 700 - Uncategorized */
 }
 
-#category1 .category-header {
+#category1 .category-header,
+#savedCategory1 .category-header {
   color: #757575; /* Grey 600 - Ignore */
 }
 
-#category2 .category-header {
+#category2 .category-header,
+#savedCategory2 .category-header {
   color: #1976d2; /* Blue 700 - Useful */
 }
 
-#category3 .category-header {
+#category3 .category-header,
+#savedCategory3 .category-header {
   color: #d32f2f; /* Red 700 - Important */
 }
 
 /* Dark theme category header colors */
-[data-theme="dark"] #category0 .category-header {
+[data-theme="dark"] #category0 .category-header,
+[data-theme="dark"] #savedCategory0 .category-header {
   color: #ba68c8; /* Purple 300 */
 }
 
-[data-theme="dark"] #category1 .category-header {
+[data-theme="dark"] #category1 .category-header,
+[data-theme="dark"] #savedCategory1 .category-header {
   color: #bdbdbd; /* Grey 400 */
 }
 
-[data-theme="dark"] #category2 .category-header {
+[data-theme="dark"] #category2 .category-header,
+[data-theme="dark"] #savedCategory2 .category-header {
   color: #64b5f6; /* Blue 300 */
 }
 
-[data-theme="dark"] #category3 .category-header {
+[data-theme="dark"] #category3 .category-header,
+[data-theme="dark"] #savedCategory3 .category-header {
   color: #ef5350; /* Red 400 */
 }
 
