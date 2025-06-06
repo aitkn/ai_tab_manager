@@ -205,8 +205,18 @@ class TabDatabase {
       const store = transaction.objectStore('urls');
       const index = store.index('url');
 
-      const request = index.get(url);
-      request.onsuccess = () => resolve(request.result);
+      // Use getAll since URL index is not unique (same URL can have different titles)
+      const request = index.getAll(url);
+      request.onsuccess = () => {
+        const results = request.result;
+        if (results.length === 0) {
+          resolve(null);
+        } else {
+          // Return the highest category entry for this URL (Important > Useful > Ignore)
+          const sorted = results.sort((a, b) => b.category - a.category);
+          resolve(sorted[0]);
+        }
+      };
       request.onerror = () => reject(request.error);
     });
   }
