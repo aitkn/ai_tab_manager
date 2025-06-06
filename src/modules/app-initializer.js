@@ -418,7 +418,7 @@ async function handleTabChange(data) {
     displayTabs();
     updateCategorizeBadge();
     showStatus('Tab closed - display updated', 'success', 2000);
-  } else if (changeType === 'created' || changeType === 'updated') {
+  } else if (changeType === 'created' || changeType === 'updated' || changeType === 'refresh') {
     // Load latest categorized tabs from background
     try {
       const response = await chrome.runtime.sendMessage({ action: 'getCategorizedTabs' });

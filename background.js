@@ -359,9 +359,9 @@ chrome.tabs.onCreated.addListener(async (tab) => {
           console.log('Background: Added duplicate tab', tab.id, 'to existing entry. Total duplicates:', existingTab.duplicateCount);
           console.log('Background: Existing tab duplicateIds:', existingTab.duplicateIds);
           
-          // Notify popup with updated event instead of created to avoid confusion
+          // Notify popup to refresh since duplicate count changed
           setTimeout(() => {
-            notifyPopupOfTabChange('updated', existingTab);
+            notifyPopupOfTabChange('refresh', { reason: 'duplicate-created' });
           }, 100);
         }
       }
@@ -551,7 +551,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             
             // Notify popup with a slight delay to ensure state is fully updated
             setTimeout(() => {
-              notifyPopupOfTabChange('updated', tab);
+              notifyPopupOfTabChange('refresh', { reason: 'duplicate-added' });
             }, 100);
           }
         }
@@ -651,9 +651,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             }
           }
           
-          // Notify popup of the change
+          // Notify popup to refresh display since multiple tabs may have changed
           setTimeout(() => {
-            notifyPopupOfTabChange('updated', tab);
+            // Send a special refresh event to force full redisplay
+            notifyPopupOfTabChange('refresh', { reason: 'duplicate-counts-changed' });
           }, 100);
         }
       }
