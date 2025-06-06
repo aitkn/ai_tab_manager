@@ -1093,25 +1093,7 @@ button svg {
   opacity: 0.8;
 }
 
-/* Make uncategorized tab titles slightly blue */
-#category0 .tab-title,
-.tab-item.category-uncategorized .tab-title {
-  color: var(--md-sys-color-primary);
-  opacity: 0.9;
-}
-
-/* Preserve category colors in grouped views */
-.tab-item.category-important .tab-title {
-  color: var(--md-sys-color-error);
-}
-
-.tab-item.category-save-later .tab-title {
-  color: var(--md-sys-color-warning);
-}
-
-.tab-item.category-can-close .tab-title {
-  color: var(--md-sys-color-on-surface-variant);
-}
+/* These are now handled by data-category attribute styles below */
 
 .category-header-title {
   display: flex;
@@ -1163,26 +1145,7 @@ button svg {
   display: none;
 }
 
-.tab-item.already-saved .tab-title,
-.tab-item.already-categorized .tab-title {
-  color: #2e7d32; /* Material green 800 */
-}
-
-[data-theme="dark"] .tab-item.already-saved .tab-title,
-[data-theme="dark"] .tab-item.already-categorized .tab-title {
-  color: #66bb6a; /* Material green 400 for dark mode */
-}
-
-/* Important tabs - less saturated pinkish color */
-.tab-item[data-category="3"] .tab-title {
-  color: #ad1457; /* Less saturated pink */
-  opacity: 0.85;
-}
-
-[data-theme="dark"] .tab-item[data-category="3"] .tab-title {
-  color: #f8bbd0; /* Less saturated pink for dark mode */
-  opacity: 0.9;
-}
+/* Tab styles moved to category-specific section below */
 
 /* Favicon */
 .favicon {
@@ -1215,6 +1178,50 @@ button svg {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Category-specific title colors */
+.tab-item[data-category="0"] .tab-title { /* Uncategorized */
+  color: #9c27b0; /* Purple 700 */
+}
+
+.tab-item[data-category="1"] .tab-title { /* Ignore (Can Close) */
+  color: #757575; /* Grey 600 */
+}
+
+.tab-item[data-category="2"] .tab-title { /* Useful (Save Later) */
+  color: #1976d2; /* Blue 700 */
+}
+
+.tab-item[data-category="3"] .tab-title { /* Important */
+  color: #d32f2f; /* Red 700 */
+}
+
+/* Dark theme category colors */
+[data-theme="dark"] .tab-item[data-category="0"] .tab-title {
+  color: #ba68c8; /* Purple 300 */
+}
+
+[data-theme="dark"] .tab-item[data-category="1"] .tab-title {
+  color: #bdbdbd; /* Grey 400 */
+}
+
+[data-theme="dark"] .tab-item[data-category="2"] .tab-title {
+  color: #64b5f6; /* Blue 300 */
+}
+
+[data-theme="dark"] .tab-item[data-category="3"] .tab-title {
+  color: #ef5350; /* Red 400 */
+}
+
+/* Matched URL (saved tabs) - greenish color */
+.tab-url-matched {
+  color: #2e7d32; /* Green 800 */
+  font-weight: 500;
+}
+
+[data-theme="dark"] .tab-url-matched {
+  color: #66bb6a; /* Green 400 */
 }
 
 

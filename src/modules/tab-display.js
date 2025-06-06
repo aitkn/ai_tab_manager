@@ -543,6 +543,12 @@ export function createTabElement(tab, category) {
     textContent: tab.url,
     title: tab.url
   });
+  
+  // Add class for matched URLs (saved tabs)
+  if (tab.alreadySaved || tab.knownCategory !== undefined) {
+    classes.add(tabUrl, 'tab-url-matched');
+  }
+  
   tabInfo.appendChild(tabUrl);
   
   tabElement.appendChild(tabInfo);
