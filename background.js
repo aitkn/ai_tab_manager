@@ -249,6 +249,42 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // Get categorized tabs for popup
   if (request.action === 'getCategorizedTabs') {
+    // Clean up any duplicate entries before sending
+    console.log('Background: Cleaning up categorizedTabs before sending to popup');
+    const cleanedTabs = {};
+    
+    for (const category of Object.keys(categorizedTabs)) {
+      cleanedTabs[category] = [];
+      const urlToEntry = new Map();
+      
+      for (const tab of categorizedTabs[category]) {
+        if (!urlToEntry.has(tab.url)) {
+          // First occurrence of this URL
+          urlToEntry.set(tab.url, tab);
+          cleanedTabs[category].push(tab);
+        } else {
+          // Duplicate URL - merge with existing entry
+          const existingTab = urlToEntry.get(tab.url);
+          console.log(`Background: Found duplicate entry for ${tab.url}, merging...`);
+          
+          // Ensure duplicateIds array exists and is correct
+          if (!existingTab.duplicateIds) {
+            existingTab.duplicateIds = [existingTab.id];
+          }
+          if (!existingTab.duplicateIds.includes(tab.id)) {
+            existingTab.duplicateIds.push(tab.id);
+          }
+          existingTab.duplicateCount = existingTab.duplicateIds.length;
+          
+          // Update urlToDuplicateIds
+          urlToDuplicateIds[tab.url] = existingTab.duplicateIds;
+        }
+      }
+    }
+    
+    // Replace with cleaned version
+    categorizedTabs = cleanedTabs;
+    
     sendResponse({ 
       categorizedTabs: categorizedTabs,
       urlToDuplicateIds: urlToDuplicateIds
@@ -264,7 +300,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Tab event listeners
 chrome.tabs.onCreated.addListener(async (tab) => {
-  console.log('Background: Tab created:', tab.id, tab.url, 'Popup open:', isPopupOpen);
+  console.log('Background: Tab created event fired');
+  console.log('Background: Tab details:', {
+    id: tab.id,
+    url: tab.url,
+    pendingUrl: tab.pendingUrl,
+    title: tab.title,
+    status: tab.status,
+    windowId: tab.windowId,
+    index: tab.index
+  });
+  console.log('Background: Popup open:', isPopupOpen);
   
   // Add new tab to appropriate category based on database
   let isDuplicate = false;
@@ -276,12 +322,32 @@ chrome.tabs.onCreated.addListener(async (tab) => {
       
       // Check if this URL already exists in current tabs
       isDuplicate = false;
+      console.log('Background: Checking for duplicate of new tab URL:', tab.url);
+      console.log('Background: New tab URL length:', tab.url.length);
+      
       for (const cat of Object.keys(categorizedTabs)) {
-        if (categorizedTabs[cat].some(t => t.url === tab.url)) {
-          isDuplicate = true;
-          console.log('Background: Detected duplicate URL:', tab.url, 'in category', cat);
-          break;
+        console.log(`Background: Checking category "${cat}" with ${categorizedTabs[cat].length} tabs`);
+        
+        for (const existingTab of categorizedTabs[cat]) {
+          console.log(`Background: Comparing URLs:`);
+          console.log(`  New URL: "${tab.url}"`);
+          console.log(`  Existing URL: "${existingTab.url}"`);
+          console.log(`  URLs equal: ${tab.url === existingTab.url}`);
+          console.log(`  New URL encoded: ${encodeURIComponent(tab.url)}`);
+          console.log(`  Existing URL encoded: ${encodeURIComponent(existingTab.url)}`);
+          
+          if (existingTab.url === tab.url) {
+            isDuplicate = true;
+            console.log('Background: DUPLICATE FOUND in category', cat);
+            break;
+          }
         }
+        
+        if (isDuplicate) break;
+      }
+      
+      if (!isDuplicate) {
+        console.log('Background: No duplicate found for:', tab.url);
       }
       
       if (!isDuplicate) {
@@ -327,10 +393,11 @@ chrome.tabs.onCreated.addListener(async (tab) => {
           urlToDuplicateIds[tab.url] = existingTab.duplicateIds;
           
           console.log('Background: Added duplicate tab', tab.id, 'to existing entry. Total duplicates:', existingTab.duplicateCount);
+          console.log('Background: Existing tab duplicateIds:', existingTab.duplicateIds);
           
-          // Notify popup with a slight delay to ensure state is fully updated
+          // Notify popup with updated event instead of created to avoid confusion
           setTimeout(() => {
-            notifyPopupOfTabChange('created', tab);
+            notifyPopupOfTabChange('updated', existingTab);
           }, 100);
         }
       }
