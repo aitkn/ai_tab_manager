@@ -66,7 +66,9 @@ src/
    - Duplicate URLs are handled by storing `urlToDuplicateIds` mapping
 
 2. **Tab Display**:
-   - All tabs from all windows are fetched (not just current window)
+   - **CRITICAL**: ALL tabs from ALL windows must be fetched and displayed (NOT just current window)
+   - The extension must ALWAYS use `chrome.tabs.query({})` without any window filtering
+   - Current tabs are fetched via `getCurrentTabs()` which uses `CurrentTabsProcessor`
    - Tabs can be grouped by: category, domain, save date/week/month
    - State persistence across popup open/close via `savePopupState()`
 

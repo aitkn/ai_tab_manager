@@ -9,7 +9,7 @@ import { extractDateFromGroupName } from '../utils/helpers.js';
 import { showStatus, updateSavedBadge, switchToTab } from './ui-manager.js';
 import { state, restoreScrollPosition } from './state-manager.js';
 import { displayGroupedView, createTabElement } from './tab-display.js';
-import { openAllTabsInGroup, deleteTabsInGroup } from './tab-operations.js';
+import { openAllTabsInGroup, deleteTabsInGroup, deleteTabsInCategory } from './tab-operations.js';
 // Database is available as window.window.tabDatabase
 
 /**
@@ -36,6 +36,7 @@ export async function showSavedTabsContent(groupingType, includeCanClose = false
     // Include events when grouping by close time
     const includeEvents = groupingType === 'closeTime';
     const savedUrls = await window.tabDatabase.getSavedUrls(categories, includeEvents);
+    console.log('Loaded saved URLs:', savedUrls.length, 'categories:', categories);
     
     // Convert URLs to tab format for display
     const allSavedTabs = savedUrls.map(urlInfo => ({
@@ -189,7 +190,7 @@ function createCategorySection(category, tabs) {
           <line x1="14" y1="11" x2="14" y2="17"></line>
         </svg>
       `,
-      onclick: () => deleteTabsInGroup(tabs, categoryName)
+      onclick: () => deleteTabsInCategory(tabs, categoryName)
     });
     
     headerActions.appendChild(openAllBtn);

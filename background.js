@@ -7,23 +7,16 @@
 // Background service worker for handling API calls
 
 // Import scripts at top level for service worker
-importScripts('database_v3.js');
+importScripts('database.js');
 
 console.log('Background service worker starting...');
 
-// Track current state
-let currentCategorization = null;
+// Track popup connection
 let isPopupOpen = false;
 let popupPort = null;
 
-// Store categorized tabs in background
-let categorizedTabs = {
-  0: [], // Uncategorized
-  1: [], // Can close
-  2: [], // Save for later
-  3: []  // Important
-};
-let urlToDuplicateIds = {};
+// Remove state storage - popup will fetch data directly
+// Background only handles API calls and message passing
 
 // Helper function to extract domain (defined early for startup use)
 function extractDomain(url) {
@@ -35,112 +28,20 @@ function extractDomain(url) {
   }
 }
 
-// Initialize with database and track open tabs
-async function initializeTabTracking() {
+// Initialize database only
+async function initializeDatabase() {
   try {
     // Initialize database
     await globalThis.tabDatabase.init();
     console.log('Background: Database initialized');
     
-    // Migrate from old database if needed
-    await globalThis.tabDatabase.migrateFromOldDatabase();
-    
-    // Query all current tabs
-    const tabs = await chrome.tabs.query({});
-    console.log('Background: Initializing with', tabs.length, 'existing tabs');
-    
-    // Get all known URLs from database
-    const knownUrls = await globalThis.tabDatabase.getAllUrls();
-    const urlCategoryMap = new Map();
-    knownUrls.forEach(urlInfo => {
-      urlCategoryMap.set(urlInfo.url, urlInfo.category);
-    });
-    
-    // First, group tabs by URL to handle duplicates
-    const urlToTabsMap = new Map();
-    
-    for (const tab of tabs) {
-      // Process all tabs with URLs
-      if (tab.url) {
-        if (!urlToTabsMap.has(tab.url)) {
-          urlToTabsMap.set(tab.url, []);
-        }
-        urlToTabsMap.get(tab.url).push(tab);
-      }
-    }
-    
-    // Process each unique URL
-    for (const [url, tabsWithUrl] of urlToTabsMap) {
-      const category = urlCategoryMap.get(url) || 0; // Default to uncategorized
-      
-      // Add to appropriate category
-      if (!categorizedTabs[category]) {
-        categorizedTabs[category] = [];
-      }
-      
-      // Use first tab as representative
-      const representativeTab = tabsWithUrl[0];
-      const tabEntry = {
-        id: representativeTab.id,
-        url: representativeTab.url,
-        title: representativeTab.title || 'Loading...',
-        domain: extractDomain(representativeTab.url),
-        windowId: representativeTab.windowId,
-        alreadyCategorized: category !== 0,
-        knownCategory: category
-      };
-      
-      // If there are duplicates, add duplicate info
-      if (tabsWithUrl.length > 1) {
-        tabEntry.duplicateIds = tabsWithUrl.map(t => t.id);
-        tabEntry.duplicateCount = tabsWithUrl.length;
-      }
-      
-      categorizedTabs[category].push(tabEntry);
-      
-      // Record open events for all tabs
-      for (const tab of tabsWithUrl) {
-        const urlId = await globalThis.tabDatabase.getOrCreateUrl(tab, category);
-        await globalThis.tabDatabase.recordOpenEvent(urlId, tab.id);
-      }
-    }
-    
-    // Build urlToDuplicateIds mapping
-    urlToDuplicateIds = {};
-    const urlToTabs = new Map();
-    
-    // Group tabs by URL
-    for (const category of Object.keys(categorizedTabs)) {
-      categorizedTabs[category].forEach(tab => {
-        if (!urlToTabs.has(tab.url)) {
-          urlToTabs.set(tab.url, []);
-        }
-        urlToTabs.get(tab.url).push(tab.id);
-      });
-    }
-    
-    // Build duplicate mapping for URLs with multiple tabs
-    urlToTabs.forEach((tabIds, url) => {
-      if (tabIds.length > 1) {
-        urlToDuplicateIds[url] = tabIds;
-      }
-    });
-    
-    console.log('Background: Categorized tabs on startup:', {
-      uncategorized: categorizedTabs[0].length,
-      canClose: categorizedTabs[1].length,
-      saveLater: categorizedTabs[2].length,
-      important: categorizedTabs[3].length,
-      duplicateUrls: Object.keys(urlToDuplicateIds).length
-    });
-    
   } catch (error) {
-    console.error('Background: Error initializing tab tracking:', error);
+    console.error('Background: Error initializing database:', error);
   }
 }
 
 // Start initialization
-initializeTabTracking();
+initializeDatabase();
 
 // Listen for connections from popup
 chrome.runtime.onConnect.addListener((port) => {
@@ -231,103 +132,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Will respond asynchronously
   }
   
-  
-  if (request.action === 'updateCategorization') {
-    currentCategorization = request.data;
-    sendResponse({ status: 'categorization stored' });
-    return false;
-  }
-  
-  // Store categorized tabs from popup
-  if (request.action === 'storeCategorizedTabs') {
-    categorizedTabs = request.data.categorizedTabs || categorizedTabs;
-    urlToDuplicateIds = request.data.urlToDuplicateIds || urlToDuplicateIds;
-    console.log('Background: Stored categorized tabs');
-    sendResponse({ status: 'stored' });
-    return false;
-  }
-  
-  // Get categorized tabs for popup
-  if (request.action === 'getCategorizedTabs') {
-    sendResponse({ 
-      categorizedTabs: categorizedTabs,
-      urlToDuplicateIds: urlToDuplicateIds
-    });
-    return false;
-  }
-  
-  // Handle tab closed from popup
-  if (request.action === 'tabClosed') {
-    const { tabId, category } = request.data;
-    if (categorizedTabs[category]) {
-      categorizedTabs[category] = categorizedTabs[category].filter(t => t.id !== tabId);
-    }
-    console.log('Background: Tab closed, updated category', category);
-    sendResponse({ status: 'updated' });
-    return false;
-  }
-  
-  // Handle clear category
-  if (request.action === 'clearCategory') {
-    const { category } = request.data;
-    if (categorizedTabs[category]) {
-      categorizedTabs[category] = [];
-    }
-    console.log('Background: Cleared category', category);
-    sendResponse({ status: 'cleared' });
-    return false;
-  }
-  
-  // Handle clear all categories
-  if (request.action === 'clearAllCategories') {
-    categorizedTabs = {
-      0: [], // Uncategorized
-      1: [], // Can close
-      2: [], // Save for later
-      3: []  // Important
-    };
-    urlToDuplicateIds = {};
-    console.log('Background: Cleared all categories');
-    sendResponse({ status: 'cleared' });
-    return false;
-  }
-  
-  // Handle move tab to category
-  if (request.action === 'moveTabToCategory') {
-    const { tabId, fromCategory, toCategory } = request.data;
-    
-    // Find tab in source category
-    let movedTab = null;
-    if (categorizedTabs[fromCategory]) {
-      const tabIndex = categorizedTabs[fromCategory].findIndex(t => t.id === tabId);
-      if (tabIndex > -1) {
-        movedTab = categorizedTabs[fromCategory].splice(tabIndex, 1)[0];
-      }
-    }
-    
-    // Add to target category
-    if (movedTab && categorizedTabs[toCategory]) {
-      categorizedTabs[toCategory].push(movedTab);
-      console.log('Background: Moved tab from category', fromCategory, 'to', toCategory);
-      
-      // Notify popup if connected
-      if (popupPort) {
-        popupPort.postMessage({
-          action: 'tabChanged',
-          data: {
-            changeType: 'moved',
-            tab: movedTab,
-            fromCategory,
-            toCategory,
-            timestamp: Date.now()
-          }
-        });
-      }
-    }
-    
-    sendResponse({ status: 'moved' });
-    return false;
-  }
+  // Remove all state management - popup handles its own state
   
   
   // Default response for unknown actions
@@ -335,428 +140,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return false;
 });
 
-// Tab event listeners
+// Tab event listeners - just notify popup, no state management
 chrome.tabs.onCreated.addListener(async (tab) => {
-  console.log('Background: Tab created event fired');
-  console.log('Background: Tab details:', {
-    id: tab.id,
-    url: tab.url,
-    pendingUrl: tab.pendingUrl,
-    title: tab.title,
-    status: tab.status,
-    windowId: tab.windowId,
-    index: tab.index
-  });
-  console.log('Background: Popup open:', isPopupOpen);
+  console.log('Background: Tab created:', tab.id, tab.url);
   
-  // Add new tab to appropriate category based on database
-  let isDuplicate = false;
-  if (tab.url) {
-    try {
-      // Check if URL is known in database
-      const urlInfo = await globalThis.tabDatabase.getUrlInfo(tab.url);
-      const category = urlInfo ? urlInfo.category : 0; // Default to uncategorized
-      
-      // Check if this URL already exists in current tabs
-      isDuplicate = false;
-      console.log('Background: Checking for duplicate of new tab URL:', tab.url);
-      console.log('Background: New tab URL length:', tab.url.length);
-      
-      for (const cat of Object.keys(categorizedTabs)) {
-        console.log(`Background: Checking category "${cat}" with ${categorizedTabs[cat].length} tabs`);
-        
-        for (const existingTab of categorizedTabs[cat]) {
-          console.log(`Background: Comparing URLs:`);
-          console.log(`  New URL: "${tab.url}"`);
-          console.log(`  Existing URL: "${existingTab.url}"`);
-          console.log(`  URLs equal: ${tab.url === existingTab.url}`);
-          console.log(`  New URL encoded: ${encodeURIComponent(tab.url)}`);
-          console.log(`  Existing URL encoded: ${encodeURIComponent(existingTab.url)}`);
-          
-          if (existingTab.url === tab.url) {
-            isDuplicate = true;
-            console.log('Background: DUPLICATE FOUND in category', cat);
-            break;
-          }
-        }
-        
-        if (isDuplicate) break;
-      }
-      
-      if (!isDuplicate) {
-        console.log('Background: No duplicate found for:', tab.url);
-      }
-      
-      if (!isDuplicate) {
-        // Add to appropriate category
-        if (!categorizedTabs[category]) {
-          categorizedTabs[category] = [];
-        }
-        
-        categorizedTabs[category].push({
-          id: tab.id,
-          url: tab.url,
-          title: tab.title || 'Loading...',
-          domain: extractDomain(tab.url),
-          windowId: tab.windowId,
-          alreadyCategorized: category !== 0,
-          knownCategory: category
-        });
-        
-        console.log('Background: Added tab to category', category, ':', tab.id);
-      } else {
-        // Tab is a duplicate - find the existing entry and update it
-        let existingTab = null;
-        let existingCategory = null;
-        
-        for (const cat of Object.keys(categorizedTabs)) {
-          const existing = categorizedTabs[cat].find(t => t.url === tab.url);
-          if (existing) {
-            existingTab = existing;
-            existingCategory = cat;
-            break;
-          }
-        }
-        
-        if (existingTab) {
-          // Update existing tab entry with duplicate info
-          if (!existingTab.duplicateIds) {
-            existingTab.duplicateIds = [existingTab.id];
-          }
-          existingTab.duplicateIds.push(tab.id);
-          existingTab.duplicateCount = existingTab.duplicateIds.length;
-          
-          // Update urlToDuplicateIds
-          urlToDuplicateIds[tab.url] = existingTab.duplicateIds;
-          
-          console.log('Background: Added duplicate tab', tab.id, 'to existing entry. Total duplicates:', existingTab.duplicateCount);
-          console.log('Background: Existing tab duplicateIds:', existingTab.duplicateIds);
-          
-          // Notify popup to refresh since duplicate count changed
-          setTimeout(() => {
-            notifyPopupOfTabChange('refresh', { reason: 'duplicate-created' });
-          }, 100);
-        }
-      }
-      
-      // Record open event in database
-      const urlId = await globalThis.tabDatabase.getOrCreateUrl(tab, category);
-      await globalThis.tabDatabase.recordOpenEvent(urlId, tab.id);
-      
-    } catch (error) {
-      console.error('Background: Error processing new tab:', error);
-    }
-  }
-  
-  // Only notify if not a duplicate (duplicates are notified above with delay)
-  if (!isDuplicate) {
-    notifyPopupOfTabChange('created', tab);
-  }
+  // Notify popup if connected
+  notifyPopupOfTabChange('created', tab);
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
-  console.log('Background: Tab removed:', tabId, 'Popup open:', isPopupOpen);
+  console.log('Background: Tab removed:', tabId);
   
-  // Record close event in database
-  try {
-    await globalThis.tabDatabase.recordCloseEvent(tabId);
-  } catch (error) {
-    console.error('Background: Error recording close event:', error);
-  }
-  
-  // Remove from categorized tabs even if popup is closed
-  let removed = false;
-  let removedTab = null;
-  
-  for (const category of Object.keys(categorizedTabs)) {
-    // First check if this tab ID is in duplicateIds of any tab
-    for (let i = 0; i < categorizedTabs[category].length; i++) {
-      const tab = categorizedTabs[category][i];
-      
-      // Check if this is the main tab being removed
-      if (tab.id === tabId) {
-        // If this tab has duplicates, promote the next duplicate
-        if (tab.duplicateIds && tab.duplicateIds.length > 1) {
-          const dupIndex = tab.duplicateIds.indexOf(tabId);
-          if (dupIndex > -1) {
-            tab.duplicateIds.splice(dupIndex, 1);
-          }
-          
-          // Update the main tab ID to the first remaining duplicate
-          if (tab.duplicateIds.length > 0) {
-            tab.id = tab.duplicateIds[0];
-            tab.duplicateCount = tab.duplicateIds.length;
-            
-            // Update urlToDuplicateIds
-            if (tab.duplicateIds.length > 1) {
-              urlToDuplicateIds[tab.url] = tab.duplicateIds;
-            } else {
-              delete urlToDuplicateIds[tab.url];
-            }
-            
-            console.log('Background: Promoted duplicate tab', tab.id, 'as main. Remaining duplicates:', tab.duplicateCount);
-            removed = true;
-            removedTab = tab;
-            break;
-          }
-        } else {
-          // No duplicates, remove the tab entirely
-          removedTab = categorizedTabs[category].splice(i, 1)[0];
-          console.log('Background: Removed tab from category', category);
-          removed = true;
-          break;
-        }
-      }
-      // Check if this tab ID is in the duplicateIds array
-      else if (tab.duplicateIds && tab.duplicateIds.includes(tabId)) {
-        const dupIndex = tab.duplicateIds.indexOf(tabId);
-        if (dupIndex > -1) {
-          tab.duplicateIds.splice(dupIndex, 1);
-          tab.duplicateCount = tab.duplicateIds.length;
-          
-          // Update urlToDuplicateIds
-          if (tab.duplicateIds.length > 1) {
-            urlToDuplicateIds[tab.url] = tab.duplicateIds;
-          } else {
-            delete urlToDuplicateIds[tab.url];
-            delete tab.duplicateIds;
-            delete tab.duplicateCount;
-          }
-          
-          console.log('Background: Removed duplicate tab', tabId, 'from entry. Remaining duplicates:', tab.duplicateCount || 0);
-          removed = true;
-          removedTab = tab;
-          break;
-        }
-      }
-    }
-    
-    if (removed) break;
-  }
-  
-  if (removed) {
-    console.log('Background: Updated categorized tabs after removal');
-  }
-  
+  // Notify popup if connected
   notifyPopupOfTabChange('removed', { id: tabId });
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  // Handle URL changes (e.g., from chrome://newtab/ to a real URL)
-  if (changeInfo.url && tab.url) {
-    try {
-      // Check if this tab is already in any category
-      let currentCategory = null;
-      let currentIndex = -1;
-      
-      for (const category of Object.keys(categorizedTabs)) {
-        const index = categorizedTabs[category].findIndex(t => t.id === tabId);
-        if (index > -1) {
-          currentCategory = category;
-          currentIndex = index;
-          break;
-        }
-      }
-      
-      // Check if URL is known in database
-      const urlInfo = await globalThis.tabDatabase.getUrlInfo(tab.url);
-      const targetCategory = urlInfo ? urlInfo.category : 0; // Default to uncategorized
-      
-      // Get the current tab data if it exists
-      let currentTabData = null;
-      if (currentCategory !== null && currentIndex !== -1) {
-        currentTabData = categorizedTabs[currentCategory][currentIndex];
-      }
-      
-      // If tab is not tracked yet, add it
-      if (currentCategory === null) {
-        // Check if URL is a duplicate in current tabs
-        let isDuplicate = false;
-        for (const category of Object.keys(categorizedTabs)) {
-          if (categorizedTabs[category].some(t => t.url === tab.url)) {
-            isDuplicate = true;
-            console.log('Background: Detected duplicate URL via navigation:', tab.url, 'in category', category);
-            break;
-          }
-        }
-        
-        if (!isDuplicate) {
-          if (!categorizedTabs[targetCategory]) {
-            categorizedTabs[targetCategory] = [];
-          }
-          
-          categorizedTabs[targetCategory].push({
-            id: tab.id,
-            url: tab.url,
-            title: tab.title || 'Loading...',
-            domain: extractDomain(tab.url),
-            windowId: tab.windowId,
-            alreadyCategorized: targetCategory !== 0,
-            knownCategory: targetCategory
-          });
-          console.log('Background: Added navigated tab to category', targetCategory, ':', tab.id, tab.url);
-        } else {
-          // Tab is a duplicate - find the existing entry and update it
-          let existingTab = null;
-          let existingCategory = null;
-          
-          for (const cat of Object.keys(categorizedTabs)) {
-            const existing = categorizedTabs[cat].find(t => t.url === tab.url);
-            if (existing) {
-              existingTab = existing;
-              existingCategory = cat;
-              break;
-            }
-          }
-          
-          if (existingTab) {
-            // Update existing tab entry with duplicate info
-            if (!existingTab.duplicateIds) {
-              existingTab.duplicateIds = [existingTab.id];
-            }
-            existingTab.duplicateIds.push(tab.id);
-            existingTab.duplicateCount = existingTab.duplicateIds.length;
-            
-            // Update urlToDuplicateIds
-            urlToDuplicateIds[tab.url] = existingTab.duplicateIds;
-            
-            console.log('Background: Added duplicate tab', tab.id, 'to existing entry via navigation. Total duplicates:', existingTab.duplicateCount);
-            
-            // Notify popup with a slight delay to ensure state is fully updated
-            setTimeout(() => {
-              notifyPopupOfTabChange('refresh', { reason: 'duplicate-added' });
-            }, 100);
-          }
-        }
-      } else {
-        // Tab is already tracked - check if URL changed or category changed
-        const urlChanged = currentTabData && currentTabData.url !== tab.url;
-        const categoryChanged = currentCategory !== targetCategory.toString();
-        
-        if (urlChanged || categoryChanged) {
-          console.log('Background: Tab URL or category changed. Old URL:', currentTabData.url, 'New URL:', tab.url);
-          
-          // Remove the old entry
-          categorizedTabs[currentCategory].splice(currentIndex, 1);
-          
-          // Check if new URL is a duplicate
-          let isDuplicate = false;
-          let existingTab = null;
-          let existingCategory = null;
-          
-          for (const cat of Object.keys(categorizedTabs)) {
-            const existing = categorizedTabs[cat].find(t => t.url === tab.url);
-            if (existing) {
-              isDuplicate = true;
-              existingTab = existing;
-              existingCategory = cat;
-              console.log('Background: New URL is duplicate of existing tab in category', cat);
-              break;
-            }
-          }
-          
-          if (!isDuplicate) {
-            // Add as new entry in target category
-            if (!categorizedTabs[targetCategory]) {
-              categorizedTabs[targetCategory] = [];
-            }
-            
-            categorizedTabs[targetCategory].push({
-              id: tab.id,
-              url: tab.url,
-              title: tab.title || 'Loading...',
-              domain: extractDomain(tab.url),
-              windowId: tab.windowId,
-              alreadyCategorized: targetCategory !== 0,
-              knownCategory: targetCategory
-            });
-            
-            console.log('Background: Added tab with new URL to category', targetCategory);
-          } else {
-            // Update existing tab with duplicate info
-            if (!existingTab.duplicateIds) {
-              existingTab.duplicateIds = [existingTab.id];
-            }
-            if (!existingTab.duplicateIds.includes(tab.id)) {
-              existingTab.duplicateIds.push(tab.id);
-            }
-            existingTab.duplicateCount = existingTab.duplicateIds.length;
-            
-            // Update urlToDuplicateIds
-            urlToDuplicateIds[tab.url] = existingTab.duplicateIds;
-            
-            console.log('Background: Merged navigated tab with existing entry. Total duplicates:', existingTab.duplicateCount);
-          }
-          
-          // Clean up old URL duplicates if needed
-          if (urlChanged && currentTabData.duplicateIds && currentTabData.duplicateIds.length > 1) {
-            // Remove this tab ID from the old URL's duplicate list
-            const remainingIds = currentTabData.duplicateIds.filter(id => id !== tab.id);
-            
-            // Update the remaining tabs with the old URL
-            for (const cat of Object.keys(categorizedTabs)) {
-              for (const remainingTab of categorizedTabs[cat]) {
-                if (remainingTab.url === currentTabData.url && remainingTab.id !== tab.id) {
-                  // Update the duplicate info
-                  remainingTab.duplicateIds = remainingIds;
-                  remainingTab.duplicateCount = remainingIds.length;
-                  console.log('Background: Updated duplicate count for remaining tab with old URL:', 
-                    remainingTab.url, 'New count:', remainingTab.duplicateCount);
-                }
-              }
-            }
-            
-            // Update urlToDuplicateIds
-            if (remainingIds.length > 1) {
-              urlToDuplicateIds[currentTabData.url] = remainingIds;
-            } else {
-              delete urlToDuplicateIds[currentTabData.url];
-              // If only one tab remains, clear its duplicate info
-              for (const cat of Object.keys(categorizedTabs)) {
-                for (const remainingTab of categorizedTabs[cat]) {
-                  if (remainingTab.url === currentTabData.url && remainingTab.id !== tab.id) {
-                    delete remainingTab.duplicateIds;
-                    delete remainingTab.duplicateCount;
-                    console.log('Background: Cleared duplicate info for last remaining tab with old URL');
-                  }
-                }
-              }
-            }
-          }
-          
-          // Notify popup to refresh display since multiple tabs may have changed
-          setTimeout(() => {
-            // Send a special refresh event to force full redisplay
-            notifyPopupOfTabChange('refresh', { reason: 'duplicate-counts-changed' });
-          }, 100);
-        }
-      }
-      
-      // Record in database
-      const urlId = await globalThis.tabDatabase.getOrCreateUrl(tab, targetCategory);
-      await globalThis.tabDatabase.recordOpenEvent(urlId, tab.id);
-      
-    } catch (error) {
-      console.error('Background: Error handling URL update:', error);
-    }
-  }
-  
-  // Update title when it becomes available
-  if (changeInfo.title) {
-    // Update in all categories
-    for (const category of Object.keys(categorizedTabs)) {
-      const categoryTab = categorizedTabs[category].find(t => t.id === tabId);
-      if (categoryTab) {
-        categoryTab.title = changeInfo.title;
-        console.log('Background: Updated tab title in category', category, ':', tabId, changeInfo.title);
-        break;
-      }
-    }
-  }
-  
   // Only notify on complete navigation to avoid too many updates
   if (changeInfo.status === 'complete') {
-    console.log('Background: Tab updated:', tabId, tab.url, 'Popup open:', isPopupOpen);
+    console.log('Background: Tab updated:', tabId, tab.url);
     notifyPopupOfTabChange('updated', tab);
   }
 });
@@ -872,20 +274,15 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
       console.error('Background: Error saving to database:', error);
     }
     
-    // Store the categorized tabs in background
-    categorizedTabs = expandedCategorized;
-    
-    // Update urlToDuplicateIds
-    urlToDuplicateIds = {};
+    // Build urlToDuplicateIds for the response
+    const urlToDuplicateIds = {};
     urlToOriginalTabs.forEach((tabs, url) => {
       if (tabs.length > 1) {
         urlToDuplicateIds[url] = tabs.map(t => t.id);
       }
     });
     
-    console.log('Background: Stored categorized tabs');
-    
-    return { success: true, data: expandedCategorized };
+    return { success: true, data: expandedCategorized, urlToDuplicateIds };
   } catch (error) {
     console.error('Background: API error', error);
     return { success: false, error: error.message };

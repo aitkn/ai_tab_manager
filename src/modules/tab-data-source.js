@@ -3,23 +3,32 @@
  * Tab Data Source - Single source of truth for tab data
  */
 
+import { CurrentTabsProcessor } from './current-tabs-processor.js';
+
+let tabsProcessor = null;
+
 /**
- * Get current tabs from background script
+ * Initialize the tabs processor with database
+ */
+export function initializeTabDataSource(database) {
+  tabsProcessor = new CurrentTabsProcessor(database);
+}
+
+/**
+ * Get current tabs from browser and match with database
  * @returns {Promise<Object>} Categorized tabs and duplicate info
  */
 export async function getCurrentTabs() {
-  try {
-    const response = await chrome.runtime.sendMessage({ action: 'getCategorizedTabs' });
-    if (response && response.categorizedTabs) {
-      return {
-        categorizedTabs: response.categorizedTabs,
-        urlToDuplicateIds: response.urlToDuplicateIds || {}
-      };
-    }
+  if (!tabsProcessor) {
+    console.error('Tab data source not initialized');
     return {
       categorizedTabs: {},
       urlToDuplicateIds: {}
     };
+  }
+  
+  try {
+    return await tabsProcessor.getCurrentTabsWithCategories();
   } catch (error) {
     console.error('Error fetching current tabs:', error);
     return {
@@ -79,4 +88,18 @@ export async function getCurrentTabCounts() {
   }
   
   return counts;
+}
+
+/**
+ * Setup listeners for real-time tab updates
+ * @param {Function} onTabChange - Callback for tab changes
+ * @returns {Object} Port connection
+ */
+export function setupTabEventListeners(onTabChange) {
+  if (!tabsProcessor) {
+    console.error('Tab data source not initialized');
+    return null;
+  }
+  
+  return tabsProcessor.setupTabEventListeners(onTabChange);
 }

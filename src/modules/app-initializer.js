@@ -11,6 +11,7 @@ import { setupEventListeners } from './event-handlers.js';
 import { displayTabs } from './tab-display.js';
 import { applySearchFilter } from './search-filter.js';
 import { showSavedTabsContent, loadSavedTabsCount } from './saved-tabs-manager.js';
+import { initializeTabDataSource, getCurrentTabs, setupTabEventListeners } from './tab-data-source.js';
 // Database is available as window.window.tabDatabase
 import StorageService from '../services/StorageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
@@ -85,8 +86,9 @@ export async function initializeApp() {
     await window.tabDatabase.init();
     console.log('Database initialized');
     
-    // Migrate from old database if needed
-    await window.tabDatabase.migrateFromOldDatabase();
+    // Initialize tab data source with database
+    initializeTabDataSource(window.tabDatabase);
+    console.log('Tab data source initialized');
     
     // Load saved state
     await loadSavedState();
@@ -160,35 +162,33 @@ export async function initializeApp() {
 }
 
 /**
- * Load categorized tabs from background script
+ * Load current tabs from browser and database
  */
 async function loadCategorizedTabsFromBackground() {
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'getCategorizedTabs' });
-    if (response && response.categorizedTabs) {
-      const hasTabs = Object.values(response.categorizedTabs).some(tabs => tabs.length > 0);
+    const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
+    const hasTabs = Object.values(categorizedTabs).some(tabs => tabs.length > 0);
+    
+    if (hasTabs) {
+      console.log('Loaded current tabs from browser');
+      state.categorizedTabs = categorizedTabs;
+      state.urlToDuplicateIds = urlToDuplicateIds;
       
-      if (hasTabs) {
-        console.log('Loaded categorized tabs from background');
-        state.categorizedTabs = response.categorizedTabs;
-        state.urlToDuplicateIds = response.urlToDuplicateIds || {};
-        
-        // Update UI
-        show($id(DOM_IDS.TABS_CONTAINER));
-        displayTabs();
-        updateCategorizeBadge();
-        
-        // Show unified toolbar
-        const { showToolbar } = await import('./unified-toolbar.js');
-        showToolbar();
-        
-        // Update categorize button state based on uncategorized tabs
-        const hasUncategorized = response.categorizedTabs[0] && response.categorizedTabs[0].length > 0;
-        const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
-        if (categorizeBtn) {
-          categorizeBtn.disabled = !hasUncategorized;
-          categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
-        }
+      // Update UI
+      show($id(DOM_IDS.TABS_CONTAINER));
+      displayTabs();
+      updateCategorizeBadge();
+      
+      // Show unified toolbar
+      const { showToolbar } = await import('./unified-toolbar.js');
+      showToolbar();
+      
+      // Update categorize button state based on uncategorized tabs
+      const hasUncategorized = categorizedTabs[0] && categorizedTabs[0].length > 0;
+      const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
+      if (categorizeBtn) {
+        categorizeBtn.disabled = !hasUncategorized;
+        categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
       }
     }
   } catch (error) {
@@ -365,15 +365,10 @@ export function setupAutoSave() {
 function setupTabChangeListener() {
   console.log('Popup: Setting up tab change listener');
   
-  // Connect to background script
-  const port = chrome.runtime.connect({ name: 'popup' });
-  
-  // Listen for messages from background
-  port.onMessage.addListener((message) => {
-    if (message.action === 'tabChanged') {
-      console.log('Popup: Received tab change:', message.data);
-      handleTabChange(message.data);
-    }
+  // Set up listeners through tab data source
+  const port = setupTabEventListeners((changeData) => {
+    console.log('Popup: Received tab change:', changeData);
+    handleTabChange(changeData);
   });
   
   // Also expose handler to window for testing
@@ -382,8 +377,11 @@ function setupTabChangeListener() {
   };
 }
 
+// Debounce timer for tab changes
+let tabChangeDebounceTimer = null;
+
 /**
- * Handle tab change notifications
+ * Handle tab change notifications with debouncing
  */
 async function handleTabChange(data) {
   console.log('Popup: handleTabChange called with:', data);
@@ -395,6 +393,21 @@ async function handleTabChange(data) {
     return;
   }
   
+  // Clear existing debounce timer
+  if (tabChangeDebounceTimer) {
+    clearTimeout(tabChangeDebounceTimer);
+  }
+  
+  // Debounce rapid changes
+  tabChangeDebounceTimer = setTimeout(async () => {
+    await processTabChange(changeType, tab);
+  }, 200); // 200ms debounce
+}
+
+/**
+ * Process tab change after debounce
+ */
+async function processTabChange(changeType, tab) {
   // Check if we have categorized tabs
   const { hasCurrentTabs } = await import('./tab-data-source.js');
   const hasCategorizedTabs = await hasCurrentTabs();
@@ -406,59 +419,47 @@ async function handleTabChange(data) {
   
   console.log('Popup: Tab change detected:', changeType, tab);
   
-  // For now, just refresh the display
-  // In the future, we could be smarter about updating only the affected tab
-  if (changeType === 'removed') {
-    // Remove the tab from categorized tabs
-    for (const category of Object.keys(state.categorizedTabs)) {
-      state.categorizedTabs[category] = state.categorizedTabs[category]
-        .filter(t => t.id !== tab.id);
+  // For all tab changes, refresh the data from browser
+  try {
+    const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
+    
+    // Update state
+    state.categorizedTabs = categorizedTabs;
+    state.urlToDuplicateIds = urlToDuplicateIds;
+    
+    // Check for duplicate changes
+    let duplicatesChanged = false;
+    for (const category of Object.keys(categorizedTabs)) {
+      for (const tab of categorizedTabs[category]) {
+        if (tab.duplicateIds && tab.duplicateIds.length > 1) {
+          console.log('Popup: Tab has duplicates:', tab.url, 'count:', tab.duplicateCount);
+          duplicatesChanged = true;
+        }
+      }
     }
     
     // Update display
-    displayTabs();
-    updateCategorizeBadge();
-    showStatus('Tab closed - display updated', 'success', 2000);
-  } else if (changeType === 'created' || changeType === 'updated' || changeType === 'refresh') {
-    // Load latest categorized tabs from background
-    try {
-      const response = await chrome.runtime.sendMessage({ action: 'getCategorizedTabs' });
-      if (response && response.categorizedTabs) {
-        console.log('Popup: Received updated tabs from background:', response);
-        
-        // Check for duplicate changes
-        let duplicatesChanged = false;
-        for (const category of Object.keys(response.categorizedTabs)) {
-          for (const tab of response.categorizedTabs[category]) {
-            if (tab.duplicateIds && tab.duplicateIds.length > 1) {
-              console.log('Popup: Tab has duplicates:', tab.url, 'count:', tab.duplicateCount);
-              duplicatesChanged = true;
-            }
-          }
-        }
-        
-        // Just update display - data will be fetched from background
-        const { displayTabs } = await import('./tab-display.js');
-        await displayTabs();
-        await updateCategorizeBadge();
-        
-        // Update categorize button state
-        const hasUncategorized = response.categorizedTabs[0] && response.categorizedTabs[0].length > 0;
-        const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
-        if (categorizeBtn) {
-          categorizeBtn.disabled = !hasUncategorized;
-          categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
-        }
-        
-        if (duplicatesChanged) {
-          showStatus('Duplicate tab detected', 'success', 2000);
-        } else if (hasUncategorized) {
-          showStatus('New uncategorized tab detected', 'success', 2000);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading categorized tabs:', error);
+    await displayTabs();
+    await updateCategorizeBadge();
+    
+    // Update categorize button state
+    const hasUncategorized = categorizedTabs[0] && categorizedTabs[0].length > 0;
+    const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
+    if (categorizeBtn) {
+      categorizeBtn.disabled = !hasUncategorized;
+      categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
     }
+    
+    // Show appropriate status message
+    if (changeType === 'removed') {
+      showStatus('Tab closed - display updated', 'success', 2000);
+    } else if (duplicatesChanged) {
+      showStatus('Duplicate tab detected', 'success', 2000);
+    } else if (changeType === 'created' && hasUncategorized) {
+      showStatus('New uncategorized tab detected', 'success', 2000);
+    }
+  } catch (error) {
+    console.error('Error refreshing tabs:', error);
   }
 }
 

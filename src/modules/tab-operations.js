@@ -691,7 +691,7 @@ export async function deleteTabsInGroup(groupName) {
     for (const tab of savedTabs) {
       const domain = getRootDomain(tab.domain);
       if (domain === groupName) {
-        await window.tabDatabase.deleteTab(tab.id);
+        await window.tabDatabase.deleteUrl(tab.id);
         deletedCount++;
       }
     }
@@ -706,6 +706,40 @@ export async function deleteTabsInGroup(groupName) {
     window.dispatchEvent(new CustomEvent('savedTabsChanged'));
   } catch (error) {
     console.error('Error deleting group:', error);
+    showStatus('Error deleting tabs', 'error');
+  }
+}
+
+/**
+ * Delete all tabs in a category (for saved tabs)
+ */
+export async function deleteTabsInCategory(tabs, categoryName) {
+  try {
+    if (!confirm(`Delete all ${tabs.length} tabs in category "${categoryName}"?`)) {
+      return;
+    }
+    
+    showStatus('Deleting tabs...', 'loading');
+    
+    let deletedCount = 0;
+    
+    for (const tab of tabs) {
+      if (tab.id) {
+        await window.tabDatabase.deleteUrl(tab.id);
+        deletedCount++;
+      }
+    }
+    
+    showStatus(`Deleted ${deletedCount} tabs`, 'success');
+    
+    // Update saved tab count
+    const remainingTabs = await window.tabDatabase.getAllSavedTabs();
+    updateSavedBadge(remainingTabs.length);
+    
+    // Trigger display update
+    window.dispatchEvent(new CustomEvent('savedTabsChanged'));
+  } catch (error) {
+    console.error('Error deleting category:', error);
     showStatus('Error deleting tabs', 'error');
   }
 }

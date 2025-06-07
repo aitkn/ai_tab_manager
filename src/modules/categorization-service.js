@@ -9,6 +9,7 @@ import MessageService from '../services/MessageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
 import { state, updateState, clearCategorizedTabs, savePopupState } from './state-manager.js';
 import { showStatus, clearStatus, updateCategorizeBadge, hideApiKeyPrompt } from './ui-manager.js';
+import { getCurrentTabs } from './tab-data-source.js';
 // Database is available as window.window.tabDatabase
 
 /**
@@ -38,26 +39,20 @@ export async function categorizeTabs() {
   showStatus(STATUS_MESSAGES.LOADING, 'loading', 0);
   
   try {
-    // Get uncategorized tabs from background
-    let uncategorizedTabs = [];
-    try {
-      const response = await chrome.runtime.sendMessage({ action: 'getCategorizedTabs' });
-      if (response && response.categorizedTabs && response.categorizedTabs[0]) {
-        uncategorizedTabs = response.categorizedTabs[0];
-        console.log(`Found ${uncategorizedTabs.length} uncategorized tabs from background`);
-      }
-    } catch (error) {
-      console.error('Error getting uncategorized tabs from background:', error);
+    // Get current tabs from tab data source
+    const { categorizedTabs } = await getCurrentTabs();
+    
+    // Get uncategorized tabs (category 0)
+    const uncategorizedTabs = categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED] || [];
+    console.log(`Found ${uncategorizedTabs.length} uncategorized tabs`);
+    
+    // If no uncategorized tabs, nothing to categorize
+    if (uncategorizedTabs.length === 0) {
+      showStatus('No uncategorized tabs to process', 'info', 3000);
+      return;
     }
     
-    // If no uncategorized tabs from background, get all tabs
-    let tabs;
-    if (uncategorizedTabs.length > 0) {
-      tabs = uncategorizedTabs;
-    } else {
-      // Get all tabs from all windows
-      tabs = await ChromeAPIService.getAllTabs();
-    }
+    const tabs = uncategorizedTabs;
     
     // Process tabs to add domain info
     const processedTabs = tabs.map(tab => ({
@@ -137,9 +132,11 @@ export async function categorizeTabs() {
       category3: result[TAB_CATEGORIES.IMPORTANT].length
     });
     
-    // Merge with existing categorized tabs (if any were already categorized)
-    // Keep any tabs that weren't in the uncategorized list
-    const existingCategorized = state.categorizedTabs || {};
+    // Get fresh current state including already categorized tabs
+    const currentState = await getCurrentTabs();
+    const existingCategorized = currentState.categorizedTabs || {};
+    
+    // Merge result - keep existing categorized tabs and add newly categorized ones
     const mergedResult = {
       [TAB_CATEGORIES.UNCATEGORIZED]: [], // Clear uncategorized
       [TAB_CATEGORIES.CAN_CLOSE]: result[TAB_CATEGORIES.CAN_CLOSE] || [],
@@ -147,35 +144,22 @@ export async function categorizeTabs() {
       [TAB_CATEGORIES.IMPORTANT]: result[TAB_CATEGORIES.IMPORTANT] || []
     };
     
-    // If we only categorized uncategorized tabs, merge with existing
-    if (uncategorizedTabs.length > 0) {
-      // Keep existing tabs that weren't recategorized
-      [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(cat => {
-        const existing = existingCategorized[cat] || [];
-        const newlyProcessed = mergedResult[cat];
-        const processedIds = new Set(tabs.map(t => t.id));
-        
-        // Add existing tabs that weren't in the processed list
-        existing.forEach(tab => {
-          if (!processedIds.has(tab.id)) {
-            mergedResult[cat].push(tab);
-          }
-        });
+    // Keep existing categorized tabs that weren't recategorized
+    const processedIds = new Set(tabs.map(t => t.id));
+    [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(cat => {
+      const existing = existingCategorized[cat] || [];
+      
+      // Add existing tabs that weren't in the processed list
+      existing.forEach(tab => {
+        if (!processedIds.has(tab.id)) {
+          mergedResult[cat].push(tab);
+        }
       });
-    }
+    });
     
-    // Update state with categorized tabs
+    // Update state with categorized tabs for immediate UI update
     updateState('categorizedTabs', mergedResult);
     updateState('urlToDuplicateIds', urlToDuplicateIds);
-    
-    // Sync with background script
-    await chrome.runtime.sendMessage({
-      action: 'storeCategorizedTabs',
-      data: {
-        categorizedTabs: mergedResult,
-        urlToDuplicateIds: urlToDuplicateIds
-      }
-    });
     
     // Update UI
     updateCategorizeBadge();

@@ -1147,6 +1147,31 @@ button svg {
   padding: 0 var(--md-spacing-1) var(--md-spacing-1);
 }
 
+/* Smooth transitions for tab updates */
+.category-view {
+  position: relative;
+  transform: translateZ(0); /* Enable hardware acceleration */
+}
+
+/* Prevent layout shift during transitions */
+.tabs-container {
+  position: relative;
+  min-height: 100px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Ensure smooth rendering */
+.tabs-list {
+  will-change: contents;
+  position: relative;
+}
+
+/* Parent container for tabs lists needs relative positioning */
+.category-content {
+  position: relative;
+}
+
 /* Tab item - Material Design 3 List Item */
 .tab-item {
   display: flex;
