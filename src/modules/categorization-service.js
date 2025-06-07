@@ -161,6 +161,9 @@ export async function categorizeTabs() {
     updateState('categorizedTabs', mergedResult);
     updateState('urlToDuplicateIds', urlToDuplicateIds);
     
+    // Save categorized tabs to database
+    await window.tabDatabase.saveCategorizedTabs(mergedResult);
+    
     // Update UI
     updateCategorizeBadge();
     showStatus(STATUS_MESSAGES.SUCCESS_CATEGORIZED, 'success');
@@ -212,39 +215,40 @@ export async function moveTabToCategory(tab, fromCategory, toCategory) {
   if (fromCategory === toCategory) return;
   
   try {
-    // Check if tab is actually saved in database
+    // Update database first
     const urlInfo = await window.tabDatabase.getUrlInfo(tab.url);
     
     if (urlInfo) {
-      // Tab is saved in database, update it
-      const success = await window.tabDatabase.updateUrlCategory(tab.url, toCategory);
-      if (!success) {
-        console.error('Failed to update category in database');
-      }
+      // Tab already exists in database, update it
+      await window.tabDatabase.updateUrlCategory(tab.url, toCategory);
     } else {
-      // Tab is not saved in database, just update local state
-      const categorizedTabs = state.categorizedTabs || {};
-      
-      // Remove tab from old category
-      if (categorizedTabs[fromCategory]) {
-        categorizedTabs[fromCategory] = categorizedTabs[fromCategory].filter(t => t.id !== tab.id);
-      }
-      
-      // Add tab to new category
-      if (!categorizedTabs[toCategory]) {
-        categorizedTabs[toCategory] = [];
-      }
-      // Update the tab's category
-      const updatedTab = { ...tab };
-      updatedTab.knownCategory = toCategory;
-      categorizedTabs[toCategory].push(updatedTab);
-      
-      // Update state
-      updateState('categorizedTabs', categorizedTabs);
-      
-      // Save state
-      await savePopupState();
+      // Tab not in database yet, create it
+      await window.tabDatabase.getOrCreateUrl(tab, toCategory);
     }
+    
+    // Update local state
+    const categorizedTabs = state.categorizedTabs || {};
+    
+    // Remove tab from old category
+    if (categorizedTabs[fromCategory]) {
+      categorizedTabs[fromCategory] = categorizedTabs[fromCategory].filter(t => t.id !== tab.id);
+    }
+    
+    // Add tab to new category
+    if (!categorizedTabs[toCategory]) {
+      categorizedTabs[toCategory] = [];
+    }
+    // Update the tab's category
+    const updatedTab = { ...tab };
+    updatedTab.knownCategory = toCategory;
+    updatedTab.alreadySaved = true; // Mark as saved since we just saved it
+    categorizedTabs[toCategory].push(updatedTab);
+    
+    // Update state
+    updateState('categorizedTabs', categorizedTabs);
+    
+    // Save state
+    await savePopupState();
     
     updateCategorizeBadge();
     
