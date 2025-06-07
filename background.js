@@ -132,6 +132,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Will respond asynchronously
   }
   
+  // Handle moveTabToCategory
+  if (request.action === 'moveTabToCategory') {
+    const { tabId, fromCategory, toCategory } = request.data;
+    console.log(`Moving tab ${tabId} from category ${fromCategory} to ${toCategory}`);
+    
+    // Simply acknowledge the request - the popup will update its own state
+    sendResponse({ success: true });
+    
+    // Notify popup of the category change
+    if (popupPort) {
+      try {
+        popupPort.postMessage({
+          action: 'categoryChanged',
+          data: { tabId, fromCategory, toCategory }
+        });
+      } catch (error) {
+        console.log('Error notifying popup of category change:', error);
+      }
+    }
+    
+    return false;
+  }
+  
   // Remove all state management - popup handles its own state
   
   

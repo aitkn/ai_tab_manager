@@ -212,21 +212,42 @@ export async function moveTabToCategory(tab, fromCategory, toCategory) {
   if (fromCategory === toCategory) return;
   
   try {
-    // Send move request to background
-    await chrome.runtime.sendMessage({
-      action: 'moveTabToCategory',
-      data: {
-        tabId: tab.id,
-        fromCategory,
-        toCategory
-      }
-    });
+    // Update local state immediately
+    const categorizedTabs = state.categorizedTabs || {};
+    
+    // Remove tab from old category
+    if (categorizedTabs[fromCategory]) {
+      categorizedTabs[fromCategory] = categorizedTabs[fromCategory].filter(t => t.id !== tab.id);
+    }
+    
+    // Add tab to new category
+    if (!categorizedTabs[toCategory]) {
+      categorizedTabs[toCategory] = [];
+    }
+    categorizedTabs[toCategory].push(tab);
+    
+    // Update state
+    updateState('categorizedTabs', categorizedTabs);
+    
+    // Save state
+    await savePopupState();
     
     updateCategorizeBadge();
     
     // Trigger UI update
     const { displayTabs } = await import('./tab-display.js');
     await displayTabs();
+    
+    // Notify background (optional, for logging)
+    chrome.runtime.sendMessage({
+      action: 'moveTabToCategory',
+      data: {
+        tabId: tab.id,
+        fromCategory,
+        toCategory
+      }
+    }).catch(err => console.log('Background notification failed:', err));
+    
   } catch (error) {
     console.error('Error moving tab:', error);
     showStatus('Error moving tab', 'error');
