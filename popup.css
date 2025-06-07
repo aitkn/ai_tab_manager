@@ -1406,6 +1406,12 @@ button svg {
   color: #bdbdbd; /* Grey 400 */
 }
 
+/* Hidden category button - maintains space but invisible */
+.category-btn.hidden-category {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .close-btn,
 .delete-btn {
   width: 28px;
