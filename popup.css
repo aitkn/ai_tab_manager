@@ -1324,6 +1324,88 @@ button svg {
   z-index: 1;
 }
 
+/* Category selection buttons */
+.category-buttons {
+  display: flex;
+  gap: var(--md-spacing-1);
+}
+
+.category-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-full);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.category-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+.category-btn:hover::before {
+  opacity: var(--md-sys-state-hover-opacity);
+}
+
+.category-btn svg {
+  width: 16px;
+  height: 16px;
+  z-index: 1;
+}
+
+/* Category-specific button colors */
+.category-btn.category-important {
+  color: #d32f2f; /* Red 700 */
+}
+
+.category-btn.category-important::before {
+  background-color: #d32f2f;
+}
+
+.category-btn.category-save-later {
+  color: #1976d2; /* Blue 700 */
+}
+
+.category-btn.category-save-later::before {
+  background-color: #1976d2;
+}
+
+.category-btn.category-can-close {
+  color: #757575; /* Grey 600 */
+}
+
+.category-btn.category-can-close::before {
+  background-color: #757575;
+}
+
+/* Dark theme category button colors */
+[data-theme="dark"] .category-btn.category-important {
+  color: #ef5350; /* Red 400 */
+}
+
+[data-theme="dark"] .category-btn.category-save-later {
+  color: #64b5f6; /* Blue 300 */
+}
+
+[data-theme="dark"] .category-btn.category-can-close {
+  color: #bdbdbd; /* Grey 400 */
+}
+
 .close-btn,
 .delete-btn {
   width: 28px;

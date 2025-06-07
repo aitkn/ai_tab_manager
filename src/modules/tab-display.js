@@ -9,6 +9,8 @@ import { getRootDomain, getSubdomain, sortTabsInGroup, getWeekNumber, getWeekSta
 import { state } from './state-manager.js';
 import { showStatus } from './ui-manager.js';
 import { getCurrentTabs } from './tab-data-source.js';
+import { moveTabToCategory } from './categorization-service.js';
+import { moveTab } from './tab-operations.js';
 
 /**
  * Display tabs based on current state and grouping
@@ -673,34 +675,52 @@ export function createTabElement(tab, category) {
   
   // Action buttons
   if (!state.isViewingSaved) {
-    // Move buttons for categorized tabs
-    const moveButtons = createElement('div', { className: 'move-buttons' });
+    // Category selection buttons
+    const categoryButtons = createElement('div', { className: 'category-buttons' });
     
-    const moveUpBtn = createElement('button', {
-      className: 'move-btn',
-      title: 'Move to more important',
-      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>',
-      disabled: category === TAB_CATEGORIES.IMPORTANT,
-      onclick: (e) => {
-        e.stopPropagation();
-        moveTab(tab, category, 'up');
-      }
-    });
-    moveButtons.appendChild(moveUpBtn);
+    // Important category button (only show if not already Important)
+    if (category !== TAB_CATEGORIES.IMPORTANT) {
+      const importantBtn = createElement('button', {
+        className: 'category-btn category-important',
+        title: 'Mark as Important',
+        innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
+        onclick: (e) => {
+          e.stopPropagation();
+          moveTabToCategory(tab, category, TAB_CATEGORIES.IMPORTANT);
+        }
+      });
+      categoryButtons.appendChild(importantBtn);
+    }
     
-    const moveDownBtn = createElement('button', {
-      className: 'move-btn',
-      title: 'Move to less important',
-      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>',
-      disabled: category === TAB_CATEGORIES.CAN_CLOSE,
-      onclick: (e) => {
-        e.stopPropagation();
-        moveTab(tab, category, 'down');
-      }
-    });
-    moveButtons.appendChild(moveDownBtn);
+    // Save Later category button (only show if not already Save Later)
+    if (category !== TAB_CATEGORIES.SAVE_LATER) {
+      const saveLaterBtn = createElement('button', {
+        className: 'category-btn category-save-later',
+        title: 'Mark as Save Later',
+        innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>',
+        onclick: (e) => {
+          e.stopPropagation();
+          moveTabToCategory(tab, category, TAB_CATEGORIES.SAVE_LATER);
+        }
+      });
+      categoryButtons.appendChild(saveLaterBtn);
+    }
     
-    tabElement.appendChild(moveButtons);
+    // Can Close category button (only show if not already Can Close)
+    if (category !== TAB_CATEGORIES.CAN_CLOSE) {
+      const canCloseBtn = createElement('button', {
+        className: 'category-btn category-can-close',
+        title: 'Mark as Can Close',
+        innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+        onclick: (e) => {
+          e.stopPropagation();
+          moveTabToCategory(tab, category, TAB_CATEGORIES.CAN_CLOSE);
+        }
+      });
+      categoryButtons.appendChild(canCloseBtn);
+    }
+    
+    tabElement.appendChild(categoryButtons);
     
     // Close button
     const closeBtn = createElement('button', {
