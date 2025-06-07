@@ -917,7 +917,7 @@ function groupByCloseTime(tabs) {
 // Note: extractDateFromGroupName is already imported from helpers.js at the top of the file
 
 // Import tab operations
-import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, closeTabsInGroup, saveAndCloseTabsInGroup, deleteTabsInGroup, moveTab, closeTab, deleteSavedTab } from './tab-operations.js';
+import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, closeTabsInGroup, saveAndCloseTabsInGroup, deleteTabsInGroup, closeTab, deleteSavedTab } from './tab-operations.js';
 
 // Export functions
 export default {
