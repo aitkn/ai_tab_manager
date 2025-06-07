@@ -1676,15 +1676,27 @@ button svg {
 }
 
 .stat-item.important {
-  color: var(--md-sys-color-error);
+  color: #d32f2f; /* Red 700 - matches category header */
+}
+
+[data-theme="dark"] .stat-item.important {
+  color: #ef5350; /* Red 400 */
 }
 
 .stat-item.somewhat {
-  color: var(--md-sys-color-warning);
+  color: #1976d2; /* Blue 700 - matches category header */
+}
+
+[data-theme="dark"] .stat-item.somewhat {
+  color: #64b5f6; /* Blue 300 */
 }
 
 .stat-item.not-important {
-  color: var(--md-sys-color-on-surface-variant);
+  color: #757575; /* Grey 600 - matches category header */
+}
+
+[data-theme="dark"] .stat-item.not-important {
+  color: #bdbdbd; /* Grey 400 */
 }
 
 .stat-item.uncategorized {

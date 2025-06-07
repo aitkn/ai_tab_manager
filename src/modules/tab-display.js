@@ -695,8 +695,8 @@ export function createTabElement(tab, category) {
     // Save Later category button (always rendered, hidden if current category)
     const saveLaterBtn = createElement('button', {
       className: 'category-btn category-save-later' + (category === TAB_CATEGORIES.SAVE_LATER ? ' hidden-category' : ''),
-      title: 'Mark as Save Later',
-      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>',
+      title: 'Mark as Useful',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>',
       onclick: async (e) => {
         e.stopPropagation();
         if (category !== TAB_CATEGORIES.SAVE_LATER) {
@@ -709,7 +709,7 @@ export function createTabElement(tab, category) {
     // Can Close category button (always rendered, hidden if current category)
     const canCloseBtn = createElement('button', {
       className: 'category-btn category-can-close' + (category === TAB_CATEGORIES.CAN_CLOSE ? ' hidden-category' : ''),
-      title: 'Mark as Can Close',
+      title: 'Mark as Ignore',
       innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
       onclick: async (e) => {
         e.stopPropagation();
