@@ -354,7 +354,7 @@ h1 {
   border: none;
   border-radius: 0;
   color: var(--md-sys-color-on-surface-variant);
-  font-size: var(--md-sys-typescale-label-medium);
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -1212,18 +1212,17 @@ button svg {
 }
 
 .tab-title {
-  font-size: 15px;
+  font-size: var(--md-sys-typescale-body-medium);
   font-weight: 400;
-  line-height: 1.4;
   color: var(--md-sys-color-on-surface);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 .tab-url {
-  font-size: 13px;
+  font-size: var(--md-sys-typescale-body-small);
   color: var(--md-sys-color-on-surface-variant);
   white-space: nowrap;
   overflow: hidden;
