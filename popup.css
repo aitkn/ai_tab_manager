@@ -1212,17 +1212,18 @@ button svg {
 }
 
 .tab-title {
-  font-size: var(--md-sys-typescale-body-medium);
+  font-size: 15px;
   font-weight: 400;
+  line-height: 1.4;
   color: var(--md-sys-color-on-surface);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 0;
+  margin-bottom: 2px;
 }
 
 .tab-url {
-  font-size: var(--md-sys-typescale-body-small);
+  font-size: 13px;
   color: var(--md-sys-color-on-surface-variant);
   white-space: nowrap;
   overflow: hidden;

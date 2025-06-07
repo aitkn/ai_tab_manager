@@ -6,7 +6,7 @@
 import { DOM_IDS, CSS_CLASSES, TAB_TYPES } from '../utils/constants.js';
 import { $id, show, hide, classes } from '../utils/dom-helpers.js';
 import StorageService from '../services/StorageService.js';
-import { state, updateState } from './state-manager.js';
+import { state, updateState, savePopupState } from './state-manager.js';
 
 // Status message timeout
 let statusTimeout = null;
@@ -76,6 +76,14 @@ export function initializeTabNavigation() {
  */
 export async function switchToTab(tabName) {
   console.log('Switching to tab:', tabName);
+  
+  // Save current scroll position before switching
+  const savedContent = document.getElementById('savedContent');
+  if (savedContent && state.activeTab === 'saved') {
+    state.popupState.scrollPositions.saved = savedContent.scrollTop;
+    // Save immediately
+    savePopupState();
+  }
   
   // Update tab buttons
   document.querySelectorAll('.tab-btn').forEach(btn => {

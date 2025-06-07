@@ -83,7 +83,7 @@ export function setupEventListeners() {
       
       if (tabName === 'saved') {
         const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
-        const includeCanClose = $id('showAllCategoriesCheckbox')?.checked || false;
+        const includeCanClose = $id('showAllCheckbox')?.checked || state.popupState.showAllCategories || false;
         await showSavedTabsContent(savedGroupingSelect?.value, includeCanClose);
       } else if (tabName === 'categorize') {
         // Check if we have categorized tabs to display
