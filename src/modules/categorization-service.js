@@ -220,7 +220,11 @@ export async function moveTabToCategory(tab, fromCategory, toCategory) {
     
     if (urlInfo) {
       // Tab already exists in database, update it
-      await window.tabDatabase.updateUrlCategory(tab.url, toCategory);
+      const success = await window.tabDatabase.updateUrlCategory(tab.url, toCategory);
+      if (!success) {
+        // If update failed, try to create new entry
+        await window.tabDatabase.getOrCreateUrl(tab, toCategory);
+      }
     } else {
       // Tab not in database yet, create it
       await window.tabDatabase.getOrCreateUrl(tab, toCategory);

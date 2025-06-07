@@ -504,12 +504,12 @@ class TabDatabase {
   }
 
   /**
-   * Update URL category
+   * Update URL category by ID (deprecated - use updateUrlCategory with URL string)
    * @param {number} urlId - URL ID
    * @param {number} newCategory - New category
    * @returns {Promise<void>}
    */
-  async updateUrlCategory(urlId, newCategory) {
+  async updateUrlCategoryById(urlId, newCategory) {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['urls'], 'readwrite');
       const store = transaction.objectStore('urls');
