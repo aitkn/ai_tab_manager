@@ -444,7 +444,7 @@ export function createGroupSection(groupName, tabs, groupingType) {
   if (categoryCounts[TAB_CATEGORIES.IMPORTANT] > 0) {
     const importantStat = createElement('span', {
       className: 'stat-item important',
-      innerHTML: `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${categoryCounts[TAB_CATEGORIES.IMPORTANT]}`
+      innerHTML: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${categoryCounts[TAB_CATEGORIES.IMPORTANT]}`
     });
     stats.appendChild(importantStat);
   }
@@ -452,7 +452,7 @@ export function createGroupSection(groupName, tabs, groupingType) {
   if (categoryCounts[TAB_CATEGORIES.SAVE_LATER] > 0) {
     const saveForLaterStat = createElement('span', {
       className: 'stat-item somewhat',
-      innerHTML: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg> ${categoryCounts[TAB_CATEGORIES.SAVE_LATER]}`
+      innerHTML: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg> ${categoryCounts[TAB_CATEGORIES.SAVE_LATER]}`
     });
     stats.appendChild(saveForLaterStat);
   }
@@ -460,7 +460,7 @@ export function createGroupSection(groupName, tabs, groupingType) {
   if (categoryCounts[TAB_CATEGORIES.CAN_CLOSE] > 0) {
     const canCloseStat = createElement('span', {
       className: 'stat-item not-important',
-      innerHTML: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> ${categoryCounts[TAB_CATEGORIES.CAN_CLOSE]}`
+      innerHTML: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> ${categoryCounts[TAB_CATEGORIES.CAN_CLOSE]}`
     });
     stats.appendChild(canCloseStat);
   }
