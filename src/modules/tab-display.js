@@ -40,7 +40,7 @@ export async function displayTabs(isFromSaved = false) {
 }
 
 /**
- * Display tabs grouped by category
+ * Display tabs grouped by category with smooth transitions
  */
 export async function displayCategoryView() {
   const container = $id(DOM_IDS.TABS_CONTAINER);
@@ -50,13 +50,28 @@ export async function displayCategoryView() {
   }
   
   // Show category view, hide grouped view
-  show($id(DOM_IDS.CATEGORY_VIEW));
+  const categoryView = $id(DOM_IDS.CATEGORY_VIEW);
+  show(categoryView);
   hide($id(DOM_IDS.GROUPED_VIEW));
   
   // Fetch current tabs from background
   const { categorizedTabs } = await getCurrentTabs();
   
-  // Display each category in order of importance
+  // Store current scroll position
+  const scrollTop = container.scrollTop;
+  
+  // Update each category in place without cloning
+  await updateCategoriesInPlace(categorizedTabs);
+  
+  // Restore scroll position
+  container.scrollTop = scrollTop;
+}
+
+/**
+ * Update categories in place without replacing the entire view
+ */
+async function updateCategoriesInPlace(categorizedTabs) {
+  // Process each category directly in the DOM
   [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
     const categorySection = $id(`category${category}`);
     if (!categorySection) {
@@ -64,9 +79,9 @@ export async function displayCategoryView() {
       return;
     }
     
-    const tabsList = categorySection.querySelector('.tabs-list');
-    const countElement = categorySection.querySelector('.count');
     const tabs = categorizedTabs[category] || [];
+    let tabsList = categorySection.querySelector('.tabs-list');
+    const countElement = categorySection.querySelector('.count');
     
     // Show/hide uncategorized section based on whether it has tabs
     if (category === TAB_CATEGORIES.UNCATEGORIZED) {
@@ -79,12 +94,24 @@ export async function displayCategoryView() {
       countElement.textContent = tabs.length;
     }
     
-    // Clear existing tabs
-    tabsList.innerHTML = '';
+    // If tabs list doesn't exist, create it
+    if (!tabsList) {
+      tabsList = document.createElement('div');
+      tabsList.className = 'tabs-list';
+      categorySection.appendChild(tabsList);
+    }
+    
+    // Build new content off-screen
+    const newTabsList = document.createElement('div');
+    newTabsList.className = 'tabs-list';
     
     // Mark section as empty if no tabs
     if (tabs.length === 0) {
       classes.add(categorySection, CSS_CLASSES.CATEGORY_EMPTY);
+      // Clear the tabs list if it exists
+      if (tabsList) {
+        tabsList.innerHTML = '';
+      }
     } else {
       classes.remove(categorySection, CSS_CLASSES.CATEGORY_EMPTY);
       
@@ -98,9 +125,99 @@ export async function displayCategoryView() {
         
         if (shouldShow) {
           const tabElement = createTabElement(tab, category);
-          tabsList.appendChild(tabElement);
+          newTabsList.appendChild(tabElement);
         }
       });
+    }
+    
+    // Update the tabs list
+    if (tabsList) {
+      // Check if content actually changed
+      const oldCount = tabsList.children.length;
+      const newCount = newTabsList.children.length;
+      
+      if (oldCount === newCount && oldCount > 0) {
+        // Check if the tab IDs are the same
+        const oldIds = Array.from(tabsList.children).map(el => el.dataset.tabId).join(',');
+        const newIds = Array.from(newTabsList.children).map(el => el.dataset.tabId).join(',');
+        
+        if (oldIds === newIds) {
+          // Check if duplicate counts have changed
+          let duplicatesChanged = false;
+          const oldTitles = Array.from(tabsList.children).map(el => el.querySelector('.tab-title')?.textContent || '').join('|');
+          const newTitles = Array.from(newTabsList.children).map(el => el.querySelector('.tab-title')?.textContent || '').join('|');
+          
+          if (oldTitles !== newTitles) {
+            duplicatesChanged = true;
+          }
+          
+          if (!duplicatesChanged) {
+            // Content hasn't changed, skip update
+            return;
+          }
+        }
+      }
+      
+      // Content has changed - use morphdom for smooth update
+      console.log('Content changed, using morphdom');
+      
+      // Use morphdom to smoothly morph the existing DOM to match the new DOM
+      if (window.morphdom) {
+        // Add CSS transition for smooth visual updates
+        tabsList.style.transition = 'opacity 300ms ease-in-out';
+        
+        // Use morphdom with options for better performance
+        window.morphdom(tabsList, newTabsList, {
+          // Only update if nodes are different
+          onBeforeElUpdated: function(fromEl, toEl) {
+            // Skip if they're identical
+            if (fromEl.isEqualNode(toEl)) {
+              return false;
+            }
+            return true;
+          },
+          
+          // Handle node updates smoothly
+          onElUpdated: function(el) {
+            // Add a subtle animation class if needed
+            el.style.transition = 'opacity 300ms ease-in-out';
+          },
+          
+          // Preserve scroll position
+          onBeforeNodeAdded: function(node) {
+            return node;
+          },
+          
+          // Skip certain attributes that might cause flicker
+          getNodeKey: function(node) {
+            // Use data-tab-id as key for tab elements
+            if (node.dataset && node.dataset.tabId) {
+              return node.dataset.tabId;
+            }
+            return node.id;
+          },
+          
+          // Don't update certain nodes
+          onBeforeNodeDiscarded: function(node) {
+            // Keep nodes that are being interacted with
+            if (node === document.activeElement) {
+              return false;
+            }
+            return true;
+          }
+        });
+        
+        // Clean up transition
+        setTimeout(() => {
+          tabsList.style.transition = '';
+        }, 300);
+        
+        console.log('Morphdom update complete');
+      } else {
+        // Fallback if morphdom isn't loaded
+        console.warn('Morphdom not loaded, using direct update');
+        tabsList.innerHTML = newTabsList.innerHTML;
+      }
     }
     
     // Add action buttons to category header if they don't exist
@@ -131,7 +248,7 @@ export async function displayCategoryView() {
     
     // Make category header clickable to collapse/expand
     const categoryHeader = categorySection.querySelector('.category-header');
-    if (categoryHeader) {
+    if (categoryHeader && !categoryHeader.onclick) {
       categoryHeader.style.cursor = 'pointer';
       categoryHeader.onclick = (e) => {
         // Don't collapse if clicking on action buttons
@@ -142,6 +259,7 @@ export async function displayCategoryView() {
     }
   });
 }
+
 
 /**
  * Display tabs in grouped view
