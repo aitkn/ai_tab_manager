@@ -277,7 +277,7 @@ class TabDatabase {
         if (cursor) {
           totalRecords++;
           const record = cursor.value;
-          console.log('Found URL record:', record.id, 'category:', record.category, 'url:', record.url);
+          // console.log('Found URL record:', record.id, 'category:', record.category, 'url:', record.url);
           
           if (categories.includes(cursor.value.category)) {
             const urlData = { ...cursor.value };

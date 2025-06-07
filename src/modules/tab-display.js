@@ -683,10 +683,11 @@ export function createTabElement(tab, category) {
       className: 'category-btn category-important' + (category === TAB_CATEGORIES.IMPORTANT ? ' hidden-category' : ''),
       title: 'Mark as Important',
       innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
-      onclick: (e) => {
+      onclick: async (e) => {
         e.stopPropagation();
+        console.log('Important button clicked, current category:', category);
         if (category !== TAB_CATEGORIES.IMPORTANT) {
-          moveTabToCategory(tab, category, TAB_CATEGORIES.IMPORTANT);
+          await moveTabToCategory(tab, category, TAB_CATEGORIES.IMPORTANT);
         }
       }
     });
@@ -697,10 +698,11 @@ export function createTabElement(tab, category) {
       className: 'category-btn category-save-later' + (category === TAB_CATEGORIES.SAVE_LATER ? ' hidden-category' : ''),
       title: 'Mark as Save Later',
       innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>',
-      onclick: (e) => {
+      onclick: async (e) => {
         e.stopPropagation();
+        console.log('Save Later button clicked, current category:', category);
         if (category !== TAB_CATEGORIES.SAVE_LATER) {
-          moveTabToCategory(tab, category, TAB_CATEGORIES.SAVE_LATER);
+          await moveTabToCategory(tab, category, TAB_CATEGORIES.SAVE_LATER);
         }
       }
     });
@@ -711,10 +713,11 @@ export function createTabElement(tab, category) {
       className: 'category-btn category-can-close' + (category === TAB_CATEGORIES.CAN_CLOSE ? ' hidden-category' : ''),
       title: 'Mark as Can Close',
       innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
-      onclick: (e) => {
+      onclick: async (e) => {
         e.stopPropagation();
+        console.log('Can Close button clicked, current category:', category);
         if (category !== TAB_CATEGORIES.CAN_CLOSE) {
-          moveTabToCategory(tab, category, TAB_CATEGORIES.CAN_CLOSE);
+          await moveTabToCategory(tab, category, TAB_CATEGORIES.CAN_CLOSE);
         }
       }
     });
