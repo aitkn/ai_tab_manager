@@ -256,6 +256,41 @@ class TabDatabase {
   }
 
   /**
+   * Update URL category
+   * @param {string} url - URL to update
+   * @param {number} newCategory - New category
+   * @returns {Promise<boolean>} Success status
+   */
+  async updateUrlCategory(url, newCategory) {
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['urls'], 'readwrite');
+      const store = transaction.objectStore('urls');
+      const index = store.index('url');
+      
+      // Find the URL record
+      const request = index.getAll(url);
+      request.onsuccess = () => {
+        const results = request.result;
+        if (results.length === 0) {
+          resolve(false);
+          return;
+        }
+        
+        // Update the first matching record (or the one with highest category)
+        const sorted = results.sort((a, b) => b.category - a.category);
+        const record = sorted[0];
+        record.category = newCategory;
+        record.lastCategorized = new Date().toISOString();
+        
+        const updateRequest = store.put(record);
+        updateRequest.onsuccess = () => resolve(true);
+        updateRequest.onerror = () => reject(updateRequest.error);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
    * Get all saved URLs by category
    * @param {number[]} categories - Array of categories to retrieve (default: [2,3] for save later & important)
    * @returns {Promise<Object[]>} Array of URL objects

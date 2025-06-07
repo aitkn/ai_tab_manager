@@ -3,7 +3,7 @@
  * Categorization Service - handles tab categorization using LLMs
  */
 
-import { TAB_CATEGORIES, STATUS_MESSAGES } from '../utils/constants.js';
+import { TAB_CATEGORIES, STATUS_MESSAGES, CATEGORY_NAMES } from '../utils/constants.js';
 import { extractDomain, fallbackCategorization } from '../utils/helpers.js';
 import MessageService from '../services/MessageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
@@ -212,25 +212,37 @@ export async function moveTabToCategory(tab, fromCategory, toCategory) {
   if (fromCategory === toCategory) return;
   
   try {
-    // Update local state immediately
-    const categorizedTabs = state.categorizedTabs || {};
-    
-    // Remove tab from old category
-    if (categorizedTabs[fromCategory]) {
-      categorizedTabs[fromCategory] = categorizedTabs[fromCategory].filter(t => t.id !== tab.id);
+    // For already saved tabs, update in database
+    if (tab.alreadySaved || tab.knownCategory !== undefined) {
+      const success = await window.tabDatabase.updateUrlCategory(tab.url, toCategory);
+      if (!success) {
+        // If URL doesn't exist in database, create it
+        await window.tabDatabase.getOrCreateUrl(tab, toCategory);
+      }
+    } else {
+      // For unsaved tabs, just update local state
+      const categorizedTabs = state.categorizedTabs || {};
+      
+      // Remove tab from old category
+      if (categorizedTabs[fromCategory]) {
+        categorizedTabs[fromCategory] = categorizedTabs[fromCategory].filter(t => t.id !== tab.id);
+      }
+      
+      // Add tab to new category
+      if (!categorizedTabs[toCategory]) {
+        categorizedTabs[toCategory] = [];
+      }
+      // Update the tab's category
+      const updatedTab = { ...tab };
+      updatedTab.knownCategory = toCategory;
+      categorizedTabs[toCategory].push(updatedTab);
+      
+      // Update state
+      updateState('categorizedTabs', categorizedTabs);
+      
+      // Save state
+      await savePopupState();
     }
-    
-    // Add tab to new category
-    if (!categorizedTabs[toCategory]) {
-      categorizedTabs[toCategory] = [];
-    }
-    categorizedTabs[toCategory].push(tab);
-    
-    // Update state
-    updateState('categorizedTabs', categorizedTabs);
-    
-    // Save state
-    await savePopupState();
     
     updateCategorizeBadge();
     
@@ -238,15 +250,7 @@ export async function moveTabToCategory(tab, fromCategory, toCategory) {
     const { displayTabs } = await import('./tab-display.js');
     await displayTabs();
     
-    // Notify background (optional, for logging)
-    chrome.runtime.sendMessage({
-      action: 'moveTabToCategory',
-      data: {
-        tabId: tab.id,
-        fromCategory,
-        toCategory
-      }
-    }).catch(err => console.log('Background notification failed:', err));
+    showStatus(`Moved to ${CATEGORY_NAMES[toCategory]}`, 'success');
     
   } catch (error) {
     console.error('Error moving tab:', error);
