@@ -93,11 +93,12 @@ export async function showSavedTabsContent(groupingType, includeCanClose = false
       }
     }
     
-    // Don't restore scroll during initialization - it's handled centrally
-    if (!state.isInitializing) {
-      restoreScrollPosition('saved', 100);
-      restoreScrollPosition('saved', 500);
-      restoreScrollPosition('saved', 1000);
+    // Restore scroll position
+    if (state.popupState.scrollPositions?.saved) {
+      // Use setTimeout to ensure content is rendered first
+      setTimeout(() => {
+        restoreScrollPosition('savedContent', state.popupState.scrollPositions.saved);
+      }, 100);
     }
     
   } catch (error) {
