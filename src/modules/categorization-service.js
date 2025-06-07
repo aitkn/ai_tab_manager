@@ -212,15 +212,17 @@ export async function moveTabToCategory(tab, fromCategory, toCategory) {
   if (fromCategory === toCategory) return;
   
   try {
-    // For already saved tabs, update in database
-    if (tab.alreadySaved || tab.knownCategory !== undefined) {
+    // Check if tab is actually saved in database
+    const urlInfo = await window.tabDatabase.getUrlInfo(tab.url);
+    
+    if (urlInfo) {
+      // Tab is saved in database, update it
       const success = await window.tabDatabase.updateUrlCategory(tab.url, toCategory);
       if (!success) {
-        // If URL doesn't exist in database, create it
-        await window.tabDatabase.getOrCreateUrl(tab, toCategory);
+        console.error('Failed to update category in database');
       }
     } else {
-      // For unsaved tabs, just update local state
+      // Tab is not saved in database, just update local state
       const categorizedTabs = state.categorizedTabs || {};
       
       // Remove tab from old category
