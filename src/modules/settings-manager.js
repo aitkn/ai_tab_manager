@@ -71,6 +71,12 @@ export async function initializeSettingsUI() {
     maxTabsInput.value = state.settings.maxTabsToOpen || LIMITS.MAX_TABS_DEFAULT;
   }
   
+  // Set LLM checkbox
+  const useLLMCheckbox = $id('useLLMCheckbox');
+  if (useLLMCheckbox) {
+    useLLMCheckbox.checked = state.settings.useLLM !== false; // Default to true
+  }
+  
   // Update prompt status
   updatePromptStatus();
 }

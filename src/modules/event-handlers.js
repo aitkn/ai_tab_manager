@@ -33,6 +33,12 @@ export function setupEventListeners() {
   on($id(DOM_IDS.RESET_PROMPT_BTN), EVENTS.CLICK, resetPrompt);
   on($id(DOM_IDS.MAX_TABS_INPUT), EVENTS.CHANGE, onMaxTabsChange);
   
+  // LLM checkbox
+  const useLLMCheckbox = $id('useLLMCheckbox');
+  if (useLLMCheckbox) {
+    on(useLLMCheckbox, EVENTS.CHANGE, onUseLLMChange);
+  }
+  
   // Search controls - now handled by unified toolbar
   // on($id(DOM_IDS.SEARCH_INPUT), EVENTS.INPUT, onSearchInput);
   // on($id(DOM_IDS.CLEAR_SEARCH_BTN), EVENTS.CLICK, clearSearch);
@@ -169,6 +175,10 @@ async function saveApiKey() {
   await StorageService.saveApiKey(provider, apiKey);
   state.settings.apiKeys[provider] = apiKey;
   
+  // Mark that user has configured settings
+  state.settings.hasConfiguredSettings = true;
+  await StorageService.saveSettings(state.settings);
+  
   showStatus('API key saved successfully!', 'success');
   
   // Fetch models for this provider
@@ -236,6 +246,22 @@ async function onMaxTabsChange() {
   }
   
   await StorageService.saveSettings(state.settings);
+}
+
+/**
+ * LLM checkbox change handler
+ */
+async function onUseLLMChange(e) {
+  state.settings.useLLM = e.target.checked;
+  state.settings.hasConfiguredSettings = true; // Mark that user has configured settings
+  
+  await StorageService.saveSettings(state.settings);
+  
+  if (!e.target.checked) {
+    showStatus('AI categorization disabled. Only rule-based categorization will be used.', 'info', 3000);
+  } else {
+    showStatus('AI categorization enabled', 'success', 2000);
+  }
 }
 
 /**

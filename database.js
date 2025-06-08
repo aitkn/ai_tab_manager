@@ -733,6 +733,7 @@ class TabDatabase {
     const duplicates = [];
     const needsCategorization = [];
     const errors = [];
+    let categorizedByRules = 0;
     
     for (let i = 1; i < lines.length; i++) {
       const row = parseCSVLine(lines[i]);
@@ -797,6 +798,23 @@ class TabDatabase {
         }
       }
       
+      // Apply rules if category is not set
+      const originalCategory = category;
+      if (category === 0 && settings.rules && settings.rules.length > 0) {
+        const { applyRulesToTabs } = await import('./src/modules/categorization-service.js');
+        const tabData = { url, title, domain };
+        const { categorizedByRules: ruleResults } = applyRulesToTabs([tabData], settings.rules);
+        
+        // Check if any rule matched
+        for (const [cat, tabs] of Object.entries(ruleResults)) {
+          if (tabs.length > 0) {
+            category = parseInt(cat);
+            categorizedByRules++;
+            break;
+          }
+        }
+      }
+      
       try {
         // Only import categorized tabs (1, 2, 3)
         if (category > 0) {
@@ -841,6 +859,7 @@ class TabDatabase {
       duplicates: duplicates.length,
       needsCategorization: needsCategorization.length,
       errors: errors.length,
+      categorizedByRules: categorizedByRules,
       details: {
         imported,
         duplicates,

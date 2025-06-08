@@ -18,6 +18,25 @@ import { getCurrentTabs } from './tab-data-source.js';
 export async function handleCategorize() {
   console.log('Categorize clicked');
   
+  // Check if this is first-time use
+  if (!state.settings.hasConfiguredSettings) {
+    const shouldRedirect = confirm('Welcome to AI Tab Manager! Would you like to configure your categorization settings first?\n\nYou can choose to use AI-powered categorization or set up rules-based categorization.');
+    if (shouldRedirect) {
+      const { switchToTab } = await import('./ui-manager.js');
+      switchToTab('settings');
+      showStatus('Please configure your categorization settings', 'info', 5000);
+      return;
+    }
+  }
+  
+  // Check if LLM is disabled
+  if (!state.settings.useLLM) {
+    // Only use rule-based categorization
+    await categorizeTabs();
+    return;
+  }
+  
+  // Check for API key if LLM is enabled
   const apiKey = state.settings.apiKeys[state.settings.provider];
   const provider = state.settings.provider;
   const model = state.settings.model || state.settings.selectedModels[provider];
@@ -178,15 +197,15 @@ export async function categorizeTabs() {
       console.error('Error getting saved tabs:', error);
     }
     
-    const apiKey = state.settings.apiKeys[state.settings.provider];
-    const provider = state.settings.provider;
-    const model = state.settings.model || state.settings.selectedModels[provider];
-    const customPrompt = state.settings.customPrompt;
-    
     let categorized;
     
-    // Only call LLM if there are tabs remaining after rule application
-    if (tabs.length > 0) {
+    // Check if LLM is enabled
+    if (state.settings.useLLM && tabs.length > 0) {
+      const apiKey = state.settings.apiKeys[state.settings.provider];
+      const provider = state.settings.provider;
+      const model = state.settings.model || state.settings.selectedModels[provider];
+      const customPrompt = state.settings.customPrompt;
+      
       try {
         // Call LLM for categorization
         categorized = await MessageService.categorizeTabs({
@@ -206,6 +225,14 @@ export async function categorizeTabs() {
         console.log('Using fallback categorization');
         categorized = fallbackCategorization(processedTabs);
       }
+    } else if (!state.settings.useLLM && tabs.length > 0) {
+      // LLM is disabled, put remaining tabs in "Useful" category
+      categorized = {
+        [TAB_CATEGORIES.CAN_CLOSE]: [],
+        [TAB_CATEGORIES.SAVE_LATER]: tabs, // Put all uncategorized tabs in "Useful"
+        [TAB_CATEGORIES.IMPORTANT]: []
+      };
+      console.log('LLM disabled, categorizing remaining tabs as Useful');
     } else {
       // No tabs for LLM, just use empty categories
       categorized = {

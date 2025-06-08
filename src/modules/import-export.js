@@ -61,7 +61,9 @@ export async function handleCSVImport(event) {
         apiKey: state.settings.apiKeys[state.settings.provider],
         provider: state.settings.provider,
         model: state.settings.model,
-        customPrompt: state.settings.customPrompt
+        customPrompt: state.settings.customPrompt,
+        rules: state.settings.rules || [],
+        useLLM: state.settings.useLLM !== false
       };
       
       const result = await window.tabDatabase.importFromCSV(csvContent, importSettings);
@@ -82,6 +84,10 @@ export async function handleCSVImport(event) {
         
         if (result.duplicates > 0) {
           details.push(`${result.duplicates} duplicates skipped`);
+        }
+        
+        if (result.categorizedByRules > 0) {
+          details.push(`${result.categorizedByRules} categorized by rules`);
         }
         
         if (result.categorized > 0) {
@@ -136,7 +142,9 @@ async function showImportDialog(csvContent) {
   const rowCount = lines.length - 1; // Minus header
   
   const message = `Import ${rowCount} rows from CSV?\n\n` +
-    `Note: Tabs without categories will be categorized using ${state.settings.provider} if API key is available.`;
+    `Note: Tabs without categories will be:\n` +
+    `1. First categorized using your configured rules\n` +
+    `2. Then categorized using ${state.settings.useLLM ? state.settings.provider : 'rules only'} if needed`;
   
   return confirm(message);
 }

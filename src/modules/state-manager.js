@@ -31,7 +31,10 @@ export const state = {
     promptVersion: 1,
     isPromptCustomized: false,
     maxTabsToOpen: 50,
-    rules: []  // Array of rule objects
+    rules: [],  // Array of rule objects
+    useLLM: true,  // Whether to use LLM for categorization
+    hasConfiguredSettings: false,  // First-time use flag
+    defaultRulesApplied: false  // Whether default rules have been added
   }
 };
 
@@ -157,6 +160,14 @@ export async function loadSavedState() {
       console.warn('CONFIG not available when loading settings');
     }
     
+    // Apply default rules if not already applied
+    if (!state.settings.defaultRulesApplied) {
+      const defaultRules = getDefaultRules();
+      state.settings.rules = [...defaultRules, ...state.settings.rules];
+      state.settings.defaultRulesApplied = true;
+      await StorageService.saveSettings(state.settings);
+    }
+    
     return true;
   } catch (error) {
     console.error('Error loading saved state:', error);
@@ -193,6 +204,97 @@ export function restoreScrollPosition(containerId, scrollTop, retryCount = 0) {
       }, retryCount === 0 ? 100 : 500);
     }
   }
+}
+
+/**
+ * Get default categorization rules
+ * @returns {Array} Default rules
+ */
+function getDefaultRules() {
+  return [
+    // Common social media and entertainment sites - Can Close
+    {
+      id: 'default-1',
+      type: 'domain',
+      value: 'youtube.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-2',
+      type: 'domain',
+      value: 'facebook.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-3',
+      type: 'domain',
+      value: 'instagram.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-4',
+      type: 'domain',
+      value: 'reddit.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-5',
+      type: 'domain',
+      value: 'tiktok.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    
+    // Development and work-related sites - Important
+    {
+      id: 'default-6',
+      type: 'domain',
+      value: 'github.com',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-7',
+      type: 'domain',
+      value: 'stackoverflow.com',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-8',
+      type: 'urlContains',
+      value: '/pull/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-9',
+      type: 'urlContains',
+      value: '/issues/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    
+    // Documentation - Save for Later
+    {
+      id: 'default-10',
+      type: 'urlContains',
+      value: '/docs/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-11',
+      type: 'domain',
+      value: 'developer.mozilla.org',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    }
+  ];
 }
 
 /**
