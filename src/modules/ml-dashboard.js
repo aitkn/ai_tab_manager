@@ -282,8 +282,9 @@ async function handleTrainModel() {
   
   try {
     // Get model trainer
-    const { getModelTrainer } = await import('../ml/training/trainer.js');
-    const trainer = await getModelTrainer();
+    const { ModelTrainer } = await import('../ml/training/trainer.js');
+    const trainer = new ModelTrainer();
+    await trainer.initialize();
     
     // Check if we have enough data
     const trainingData = await trainer.prepareTrainingData();
