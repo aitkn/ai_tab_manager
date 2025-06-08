@@ -9,7 +9,7 @@ import { extractDateFromGroupName } from '../utils/helpers.js';
 import { showStatus, updateSavedBadge, switchToTab } from './ui-manager.js';
 import { state, restoreScrollPosition } from './state-manager.js';
 import { displayGroupedView, createTabElement } from './tab-display.js';
-import { openAllTabsInGroup, deleteTabsInGroup, deleteTabsInCategory } from './tab-operations.js';
+import { openSavedTabs, deleteTabsInGroup, deleteTabsInCategory } from './tab-operations.js';
 // Database is available as window.window.tabDatabase
 
 /**
@@ -190,7 +190,7 @@ function createCategorySection(category, tabs) {
           <line x1="10" y1="14" x2="21" y2="3"></line>
         </svg>
       `,
-      onclick: () => openAllTabsInGroup(tabs)
+      onclick: () => openSavedTabs(tabs)
     });
     
     // Delete all button with icon

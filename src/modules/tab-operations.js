@@ -569,22 +569,28 @@ export async function saveAndCloseTabsInGroup(tabs) {
 /**
  * Open all tabs in a group
  */
-export async function openAllTabsInGroup(groupName) {
+export async function openAllTabsInGroup(groupNameOrTabs) {
   try {
-    // Get current tabs from background
-    const { getCurrentTabs } = await import('./tab-data-source.js');
-    const { categorizedTabs } = await getCurrentTabs();
+    let groupTabs = [];
     
-    // Get all tabs in this group
-    const groupTabs = [];
-    const allTabs = Object.values(categorizedTabs).flat();
-    
-    allTabs.forEach(tab => {
-      const domain = getRootDomain(tab.domain);
-      if (domain === groupName) {
-        groupTabs.push(tab);
-      }
-    });
+    // Check if we received an array of tabs (from saved tabs) or a group name (from current tabs)
+    if (Array.isArray(groupNameOrTabs)) {
+      groupTabs = groupNameOrTabs;
+    } else {
+      // Get current tabs from background
+      const { getCurrentTabs } = await import('./tab-data-source.js');
+      const { categorizedTabs } = await getCurrentTabs();
+      
+      // Get all tabs in this group
+      const allTabs = Object.values(categorizedTabs).flat();
+      
+      allTabs.forEach(tab => {
+        const domain = getRootDomain(tab.domain);
+        if (domain === groupNameOrTabs) {
+          groupTabs.push(tab);
+        }
+      });
+    }
     
     if (groupTabs.length === 0) return;
     
@@ -711,6 +717,33 @@ export async function deleteTabsInGroup(groupName) {
 }
 
 /**
+ * Open multiple saved tabs
+ */
+export async function openSavedTabs(tabs) {
+  try {
+    if (!tabs || tabs.length === 0) return;
+    
+    const maxTabs = state.settings.maxTabsToOpen || LIMITS.MAX_TABS_DEFAULT;
+    if (tabs.length > maxTabs) {
+      showStatus(`Opening only first ${maxTabs} tabs (safety limit)`, 'warning');
+      tabs = tabs.slice(0, maxTabs);
+    }
+    
+    showStatus(`Opening ${tabs.length} tabs...`, 'loading');
+    
+    // Open tabs
+    for (const tab of tabs) {
+      await ChromeAPIService.createTab({ url: tab.url });
+    }
+    
+    showStatus(`Opened ${tabs.length} tabs`, 'success');
+  } catch (error) {
+    console.error('Error opening saved tabs:', error);
+    showStatus('Error opening tabs', 'error');
+  }
+}
+
+/**
  * Delete all tabs in a category (for saved tabs)
  */
 export async function deleteTabsInCategory(tabs, categoryName) {
@@ -813,6 +846,7 @@ export default {
   closeAllInCategory,
   openAllInCategory,
   openAllTabsInGroup,
+  openSavedTabs,
   moveTab,
   deleteSavedTab,
   deleteTabsInGroup,
