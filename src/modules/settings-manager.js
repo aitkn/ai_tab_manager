@@ -384,11 +384,14 @@ export function initializeRulesUI() {
   
   // Add existing rules
   if (state.settings.rules && state.settings.rules.length > 0) {
+    console.log('Initializing rules UI with', state.settings.rules.length, 'rules');
     state.settings.rules.forEach((rule, index) => {
       if (rule.enabled !== false) {
         addRuleToUI(rule.category, rule);
       }
     });
+  } else {
+    console.log('No rules found in settings during initialization');
   }
   
   // Add event listeners to add buttons

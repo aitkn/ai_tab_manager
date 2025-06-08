@@ -96,8 +96,8 @@ async function updateMLStatus() {
       // Show a more user-friendly message if ML modules are not available
       statusContent.innerHTML = `
         <div style="color: var(--md-sys-color-on-surface-variant);">
-          <div style="margin-bottom: 4px;">ML module not available</div>
-          <div style="font-size: 11px;">Machine learning features require additional setup.</div>
+          <div style="margin-bottom: 4px;">ML features not available</div>
+          <div style="font-size: 11px;">Machine learning capabilities will be enabled in a future update.</div>
         </div>
       `;
       return;

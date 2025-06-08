@@ -193,8 +193,10 @@ async function loadCategorizedTabsFromBackground() {
     if (!window.tabDatabase) {
       console.warn('Database not ready, waiting...');
       await waitForDatabase();
-      initializeTabDataSource(window.tabDatabase);
     }
+    
+    // Always re-initialize tab data source to ensure it's ready
+    initializeTabDataSource(window.tabDatabase);
     
     const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
     const hasTabs = Object.values(categorizedTabs).some(tabs => tabs.length > 0);

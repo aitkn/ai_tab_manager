@@ -163,9 +163,15 @@ export async function loadSavedState() {
     // Apply default rules if not already applied
     if (!state.settings.defaultRulesApplied) {
       const defaultRules = getDefaultRules();
+      // Ensure rules array exists
+      if (!state.settings.rules) {
+        state.settings.rules = [];
+      }
+      // Add default rules at the beginning
       state.settings.rules = [...defaultRules, ...state.settings.rules];
       state.settings.defaultRulesApplied = true;
       await StorageService.saveSettings(state.settings);
+      console.log('Applied default rules:', defaultRules.length);
     }
     
     return true;

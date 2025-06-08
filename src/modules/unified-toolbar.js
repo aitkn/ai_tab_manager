@@ -157,12 +157,20 @@ export async function updateToolbarVisibility(tabType) {
     showToolbar();
     
   } else if (tabType === 'settings') {
-    // Hide toolbar for settings
+    // Hide toolbar for settings tab
+    hideToolbar();
+    // Also hide both control sections to be safe
+    hide(currentTabControls);
+    hide(savedTabControls);
+  } else {
+    // For any other tab type, hide the toolbar
     hideToolbar();
   }
   
-  // Clear search when switching tabs
-  clearSearch();
+  // Clear search when switching tabs (except settings which doesn't use search)
+  if (tabType !== 'settings') {
+    clearSearch();
+  }
 }
 
 /**
