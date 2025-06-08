@@ -283,6 +283,26 @@ export class PerformanceTracker {
   }
   
   /**
+   * Get metrics for all methods
+   * @returns {Object} Metrics for each method
+   */
+  async getMetrics() {
+    const metrics = {};
+    
+    for (const method of ['rules', 'model', 'llm']) {
+      if (this.predictions[method]) {
+        metrics[method] = {
+          total: this.predictions[method].total,
+          correct: this.predictions[method].correct,
+          accuracy: this.accuracy[method]
+        };
+      }
+    }
+    
+    return metrics;
+  }
+  
+  /**
    * Get detailed statistics for a method
    * @param {string} method - Method name
    * @returns {Object} Detailed statistics

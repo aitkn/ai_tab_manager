@@ -122,6 +122,11 @@ export async function saveModel(modelData) {
  * Load the current model
  */
 export async function loadModel() {
+  // Ensure database is initialized
+  if (!db) {
+    await initMLDatabase();
+  }
+  
   const transaction = db.transaction([STORES.MODELS], 'readonly');
   const store = transaction.objectStore(STORES.MODELS);
   
@@ -136,6 +141,11 @@ export async function loadModel() {
  * Add training data
  */
 export async function addTrainingData(data) {
+  // Ensure database is initialized
+  if (!db) {
+    await initMLDatabase();
+  }
+  
   const transaction = db.transaction([STORES.TRAINING_DATA], 'readwrite');
   const store = transaction.objectStore(STORES.TRAINING_DATA);
   
@@ -165,6 +175,11 @@ export async function addTrainingData(data) {
  * Get training data for model training
  */
 export async function getTrainingData(limit = null) {
+  // Ensure database is initialized
+  if (!db) {
+    await initMLDatabase();
+  }
+  
   const transaction = db.transaction([STORES.TRAINING_DATA], 'readonly');
   const store = transaction.objectStore(STORES.TRAINING_DATA);
   
