@@ -32,7 +32,12 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["tensorflow.min.js"],
+      "resources": [
+        "tensorflow.min.js",
+        "tf-core.min.js",
+        "tf-backend-cpu.min.js", 
+        "tf-layers.min.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ],

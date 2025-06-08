@@ -158,11 +158,11 @@ src/
 - "Restore Default Rules" button to reset to 50+ default rules
 - Clear indication that unmatched tabs go to AI or Useful category
 
-### ML Features CSP Limitation (January 2025)
-- TensorFlow.js cannot run in Chrome extensions due to Content Security Policy restrictions
-- Chrome extensions prohibit `unsafe-eval` which TensorFlow.js requires internally
-- ML features are gracefully disabled with user-friendly error messages
-- Extension falls back to rule-based + LLM categorization when ML is unavailable
+### ML Features CSP-Compliant Implementation (January 2025)
+- Updated to use CSP-compliant TensorFlow.js modules (tf-core, tf-backend-cpu, tf-layers)
+- Following TensorFlow.js Chrome extension tutorial: https://www.tensorflow.org/js/tutorials/deployment/web_ml_in_chrome
+- Uses CPU backend instead of WebGL to avoid CSP eval restrictions
+- Graceful fallback to rule-based + LLM categorization if ML modules fail to load
 - CSP errors are caught and handled to prevent console errors
 
 ### Refindability-Based Categorization (January 2025)

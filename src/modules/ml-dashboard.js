@@ -107,8 +107,8 @@ async function updateMLStatus() {
           <div style="margin-bottom: 4px;">ML features not available</div>
           <div style="font-size: 11px;">
             ${isCSPError 
-              ? 'TensorFlow.js is blocked by Chrome extension security policy. ML features are disabled.' 
-              : 'Machine learning capabilities will be enabled in a future update.'
+              ? 'TensorFlow.js CSP-compliant modules failed to load. ML features are disabled.' 
+              : 'Machine learning capabilities are being loaded. If this persists, ML features may not be available.'
             }
           </div>
         </div>

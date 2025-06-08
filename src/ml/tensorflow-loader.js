@@ -21,35 +21,48 @@ export async function loadTensorFlow() {
   
   loadingPromise = new Promise(async (resolve, reject) => {
     try {
-      console.log('Loading TensorFlow.js from static file...');
+      console.log('Loading CSP-compliant TensorFlow.js modules...');
       
-      // Load TensorFlow.js from the bundled static file
-      const script = document.createElement('script');
-      script.src = chrome.runtime.getURL('tensorflow.min.js');
+      // Load TensorFlow.js modules in the correct order for CSP compliance
+      // Following: https://www.tensorflow.org/js/tutorials/deployment/web_ml_in_chrome
       
-      script.onload = () => {
-        // Give a small delay for tf to initialize
-        setTimeout(() => {
-          tf = window.tf;
-          if (tf) {
-            console.log('TensorFlow.js loaded successfully, version:', tf.version.tfjs);
-            resolve(tf);
-          } else {
-            console.log('TensorFlow.js loaded but tf is not available - likely CSP restrictions');
-            resolve(null);
-          }
-        }, 100);
+      const loadScript = (src) => {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = chrome.runtime.getURL(src);
+          script.onload = () => resolve();
+          script.onerror = (error) => reject(error);
+          document.head.appendChild(script);
+        });
       };
       
-      script.onerror = (error) => {
-        console.log('Failed to load TensorFlow.js (expected in Chrome extensions due to CSP):', error.message || error);
-        resolve(null);
-      };
+      // Load core first
+      await loadScript('tf-core.min.js');
+      console.log('TensorFlow.js core loaded');
       
-      document.head.appendChild(script);
+      // Load CPU backend (CSP compliant)
+      await loadScript('tf-backend-cpu.min.js');
+      console.log('TensorFlow.js CPU backend loaded');
+      
+      // Load layers API
+      await loadScript('tf-layers.min.js');
+      console.log('TensorFlow.js layers loaded');
+      
+      // Give a moment for everything to initialize
+      setTimeout(() => {
+        tf = window.tf;
+        if (tf) {
+          console.log('CSP-compliant TensorFlow.js loaded successfully, version:', tf.version?.tfjs || 'unknown');
+          resolve(tf);
+        } else {
+          console.log('TensorFlow.js modules loaded but tf is not available');
+          resolve(null);
+        }
+      }, 200);
       
     } catch (error) {
-      console.error('Error loading TensorFlow.js:', error);
+      console.log('Error loading CSP-compliant TensorFlow.js modules:', error.message || error);
+      console.log('ML features will not be available');
       resolve(null);
     }
   });
