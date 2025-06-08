@@ -28,12 +28,13 @@ export class CurrentTabsProcessor {
       const savedUrls = await this.database.getSavedUrls([1, 2, 3]); // All categories
       const urlToCategoryMap = new Map();
       
-      // Build lookup map with URL+title as key
+      // Build lookup map with URL as key
       savedUrls.forEach(urlInfo => {
-        const key = `${urlInfo.url}|${urlInfo.title}`;
-        urlToCategoryMap.set(key, {
+        // Use URL only for matching (one entry per URL)
+        urlToCategoryMap.set(urlInfo.url, {
           category: urlInfo.category,
-          urlId: urlInfo.id
+          urlId: urlInfo.id,
+          savedTitle: urlInfo.title // Keep saved title for reference
         });
       });
       
@@ -55,9 +56,8 @@ export class CurrentTabsProcessor {
           continue;
         }
         
-        // Check if saved in database
-        const lookupKey = `${tab.url}|${tab.title}`;
-        const savedInfo = urlToCategoryMap.get(lookupKey);
+        // Check if saved in database (by URL only)
+        const savedInfo = urlToCategoryMap.get(tab.url);
         const category = savedInfo ? savedInfo.category : TAB_CATEGORIES.UNCATEGORIZED;
         
         // Create tab entry
