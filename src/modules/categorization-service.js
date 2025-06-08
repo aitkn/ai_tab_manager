@@ -81,15 +81,16 @@ export async function categorizeTabs() {
     });
     updateState('urlToDuplicateIds', urlToDuplicateIds);
     
-    // Get saved URLs to exclude from LLM (but only if they're already categorized)
-    let savedUrls = [];
+    // Get saved URL+title combinations to exclude from LLM (but only if they're already categorized)
+    let savedUrlTitlePairs = [];
     try {
       const savedTabs = await window.tabDatabase.getAllSavedTabs();
       // Only exclude saved tabs that have been properly categorized (not category 0)
-      savedUrls = savedTabs
+      // Create array of url|title pairs for exact matching
+      savedUrlTitlePairs = savedTabs
         .filter(tab => tab.category !== 0)
-        .map(tab => tab.url);
-      console.log(`Found ${savedUrls.length} categorized saved URLs to exclude from LLM`);
+        .map(tab => `${tab.url}|${tab.title}`);
+      console.log(`Found ${savedUrlTitlePairs.length} categorized saved tabs to exclude from LLM`);
       const uncategorizedSavedCount = savedTabs.filter(tab => tab.category === 0).length;
       if (uncategorizedSavedCount > 0) {
         console.log(`Found ${uncategorizedSavedCount} uncategorized saved tabs that will be re-categorized`);
@@ -113,7 +114,7 @@ export async function categorizeTabs() {
         provider,
         model,
         customPrompt,
-        savedUrls
+        savedUrls: savedUrlTitlePairs
       });
       
       console.log('Tabs categorized successfully');
