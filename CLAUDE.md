@@ -114,14 +114,14 @@ src/
 - **Rule-based categorization**: Applied before LLM categorization
 - Users can opt-out of LLM and use only rule-based categorization
 - Default rules (40) aligned with refindability philosophy in `state-manager.js`
-- **Rule evaluation**: Rules use OR logic - first matching rule wins
-  - Each rule is evaluated independently
-  - A tab only needs to match ONE rule to be categorized
-  - Once a match is found, no further rules are checked
-  - Rules should be self-contained and specific about what they match
-  - Domain rules match ALL pages on that domain - use regex for homepage-only
-  - Example: `^https?://(www\.)?youtube\.com/?$` matches ONLY the homepage
-  - This prevents accidentally ignoring all YouTube videos when you only want to ignore the homepage
+- **Rule evaluation**: Simple and predictable
+  - Each rule has URL and/or Title patterns (both optional)
+  - Checkbox determines if pattern is regex or substring match
+  - First matching rule determines the category
+  - Unmatched tabs go to AI (if enabled) or Useful category
+  - Homepage-only rules use regex: `^https?://(www\.)?youtube\.com/?$`
+  - Content rules use substring: `youtube.com/watch`
+  - 50+ default rules cover common patterns
 
 ### DOM Updates and Transitions
 - **Morphdom Integration**: Uses morphdom library (12KB minified) for smooth DOM updates without flicker
@@ -150,11 +150,13 @@ src/
 ## Recent Major Changes
 
 ### Rule-Based Categorization UI (January 2025)
-- Redesigned rules UI from individual rule items to category-grouped textareas
-- Rules grouped by category (Ignore/Useful/Important) with multiline support
-- Each category shows 4 rule types: domain, url_contains, title_contains, regex
+- Redesigned rules UI with individual rule management
+- Each rule has URL and Title fields with regex checkboxes
+- Rules grouped by category (Ignore/Useful/Important) with proper colors/icons
+- '+' button to add new rules per category, delete button per rule
 - Auto-save with debouncing for better UX
-- "Restore Default Rules" button to reset to 40 default rules
+- "Restore Default Rules" button to reset to 50+ default rules
+- Clear indication that unmatched tabs go to AI or Useful category
 
 ### Refindability-Based Categorization (January 2025)
 - Changed from importance-based to refindability-based categorization
