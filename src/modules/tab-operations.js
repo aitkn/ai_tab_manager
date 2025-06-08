@@ -706,22 +706,37 @@ export async function deleteSavedTab(urlId) {
 /**
  * Delete all tabs in a group (for saved tabs)
  */
-export async function deleteTabsInGroup(groupName) {
+export async function deleteTabsInGroup(tabsOrGroupName, groupDisplayName) {
   try {
-    if (!confirm(`Delete all tabs in "${groupName}"?`)) {
+    // Handle both old (groupName) and new (tabs array) signatures
+    let tabs = [];
+    let groupName = '';
+    
+    if (Array.isArray(tabsOrGroupName)) {
+      // New signature: array of tabs
+      tabs = tabsOrGroupName;
+      groupName = groupDisplayName || 'this group';
+    } else {
+      // Old signature: group name (for backward compatibility)
+      groupName = tabsOrGroupName;
+      // Get tabs by domain for old behavior
+      const savedTabs = await window.tabDatabase.getAllSavedTabs();
+      tabs = savedTabs.filter(tab => getRootDomain(tab.domain) === groupName);
+    }
+    
+    if (!confirm(`Delete all ${tabs.length} tabs in "${groupName}"?`)) {
       return;
     }
     
     showStatus('Deleting tabs...', 'loading');
     
-    const savedTabs = await window.tabDatabase.getAllSavedTabs();
     let deletedCount = 0;
-    
-    for (const tab of savedTabs) {
-      const domain = getRootDomain(tab.domain);
-      if (domain === groupName) {
+    for (const tab of tabs) {
+      try {
         await window.tabDatabase.deleteUrl(tab.id);
         deletedCount++;
+      } catch (error) {
+        console.error('Error deleting tab:', error);
       }
     }
     
