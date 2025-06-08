@@ -110,7 +110,10 @@ class TabDatabase {
         if (request.result) {
           // URL exists, update category if different
           const existing = request.result;
-          if (existing.category !== category && category !== 0) {
+          // Update category if it's different AND either:
+          // 1. New category is not 0 (not uncategorized), OR
+          // 2. Existing category is not 0 and we're trying to set it to 0 (unlikely but allowed)
+          if (existing.category !== category && (category !== 0 || existing.category !== 0)) {
             existing.category = category;
             existing.lastCategorized = new Date().toISOString();
             store.put(existing);
