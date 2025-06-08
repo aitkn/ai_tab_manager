@@ -86,13 +86,9 @@ export function setupEventListeners() {
         const includeCanClose = $id('showAllCheckbox')?.checked || state.popupState.showAllCategories || false;
         await showSavedTabsContent(savedGroupingSelect?.value, includeCanClose);
       } else if (tabName === 'categorize') {
-        // Check if we have categorized tabs to display
-        const { hasCurrentTabs } = await import('./tab-data-source.js');
-        
-        if (await hasCurrentTabs()) {
-          const { displayTabs } = await import('./tab-display.js');
-          displayTabs();
-        }
+        // Always refresh current tabs from background when switching to categorize
+        const { loadCategorizedTabsFromBackground } = await import('./app-initializer.js');
+        await loadCategorizedTabsFromBackground();
       }
     });
   });

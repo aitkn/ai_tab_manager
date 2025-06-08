@@ -132,6 +132,9 @@ export async function initializeApp() {
       targetTab = 'saved';
     }
     
+    // Add no-transition class to prevent animation on initial load
+    document.body.classList.add('no-transition');
+    
     // Switch to the target tab immediately (before loading content)
     console.log('Setting initial tab to:', targetTab);
     switchToTab(targetTab);
@@ -151,11 +154,11 @@ export async function initializeApp() {
         }
       }
     } else if (targetTab === 'categorize') {
-      // Restore UI state for categorize tab
-      await restoreUIState();
-      
-      // Load categorized tabs from background
+      // Load categorized tabs from background FIRST
       await loadCategorizedTabsFromBackground();
+      
+      // Then restore UI state (search, grouping, etc)
+      await restoreUIState();
       
       // Restore scroll position for categorize tab
       if (state.popupState?.scrollPositions?.categorize) {
@@ -165,6 +168,11 @@ export async function initializeApp() {
         }
       }
     }
+    
+    // Remove no-transition class after a brief delay to re-enable animations
+    setTimeout(() => {
+      document.body.classList.remove('no-transition');
+    }, 100);
     
     console.log('Loaded settings:', state.settings);
     
@@ -461,3 +469,6 @@ export default {
   initializeApp,
   setupAutoSave
 };
+
+// Export additional functions
+export { loadCategorizedTabsFromBackground };
