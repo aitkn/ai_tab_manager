@@ -161,6 +161,10 @@ export async function initializeApp() {
           tabsContainer.scrollTop = state.popupState.scrollPositions.categorize;
         }
       }
+      
+      // Always show the unified toolbar on categorize tab, even if no tabs
+      const { showToolbar } = await import('./unified-toolbar.js');
+      showToolbar();
     }
     
     console.log('Loaded settings:', state.settings);
@@ -185,6 +189,13 @@ export async function initializeApp() {
  */
 async function loadCategorizedTabsFromBackground() {
   try {
+    // Ensure tab data source is initialized before fetching tabs
+    if (!window.tabDatabase) {
+      console.warn('Database not ready, waiting...');
+      await waitForDatabase();
+      initializeTabDataSource(window.tabDatabase);
+    }
+    
     const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
     const hasTabs = Object.values(categorizedTabs).some(tabs => tabs.length > 0);
     
@@ -209,9 +220,25 @@ async function loadCategorizedTabsFromBackground() {
         categorizeBtn.disabled = !hasUncategorized;
         categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
       }
+    } else {
+      console.log('No current tabs found on first run');
+      // Still initialize the UI even with no tabs
+      const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
+      if (categorizeBtn) {
+        categorizeBtn.disabled = true;
+        categorizeBtn.title = 'No tabs to categorize';
+      }
     }
   } catch (error) {
     console.error('Error loading categorized tabs from background:', error);
+    // Initialize empty state on error
+    state.categorizedTabs = {
+      0: [], // uncategorized
+      1: [], // can close  
+      2: [], // save later
+      3: []  // important
+    };
+    state.urlToDuplicateIds = {};
   }
 }
 

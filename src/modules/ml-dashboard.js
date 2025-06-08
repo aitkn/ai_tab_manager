@@ -76,55 +76,38 @@ async function updateMLStatus() {
   try {
     console.log('Updating ML status...');
     
-    // First check TensorFlow.js status
-    const { getTensorFlowStatus, isTensorFlowDownloaded } = await import('../ml/tensorflow-downloader.js');
-    const tfStatus = await getTensorFlowStatus();
-    console.log('TensorFlow status:', tfStatus);
-    
     const statusContent = $id('mlStatusContent');
     if (!statusContent) {
       console.error('mlStatusContent element not found');
       return;
     }
     
-    // If TensorFlow.js is not downloaded, show download option
-    if (!tfStatus.downloaded) {
-      console.log('TensorFlow not downloaded, showing download button');
+    // Clear the loading message first
+    statusContent.innerHTML = '<div style="color: var(--md-sys-color-on-surface-variant);">Checking ML status...</div>';
+    
+    // Get ML status
+    let mlCategorizer, status;
+    try {
+      const { getMLCategorizer } = await import('../ml/categorization/ml-categorizer.js');
+      mlCategorizer = await getMLCategorizer();
+      status = await mlCategorizer.getStatus();
+    } catch (mlError) {
+      console.error('Error loading ML module:', mlError);
+      // Show a more user-friendly message if ML modules are not available
       statusContent.innerHTML = `
-        <div style="margin-bottom: 8px; color: var(--md-sys-color-on-surface-variant);">
-          TensorFlow.js needs to be downloaded to enable ML features.
-        </div>
-        <button id="downloadTensorFlowBtn" class="secondary-btn" style="font-size: 12px; padding: 4px 12px;">
-          Download ML Library (~3MB)
-        </button>
-        <div id="downloadProgress" style="margin-top: 8px; display: none;">
-          <span class="text-muted" style="font-size: 11px;">Downloading...</span>
+        <div style="color: var(--md-sys-color-on-surface-variant);">
+          <div style="margin-bottom: 4px;">ML module not available</div>
+          <div style="font-size: 11px;">Machine learning features require additional setup.</div>
         </div>
       `;
-      
-      // Add download button handler after a small delay to ensure DOM is ready
-      setTimeout(() => {
-        const downloadBtn = $id('downloadTensorFlowBtn');
-        if (downloadBtn) {
-          console.log('Adding click handler to download button');
-          downloadBtn.addEventListener('click', handleDownloadTensorFlow);
-        } else {
-          console.error('Download button not found after setting innerHTML');
-        }
-      }, 100);
       return;
     }
-    
-    // TensorFlow.js is downloaded, show ML status
-    const { getMLCategorizer } = await import('../ml/categorization/ml-categorizer.js');
-    const mlCategorizer = await getMLCategorizer();
-    const status = await mlCategorizer.getStatus();
     
     statusContent.innerHTML = `
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
         <span>TensorFlow.js:</span>
         <span style="font-weight: 500; color: var(--md-sys-color-primary)">
-          v${tfStatus.version} (${Math.round(tfStatus.size / 1024 / 1024)}MB)
+          Bundled (v4.17.0)
         </span>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
@@ -232,7 +215,12 @@ async function updateMLStatus() {
     // Show error state
     const statusContent = $id('mlStatusContent');
     if (statusContent) {
-      statusContent.innerHTML = '<div style="color: var(--md-sys-color-error);">Error loading ML status</div>';
+      statusContent.innerHTML = `
+        <div style="color: var(--md-sys-color-on-surface-variant);">
+          <div>ML features unavailable</div>
+          <div style="font-size: 11px; margin-top: 4px;">${error.message || 'Check console for details'}</div>
+        </div>
+      `;
     }
   }
 }

@@ -8,21 +8,19 @@ let isTraining = false;
 let currentJob = null;
 let tf = null;
 
-// Try to load TensorFlow.js from cached download
+// Load TensorFlow.js in Web Worker
 async function loadTensorFlowInWorker() {
   try {
-    // Import the cached content directly (workers can't use DOM)
-    const response = await fetch('/tensorflow-loader-worker.js');
-    if (response.ok) {
-      const script = await response.text();
-      eval(script); // In worker context, eval is safe for our own code
-      tf = self.tf;
-      return true;
-    }
+    // In Web Workers, we can use importScripts with extension URLs
+    const tfUrl = chrome.runtime.getURL('tensorflow.min.js');
+    importScripts(tfUrl);
+    tf = self.tf;
+    console.log('TensorFlow.js loaded in worker');
+    return true;
   } catch (error) {
     console.error('Failed to load TensorFlow.js in worker:', error);
+    return false;
   }
-  return false;
 }
 
 // Message handler

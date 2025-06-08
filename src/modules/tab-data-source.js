@@ -20,9 +20,15 @@ export function initializeTabDataSource(database) {
  */
 export async function getCurrentTabs() {
   if (!tabsProcessor) {
-    console.error('Tab data source not initialized');
+    console.error('Tab data source not initialized, returning empty state');
+    // Return properly structured empty state
     return {
-      categorizedTabs: {},
+      categorizedTabs: {
+        0: [], // uncategorized
+        1: [], // can close
+        2: [], // save later  
+        3: []  // important
+      },
       urlToDuplicateIds: {}
     };
   }
@@ -31,8 +37,14 @@ export async function getCurrentTabs() {
     return await tabsProcessor.getCurrentTabsWithCategories();
   } catch (error) {
     console.error('Error fetching current tabs:', error);
+    // Return properly structured empty state
     return {
-      categorizedTabs: {},
+      categorizedTabs: {
+        0: [], // uncategorized
+        1: [], // can close
+        2: [], // save later
+        3: []  // important
+      },
       urlToDuplicateIds: {}
     };
   }
