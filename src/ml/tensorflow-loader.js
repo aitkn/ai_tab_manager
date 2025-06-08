@@ -28,18 +28,21 @@ export async function loadTensorFlow() {
       script.src = chrome.runtime.getURL('tensorflow.min.js');
       
       script.onload = () => {
-        tf = window.tf;
-        if (tf) {
-          console.log('TensorFlow.js loaded successfully, version:', tf.version.tfjs);
-          resolve(tf);
-        } else {
-          console.error('TensorFlow.js loaded but tf is not available');
-          resolve(null);
-        }
+        // Give a small delay for tf to initialize
+        setTimeout(() => {
+          tf = window.tf;
+          if (tf) {
+            console.log('TensorFlow.js loaded successfully, version:', tf.version.tfjs);
+            resolve(tf);
+          } else {
+            console.log('TensorFlow.js loaded but tf is not available - likely CSP restrictions');
+            resolve(null);
+          }
+        }, 100);
       };
       
       script.onerror = (error) => {
-        console.error('Failed to load TensorFlow.js:', error);
+        console.log('Failed to load TensorFlow.js (expected in Chrome extensions due to CSP):', error.message || error);
         resolve(null);
       };
       

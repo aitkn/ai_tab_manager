@@ -99,12 +99,18 @@ async function updateMLStatus() {
       mlCategorizer = await getMLCategorizer();
       status = await mlCategorizer.getStatus();
     } catch (mlError) {
-      console.error('Error loading ML module:', mlError);
+      console.log('ML module not available:', mlError.message);
       // Show a more user-friendly message if ML modules are not available
+      const isCSPError = mlError.message && mlError.message.includes('unsafe-eval');
       statusContent.innerHTML = `
         <div style="color: var(--md-sys-color-on-surface-variant);">
           <div style="margin-bottom: 4px;">ML features not available</div>
-          <div style="font-size: 11px;">Machine learning capabilities will be enabled in a future update.</div>
+          <div style="font-size: 11px;">
+            ${isCSPError 
+              ? 'TensorFlow.js is blocked by Chrome extension security policy. ML features are disabled.' 
+              : 'Machine learning capabilities will be enabled in a future update.'
+            }
+          </div>
         </div>
       `;
       return;

@@ -158,6 +158,13 @@ src/
 - "Restore Default Rules" button to reset to 50+ default rules
 - Clear indication that unmatched tabs go to AI or Useful category
 
+### ML Features CSP Limitation (January 2025)
+- TensorFlow.js cannot run in Chrome extensions due to Content Security Policy restrictions
+- Chrome extensions prohibit `unsafe-eval` which TensorFlow.js requires internally
+- ML features are gracefully disabled with user-friendly error messages
+- Extension falls back to rule-based + LLM categorization when ML is unavailable
+- CSP errors are caught and handled to prevent console errors
+
 ### Refindability-Based Categorization (January 2025)
 - Changed from importance-based to refindability-based categorization
 - Three categories based on time to refind: <10s, 10s-2min, >2min

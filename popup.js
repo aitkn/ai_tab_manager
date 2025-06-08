@@ -162,6 +162,25 @@ console.log('=== POPUP LIFECYCLE: Script loaded ===');
 console.log('Document readyState:', document.readyState);
 console.log('Timestamp:', new Date().toISOString());
 
+// Handle CSP eval errors from TensorFlow.js gracefully
+window.addEventListener('error', (event) => {
+  if (event.error && event.error.message && event.error.message.includes('unsafe-eval')) {
+    console.log('=== CSP ERROR: TensorFlow.js eval blocked (expected in Chrome extensions) ===');
+    console.log('ML features will be disabled due to Chrome extension CSP restrictions');
+    event.preventDefault(); // Prevent the error from being thrown
+    return false;
+  }
+});
+
+// Handle unhandled promise rejections that might be CSP related
+window.addEventListener('unhandledrejection', (event) => {
+  if (event.reason && event.reason.message && event.reason.message.includes('unsafe-eval')) {
+    console.log('=== CSP PROMISE REJECTION: TensorFlow.js eval blocked (expected) ===');
+    event.preventDefault();
+    return false;
+  }
+});
+
 // Log when popup becomes visible/hidden
 document.addEventListener('visibilitychange', () => {
   console.log('=== POPUP LIFECYCLE: Visibility changed ===');
