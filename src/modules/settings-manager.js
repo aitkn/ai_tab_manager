@@ -105,10 +105,20 @@ export async function initializeSettingsUI() {
     await initializeMLDashboard();
   } catch (error) {
     console.log('ML dashboard not available:', error);
-    // Clear loading message even if ML module fails
+    // Clear all ML loading messages even if ML module fails
     const statusContent = $id('mlStatusContent');
     if (statusContent) {
       statusContent.innerHTML = '<div style="color: var(--md-sys-color-on-surface-variant);">ML features not available</div>';
+    }
+    
+    const trustContent = $id('mlTrustContent');
+    if (trustContent) {
+      trustContent.innerHTML = '<div style="color: var(--md-sys-color-on-surface-variant);">ML features not available</div>';
+    }
+    
+    const performanceContent = $id('mlPerformanceContent');
+    if (performanceContent) {
+      performanceContent.innerHTML = '<div style="color: var(--md-sys-color-on-surface-variant);">ML features not available</div>';
     }
   }
   

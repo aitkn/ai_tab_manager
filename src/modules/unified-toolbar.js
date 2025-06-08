@@ -157,11 +157,22 @@ export async function updateToolbarVisibility(tabType) {
     showToolbar();
     
   } else if (tabType === 'settings') {
-    // Hide toolbar for settings tab
+    // Hide toolbar and all controls for settings tab
     hideToolbar();
-    // Also hide both control sections to be safe
     hide(currentTabControls);
     hide(savedTabControls);
+    
+    // Also hide the close all button
+    const closeAllBtn = $id(DOM_IDS.CLOSE_ALL_BTN2);
+    if (closeAllBtn) {
+      hide(closeAllBtn);
+    }
+    
+    // Hide grouping controls
+    const groupingGroup = document.querySelector('.grouping-group');
+    if (groupingGroup) {
+      hide(groupingGroup);
+    }
   } else {
     // For any other tab type, hide the toolbar
     hideToolbar();

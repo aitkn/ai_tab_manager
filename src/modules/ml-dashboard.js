@@ -82,8 +82,11 @@ async function updateMLStatus() {
       return;
     }
     
-    // Clear the loading message first
-    statusContent.innerHTML = '<div style="color: var(--md-sys-color-on-surface-variant);">Checking ML status...</div>';
+    // Clear the loading message immediately
+    const loadingDiv = statusContent.querySelector('.ml-status-loading');
+    if (loadingDiv) {
+      loadingDiv.remove();
+    }
     
     // Get ML status
     let mlCategorizer, status;

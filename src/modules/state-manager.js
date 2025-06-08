@@ -160,18 +160,35 @@ export async function loadSavedState() {
       console.warn('CONFIG not available when loading settings');
     }
     
-    // Apply default rules if not already applied
-    if (!state.settings.defaultRulesApplied) {
+    // Apply default rules if not already applied or if rules array is empty
+    if (!state.settings.defaultRulesApplied || !state.settings.rules || state.settings.rules.length === 0) {
+      console.log('Initializing default rules. Current state:', {
+        defaultRulesApplied: state.settings.defaultRulesApplied,
+        rulesExists: !!state.settings.rules,
+        rulesLength: state.settings.rules?.length || 0
+      });
+      
       const defaultRules = getDefaultRules();
+      console.log('Default rules to apply:', defaultRules.length);
+      
       // Ensure rules array exists
       if (!state.settings.rules) {
         state.settings.rules = [];
       }
-      // Add default rules at the beginning
-      state.settings.rules = [...defaultRules, ...state.settings.rules];
+      
+      // Only add rules that don't already exist (check by id)
+      const existingIds = new Set(state.settings.rules.map(r => r.id));
+      const newRules = defaultRules.filter(rule => !existingIds.has(rule.id));
+      
+      if (newRules.length > 0) {
+        // Add new default rules at the beginning
+        state.settings.rules = [...newRules, ...state.settings.rules];
+        console.log('Added', newRules.length, 'new default rules');
+      }
+      
       state.settings.defaultRulesApplied = true;
       await StorageService.saveSettings(state.settings);
-      console.log('Applied default rules:', defaultRules.length);
+      console.log('Default rules initialization complete. Total rules:', state.settings.rules.length);
     }
     
     return true;

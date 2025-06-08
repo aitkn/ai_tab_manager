@@ -189,14 +189,19 @@ export async function initializeApp() {
  */
 async function loadCategorizedTabsFromBackground() {
   try {
-    // Ensure tab data source is initialized before fetching tabs
+    // Ensure database is ready first
     if (!window.tabDatabase) {
       console.warn('Database not ready, waiting...');
       await waitForDatabase();
+      
+      // Initialize database after waiting
+      await window.tabDatabase.init();
+      console.log('Database re-initialized after wait');
     }
     
     // Always re-initialize tab data source to ensure it's ready
     initializeTabDataSource(window.tabDatabase);
+    console.log('Tab data source re-initialized');
     
     const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
     const hasTabs = Object.values(categorizedTabs).some(tabs => tabs.length > 0);
@@ -225,11 +230,18 @@ async function loadCategorizedTabsFromBackground() {
     } else {
       console.log('No current tabs found on first run');
       // Still initialize the UI even with no tabs
+      show($id(DOM_IDS.TABS_CONTAINER));
+      displayTabs(); // This will show empty state
+      
       const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
       if (categorizeBtn) {
         categorizeBtn.disabled = true;
         categorizeBtn.title = 'No tabs to categorize';
       }
+      
+      // Show unified toolbar even with no tabs
+      const { showToolbar } = await import('./unified-toolbar.js');
+      showToolbar();
     }
   } catch (error) {
     console.error('Error loading categorized tabs from background:', error);
