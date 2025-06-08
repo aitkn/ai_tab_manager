@@ -257,6 +257,12 @@ async function onUseLLMChange(e) {
   
   await StorageService.saveSettings(state.settings);
   
+  // Show/hide LLM settings container
+  const llmSettingsContainer = $id('llmSettingsContainer');
+  if (llmSettingsContainer) {
+    llmSettingsContainer.style.display = e.target.checked ? 'block' : 'none';
+  }
+  
   if (!e.target.checked) {
     showStatus('AI categorization disabled. Only rule-based categorization will be used.', 'info', 3000);
   } else {

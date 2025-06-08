@@ -75,6 +75,12 @@ export async function initializeSettingsUI() {
   const useLLMCheckbox = $id('useLLMCheckbox');
   if (useLLMCheckbox) {
     useLLMCheckbox.checked = state.settings.useLLM !== false; // Default to true
+    
+    // Show/hide LLM settings container based on checkbox state
+    const llmSettingsContainer = $id('llmSettingsContainer');
+    if (llmSettingsContainer) {
+      llmSettingsContainer.style.display = useLLMCheckbox.checked ? 'block' : 'none';
+    }
   }
   
   // Update prompt status

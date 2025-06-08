@@ -248,50 +248,187 @@ function getDefaultRules() {
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
+    {
+      id: 'default-6',
+      type: 'domain',
+      value: 'twitter.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-7',
+      type: 'domain',
+      value: 'x.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-8',
+      type: 'domain',
+      value: 'linkedin.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-9',
+      type: 'urlContains',
+      value: 'netflix.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-10',
+      type: 'urlContains',
+      value: 'twitch.tv',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    
+    // News sites - Can Close
+    {
+      id: 'default-11',
+      type: 'domain',
+      value: 'news.ycombinator.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-12',
+      type: 'urlContains',
+      value: 'medium.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
     
     // Development and work-related sites - Important
     {
-      id: 'default-6',
+      id: 'default-13',
       type: 'domain',
       value: 'github.com',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
     {
-      id: 'default-7',
+      id: 'default-14',
+      type: 'domain',
+      value: 'gitlab.com',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-15',
       type: 'domain',
       value: 'stackoverflow.com',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
     {
-      id: 'default-8',
+      id: 'default-16',
       type: 'urlContains',
       value: '/pull/',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
     {
-      id: 'default-9',
+      id: 'default-17',
       type: 'urlContains',
       value: '/issues/',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
-    
-    // Documentation - Save for Later
     {
-      id: 'default-10',
+      id: 'default-18',
+      type: 'urlContains',
+      value: 'localhost',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-19',
+      type: 'urlContains',
+      value: '127.0.0.1',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-20',
+      type: 'domain',
+      value: 'claude.ai',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-21',
+      type: 'domain',
+      value: 'chatgpt.com',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    
+    // Documentation and Reference - Save for Later
+    {
+      id: 'default-22',
       type: 'urlContains',
       value: '/docs/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
-      id: 'default-11',
+      id: 'default-23',
       type: 'domain',
       value: 'developer.mozilla.org',
       category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-24',
+      type: 'domain',
+      value: 'w3schools.com',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-25',
+      type: 'urlContains',
+      value: 'wikipedia.org',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-26',
+      type: 'urlContains',
+      value: '/documentation/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-27',
+      type: 'urlContains',
+      value: '/tutorial/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-28',
+      type: 'urlContains',
+      value: '/guide/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    
+    // Shopping sites - Can Close
+    {
+      id: 'default-29',
+      type: 'domain',
+      value: 'amazon.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-30',
+      type: 'domain',
+      value: 'ebay.com',
+      category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     }
   ];

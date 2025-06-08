@@ -225,37 +225,62 @@
             </div>
           </div>
           
-          <div class="setting-group">
-            <label for="providerSelect">LLM Provider:</label>
-            <select id="providerSelect" class="setting-select">
-              <option value="Claude">Claude</option>
-              <option value="OpenAI">OpenAI</option>
-              <option value="Gemini">Gemini</option>
-              <option value="DeepSeek">DeepSeek</option>
-              <option value="Grok">Grok</option>
-            </select>
-          </div>
-          
-          <div class="setting-group">
-            <label for="apiKeyInput">
-              API Key:
-              <a id="apiKeyLink" href="#" target="_blank" class="api-key-link" title="Get API key">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </a>
-            </label>
-            <input type="password" id="apiKeyInput" class="setting-input" placeholder="Enter API key">
-            <button id="saveApiKeyBtn" class="secondary-btn">Save Key</button>
-          </div>
-          
-          <div class="setting-group">
-            <label for="modelSelect">Model:</label>
-            <select id="modelSelect" class="setting-select">
-              <!-- Models will be populated dynamically -->
-            </select>
+          <div class="setting-group" style="border: 1px solid var(--md-sys-color-outline-variant); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">AI-Powered Categorization</h3>
+            
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+              <input type="checkbox" id="useLLMCheckbox" checked>
+              <label for="useLLMCheckbox" style="margin: 0; cursor: pointer;">
+                Enable AI categorization
+                <span class="text-muted" style="font-size: 11px; display: block; margin-top: 4px;">
+                  When disabled, only rule-based categorization will be used
+                </span>
+              </label>
+            </div>
+            
+            <div id="llmSettingsContainer">
+              <div style="margin-bottom: 12px;">
+                <label for="providerSelect">LLM Provider:</label>
+                <select id="providerSelect" class="setting-select">
+                  <option value="Claude">Claude</option>
+                  <option value="OpenAI">OpenAI</option>
+                  <option value="Gemini">Gemini</option>
+                  <option value="DeepSeek">DeepSeek</option>
+                  <option value="Grok">Grok</option>
+                </select>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <label for="apiKeyInput">
+                  API Key:
+                  <a id="apiKeyLink" href="#" target="_blank" class="api-key-link" title="Get API key">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                  </a>
+                </label>
+                <input type="password" id="apiKeyInput" class="setting-input" placeholder="Enter API key">
+                <button id="saveApiKeyBtn" class="secondary-btn">Save Key</button>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <label for="modelSelect">Model:</label>
+                <select id="modelSelect" class="setting-select">
+                  <!-- Models will be populated dynamically -->
+                </select>
+              </div>
+              
+              <div>
+                <label for="promptTextarea">
+                  Custom Prompt:
+                  <span id="promptStatus" class="text-muted" style="font-size: 11px; margin-left: 8px;"></span>
+                </label>
+                <textarea id="promptTextarea" class="setting-textarea" rows="10" placeholder="Leave empty to use default prompt"></textarea>
+                <button id="resetPromptBtn" class="secondary-btn">Reset to Default</button>
+              </div>
+            </div>
           </div>
           
           <div class="setting-group">
@@ -267,27 +292,6 @@
             <span class="text-muted" style="font-size: 11px; display: block; margin-top: 4px;">
               Default: 50 tabs. Set higher at your own risk.
             </span>
-          </div>
-          
-          <div class="setting-group">
-            <label for="promptTextarea">
-              Custom Prompt:
-              <span id="promptStatus" class="text-muted" style="font-size: 11px; margin-left: 8px;"></span>
-            </label>
-            <textarea id="promptTextarea" class="setting-textarea" rows="10" placeholder="Leave empty to use default prompt"></textarea>
-            <button id="resetPromptBtn" class="secondary-btn">Reset to Default</button>
-          </div>
-          
-          <div class="setting-group">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-              <input type="checkbox" id="useLLMCheckbox" checked>
-              <label for="useLLMCheckbox" style="margin: 0; cursor: pointer;">
-                Use AI-powered categorization
-                <span class="text-muted" style="font-size: 11px; display: block; margin-top: 4px;">
-                  When disabled, only rule-based categorization will be used
-                </span>
-              </label>
-            </div>
           </div>
           
           <div class="setting-group">
