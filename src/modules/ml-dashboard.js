@@ -147,7 +147,6 @@ async function updateMLStatus() {
         </div>
       ` : ''}
     `;
-  }
     
     // Update trust weights
     const trustContent = $id('mlTrustContent');
