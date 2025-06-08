@@ -1776,6 +1776,24 @@ button svg {
   font-size: var(--md-sys-typescale-title-small);
 }
 
+.api-key-link {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+  transition: opacity 200ms ease;
+}
+
+.api-key-link:hover {
+  opacity: 0.8;
+}
+
+.api-key-link svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Save API Key button spacing */
 #saveApiKeyBtn {
   margin-top: var(--md-spacing-2);

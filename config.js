@@ -13,6 +13,7 @@ const CONFIG = {
       apiUrl: 'https://api.anthropic.com/v1/messages',
       modelsUrl: 'https://api.anthropic.com/v1/models',
       apiKeyPlaceholder: 'sk-ant-api03-...',
+      apiKeyUrl: 'https://console.anthropic.com/settings/keys',
       headers: {
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
@@ -24,6 +25,7 @@ const CONFIG = {
       apiUrl: 'https://api.openai.com/v1/chat/completions',
       modelsUrl: 'https://api.openai.com/v1/models',
       apiKeyPlaceholder: 'sk-...',
+      apiKeyUrl: 'https://platform.openai.com/api-keys',
       headers: {},
       models: [] // Will be fetched dynamically
     },
@@ -32,6 +34,7 @@ const CONFIG = {
       apiUrl: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
       modelsUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
       apiKeyPlaceholder: 'AIza...',
+      apiKeyUrl: 'https://aistudio.google.com/app/apikey',
       headers: {},
       models: [] // Will be fetched dynamically
     },
@@ -40,6 +43,7 @@ const CONFIG = {
       apiUrl: 'https://api.deepseek.com/v1/chat/completions',
       modelsUrl: 'https://api.deepseek.com/v1/models',
       apiKeyPlaceholder: 'sk-...',
+      apiKeyUrl: 'https://platform.deepseek.com/api_keys',
       headers: {},
       models: [] // Will be fetched dynamically
     },
@@ -48,6 +52,7 @@ const CONFIG = {
       apiUrl: 'https://api.x.ai/v1/chat/completions',
       modelsUrl: 'https://api.x.ai/v1/models',
       apiKeyPlaceholder: 'xai-...',
+      apiKeyUrl: 'https://console.x.ai/team',
       headers: {},
       models: [] // Will be fetched dynamically
     }

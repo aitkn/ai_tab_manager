@@ -48,6 +48,13 @@ export async function initializeSettingsUI() {
     console.error('API key input not found');
   }
   
+  // Set API key link
+  const apiKeyLink = $id('apiKeyLink');
+  if (apiKeyLink && CONFIG?.PROVIDERS?.[state.settings.provider]?.apiKeyUrl) {
+    apiKeyLink.href = CONFIG.PROVIDERS[state.settings.provider].apiKeyUrl;
+    apiKeyLink.title = `Get ${state.settings.provider} API key`;
+  }
+  
   // Set custom prompt
   const promptTextarea = $id(DOM_IDS.PROMPT_TEXTAREA);
   if (promptTextarea) {
@@ -202,6 +209,13 @@ export async function onProviderChange(e) {
   if (apiKeyInput) {
     apiKeyInput.value = state.settings.apiKeys[state.settings.provider] || '';
     apiKeyInput.placeholder = CONFIG.PROVIDERS[state.settings.provider].apiKeyPlaceholder;
+  }
+  
+  // Update API key link
+  const apiKeyLink = $id('apiKeyLink');
+  if (apiKeyLink && CONFIG?.PROVIDERS?.[state.settings.provider]?.apiKeyUrl) {
+    apiKeyLink.href = CONFIG.PROVIDERS[state.settings.provider].apiKeyUrl;
+    apiKeyLink.title = `Get ${state.settings.provider} API key`;
   }
   
   await StorageService.saveSettings(state.settings);

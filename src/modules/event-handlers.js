@@ -128,6 +128,13 @@ async function onProviderChange() {
     $id(DOM_IDS.API_KEY_INPUT).value = '';
   }
   
+  // Update API key link
+  const apiKeyLink = $id('apiKeyLink');
+  if (apiKeyLink && CONFIG?.PROVIDERS?.[provider]?.apiKeyUrl) {
+    apiKeyLink.href = CONFIG.PROVIDERS[provider].apiKeyUrl;
+    apiKeyLink.title = `Get ${provider} API key`;
+  }
+  
   // Update model dropdown
   await updateModelDropdown();
   
