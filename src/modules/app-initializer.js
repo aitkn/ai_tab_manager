@@ -6,7 +6,7 @@
 import { DOM_IDS, CSS_CLASSES, EVENTS, TAB_TYPES, TAB_CATEGORIES, CATEGORY_NAMES } from '../utils/constants.js';
 import { $id, show, hide, on } from '../utils/dom-helpers.js';
 import { initializeTheme, switchToTab, showStatus, updateCategorizeBadge, showApiKeyPrompt } from './ui-manager.js';
-import { state, loadSavedState, setInitializationComplete, restoreScrollPosition, savePopupState } from './state-manager.js';
+import { state, loadSavedState, setInitializationComplete, restoreScrollPosition, savePopupState, updateState } from './state-manager.js';
 import { setupEventListeners } from './event-handlers.js';
 import { displayTabs } from './tab-display.js';
 import { applySearchFilter } from './search-filter.js';
