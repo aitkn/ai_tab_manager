@@ -65,10 +65,12 @@ setupAutoSave();
 
 // Pre-initialize state synchronously before DOM is ready
 async function preInitialize() {
+  console.log('Starting pre-initialization...');
   try {
     // Load saved state from storage synchronously
     const savedPopupState = await StorageService.loadPopupState();
     const savedSettings = await StorageService.loadSettings();
+    console.log('Loaded saved state:', { savedPopupState, savedSettings });
     
     // Apply saved state
     if (savedPopupState) {
@@ -93,7 +95,7 @@ async function preInitialize() {
     }
     
     // Set initial DOM state before it's visible
-    document.addEventListener('DOMContentLoaded', () => {
+    const initializeDom = () => {
       // Set the correct active classes immediately
       document.querySelectorAll('.tab-btn').forEach(btn => {
         if (btn.dataset.tab === targetTab) {
@@ -112,11 +114,23 @@ async function preInitialize() {
       
       // Now initialize the app
       initializeApp();
-    });
+    };
+    
+    // Check if DOM is already loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeDom);
+    } else {
+      // DOM is already loaded, initialize immediately
+      initializeDom();
+    }
   } catch (error) {
     console.error('Pre-initialization error:', error);
     // Fall back to normal initialization
-    document.addEventListener('DOMContentLoaded', initializeApp);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+      initializeApp();
+    }
   }
 }
 
