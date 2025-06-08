@@ -2080,6 +2080,12 @@ button svg {
   margin: 0;
   cursor: pointer;
   accent-color: var(--md-sys-color-primary);
+  position: relative;
+}
+
+.rule-regex-checkbox:hover {
+  transform: scale(1.1);
+  transition: transform 150ms ease;
 }
 
 /* Delete rule button */

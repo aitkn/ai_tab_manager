@@ -437,7 +437,7 @@ function addRuleToUI(category, rule = null) {
     <td>
       <input type="checkbox" class="rule-regex-checkbox rule-url-regex" 
              ${urlIsRegex ? 'checked' : ''} 
-             title="Use regex">
+             title="Check to use regular expression matching">
     </td>
     <td>
       <input type="text" class="rule-input rule-title-input" 
@@ -447,7 +447,7 @@ function addRuleToUI(category, rule = null) {
     <td>
       <input type="checkbox" class="rule-regex-checkbox rule-title-regex" 
              ${titleIsRegex ? 'checked' : ''} 
-             title="Use regex">
+             title="Check to use regular expression matching">
     </td>
     <td>
       <button class="delete-rule-btn" title="Delete rule">
