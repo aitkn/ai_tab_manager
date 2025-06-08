@@ -210,41 +210,41 @@ export function restoreScrollPosition(containerId, scrollTop, retryCount = 0) {
  * Get default categorization rules
  * @returns {Array} Default rules
  */
-function getDefaultRules() {
+export function getDefaultRules() {
   return [
-    // Common social media and entertainment sites - Can Close
+    // Category 1: Easy to Refind (< 10 seconds) - Well-known sites, homepages
     {
       id: 'default-1',
       type: 'domain',
-      value: 'youtube.com',
+      value: 'google.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-2',
       type: 'domain',
-      value: 'facebook.com',
+      value: 'youtube.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-3',
       type: 'domain',
-      value: 'instagram.com',
+      value: 'gmail.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-4',
       type: 'domain',
-      value: 'reddit.com',
+      value: 'amazon.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-5',
       type: 'domain',
-      value: 'tiktok.com',
+      value: 'facebook.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
@@ -265,170 +265,236 @@ function getDefaultRules() {
     {
       id: 'default-8',
       type: 'domain',
-      value: 'linkedin.com',
+      value: 'instagram.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-9',
-      type: 'urlContains',
-      value: 'netflix.com',
+      type: 'domain',
+      value: 'linkedin.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-10',
-      type: 'urlContains',
-      value: 'twitch.tv',
+      type: 'domain',
+      value: 'reddit.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
-    
-    // News sites - Can Close
     {
       id: 'default-11',
       type: 'domain',
-      value: 'news.ycombinator.com',
+      value: 'netflix.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-12',
       type: 'urlContains',
-      value: 'medium.com',
+      value: '/login',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
-    
-    // Development and work-related sites - Important
     {
       id: 'default-13',
-      type: 'domain',
-      value: 'github.com',
-      category: TAB_CATEGORIES.IMPORTANT,
+      type: 'urlContains',
+      value: '/signin',
+      category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-14',
-      type: 'domain',
-      value: 'gitlab.com',
-      category: TAB_CATEGORIES.IMPORTANT,
+      type: 'urlContains',
+      value: '/auth',
+      category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-15',
-      type: 'domain',
-      value: 'stackoverflow.com',
-      category: TAB_CATEGORIES.IMPORTANT,
+      type: 'titleContains',
+      value: 'New Tab',
+      category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-16',
-      type: 'urlContains',
-      value: '/pull/',
-      category: TAB_CATEGORIES.IMPORTANT,
+      type: 'titleContains',
+      value: 'Google Search',
+      category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
+    
+    // Category 2: Moderate Effort (10s-2min) - Searchable content, less common sites
     {
       id: 'default-17',
       type: 'urlContains',
-      value: '/issues/',
-      category: TAB_CATEGORIES.IMPORTANT,
+      value: '.ai/',
+      category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-18',
       type: 'urlContains',
-      value: 'localhost',
-      category: TAB_CATEGORIES.IMPORTANT,
+      value: '.dev/',
+      category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-19',
       type: 'urlContains',
-      value: '127.0.0.1',
-      category: TAB_CATEGORIES.IMPORTANT,
+      value: '.io/',
+      category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-20',
-      type: 'domain',
-      value: 'claude.ai',
-      category: TAB_CATEGORIES.IMPORTANT,
+      type: 'urlContains',
+      value: 'github.com/',
+      category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-21',
-      type: 'domain',
-      value: 'chatgpt.com',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    
-    // Documentation and Reference - Save for Later
-    {
-      id: 'default-22',
       type: 'urlContains',
       value: '/docs/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
-      id: 'default-23',
-      type: 'domain',
-      value: 'developer.mozilla.org',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-24',
-      type: 'domain',
-      value: 'w3schools.com',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-25',
-      type: 'urlContains',
-      value: 'wikipedia.org',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-26',
+      id: 'default-22',
       type: 'urlContains',
       value: '/documentation/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
-      id: 'default-27',
+      id: 'default-23',
       type: 'urlContains',
-      value: '/tutorial/',
+      value: '/article/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
-      id: 'default-28',
+      id: 'default-24',
       type: 'urlContains',
-      value: '/guide/',
+      value: '/blog/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-25',
+      type: 'urlContains',
+      value: '/product/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-26',
+      type: 'domain',
+      value: 'stackoverflow.com',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-27',
+      type: 'domain',
+      value: 'medium.com',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     
-    // Shopping sites - Can Close
+    // Category 3: Hard to Refind (> 2min) - Unique IDs, sessions, deep links
+    {
+      id: 'default-28',
+      type: 'urlContains',
+      value: '/chat/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
     {
       id: 'default-29',
-      type: 'domain',
-      value: 'amazon.com',
-      category: TAB_CATEGORIES.CAN_CLOSE,
+      type: 'urlContains',
+      value: 'session=',
+      category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
     {
       id: 'default-30',
-      type: 'domain',
-      value: 'ebay.com',
-      category: TAB_CATEGORIES.CAN_CLOSE,
+      type: 'urlContains',
+      value: 'token=',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-31',
+      type: 'regex',
+      value: '/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-32',
+      type: 'urlContains',
+      value: 'claude.ai/chat',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-33',
+      type: 'urlContains',
+      value: 'chatgpt.com/c/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-34',
+      type: 'urlContains',
+      value: '/status/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-35',
+      type: 'urlContains',
+      value: '/order/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-36',
+      type: 'urlContains',
+      value: '/transaction/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-37',
+      type: 'urlContains',
+      value: 'localhost',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-38',
+      type: 'urlContains',
+      value: '127.0.0.1',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-39',
+      type: 'titleContains',
+      value: 'Unsaved',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-40',
+      type: 'titleContains',
+      value: 'Draft',
+      category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     }
   ];
@@ -505,5 +571,6 @@ export default {
   getState,
   isViewingSavedTabs,
   setViewingSavedTabs,
-  debouncedSaveState
+  debouncedSaveState,
+  getDefaultRules
 };
