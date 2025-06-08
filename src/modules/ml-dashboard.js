@@ -108,9 +108,9 @@ async function updateMLStatus() {
     
     statusContent.innerHTML = `
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span>TensorFlow.js:</span>
-        <span style="font-weight: 500; color: var(--md-sys-color-primary)">
-          Bundled (v4.17.0)
+        <span>Status:</span>
+        <span style="font-weight: 500; color: var(--md-sys-color-on-surface-variant)">
+          Experimental (TensorFlow.js bundled)
         </span>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
