@@ -1981,79 +1981,105 @@ button svg {
   height: 16px;
 }
 
-/* Rules list */
-.rules-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rules-list:empty::after {
-  content: 'No rules defined. Click + to add a rule.';
-  display: block;
-  text-align: center;
-  padding: 20px;
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: 13px;
-  font-style: italic;
-}
-
-/* Individual rule item */
-.rule-list-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  background-color: var(--md-sys-color-surface);
+/* Rules table wrapper */
+.rules-table-wrapper {
+  overflow-x: auto;
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 8px;
+  background-color: var(--md-sys-color-surface);
+  margin-top: 8px;
 }
 
-.rule-list-item:hover {
+/* Rules table */
+.rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.rules-table thead {
   background-color: var(--md-sys-color-surface-container-high);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
 }
 
-/* Rule fields container */
-.rule-fields {
-  flex: 1;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.rule-field {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.rule-field label {
-  font-size: 11px;
+.rules-table th {
+  padding: 8px;
+  text-align: left;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
-  min-width: 35px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.rule-field input[type="text"] {
-  flex: 1;
+.rules-table th:nth-child(2),
+.rules-table th:nth-child(4) {
+  text-align: center;
+  width: 60px;
+}
+
+.rules-table th:last-child {
+  width: 40px;
+  text-align: center;
+}
+
+.rules-table tbody tr {
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  transition: background-color 200ms ease;
+}
+
+.rules-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.rules-table tbody tr:hover {
+  background-color: var(--md-sys-color-surface-container-low);
+}
+
+.rules-table td {
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+
+.rules-table td:nth-child(2),
+.rules-table td:nth-child(4) {
+  text-align: center;
+}
+
+.rules-table td:last-child {
+  text-align: center;
+}
+
+/* Rule input fields */
+.rule-input {
+  width: 100%;
   padding: 4px 8px;
   border: 1px solid var(--md-sys-color-outline);
   border-radius: 4px;
   font-size: 13px;
   background-color: var(--md-sys-color-surface);
   color: var(--md-sys-color-on-surface);
+  font-family: inherit;
 }
 
-.rule-field input[type="text"]:focus {
+.rule-input:focus {
   outline: none;
   border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 1px var(--md-sys-color-primary);
 }
 
-.rule-field input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
+.rule-input::placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.6;
+}
+
+/* Regex checkbox */
+.rule-regex-checkbox {
+  width: 16px;
+  height: 16px;
   margin: 0;
   cursor: pointer;
+  accent-color: var(--md-sys-color-primary);
 }
 
 /* Delete rule button */
@@ -2067,7 +2093,7 @@ button svg {
   color: var(--md-sys-color-error);
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 }
@@ -2080,6 +2106,15 @@ button svg {
 .delete-rule-btn svg {
   width: 16px;
   height: 16px;
+}
+
+/* Empty state */
+.rules-empty-state {
+  padding: 24px;
+  text-align: center;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 13px;
+  font-style: italic;
 }
 
 

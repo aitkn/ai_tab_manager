@@ -366,6 +366,7 @@ export function initializeRulesUI() {
   // Clear existing rules
   rulesContainer.querySelectorAll('.rules-list').forEach(list => {
     list.innerHTML = '';
+    updateEmptyState(list);
   });
   
   // Add existing rules
@@ -386,18 +387,34 @@ export function initializeRulesUI() {
   });
 }
 
+/**
+ * Update empty state visibility
+ */
+function updateEmptyState(tbody) {
+  const wrapper = tbody.closest('.rules-table-wrapper');
+  const table = wrapper.querySelector('.rules-table');
+  const emptyState = wrapper.querySelector('.rules-empty-state');
+  
+  if (tbody.children.length === 0) {
+    table.style.display = 'none';
+    emptyState.style.display = 'block';
+  } else {
+    table.style.display = 'table';
+    emptyState.style.display = 'none';
+  }
+}
+
 
 /**
  * Add a rule to the UI
  */
 function addRuleToUI(category, rule = null) {
-  const rulesList = document.querySelector(`.rules-list[data-category="${category}"]`);
-  if (!rulesList) return;
+  const tbody = document.querySelector(`.rules-list[data-category="${category}"]`);
+  if (!tbody) return;
   
   const ruleId = Date.now() + Math.random();
-  const ruleItem = document.createElement('div');
-  ruleItem.className = 'rule-list-item';
-  ruleItem.dataset.ruleId = ruleId;
+  const tr = document.createElement('tr');
+  tr.dataset.ruleId = ruleId;
   
   const urlValue = rule?.field !== 'title' ? (rule?.value || '') : '';
   const titleValue = rule?.field === 'title' ? (rule?.value || '') : '';
@@ -411,42 +428,54 @@ function addRuleToUI(category, rule = null) {
     return div.innerHTML;
   };
   
-  ruleItem.innerHTML = `
-    <div class="rule-fields">
-      <div class="rule-field">
-        <label>URL:</label>
-        <input type="text" class="rule-url-input" value="${escapeHtml(urlValue)}" placeholder="e.g., youtube.com/watch">
-        <input type="checkbox" class="rule-url-regex" ${urlIsRegex ? 'checked' : ''} title="Use regex">
-      </div>
-      <div class="rule-field">
-        <label>Title:</label>
-        <input type="text" class="rule-title-input" value="${escapeHtml(titleValue)}" placeholder="e.g., YouTube">
-        <input type="checkbox" class="rule-title-regex" ${titleIsRegex ? 'checked' : ''} title="Use regex">
-      </div>
-    </div>
-    <button class="delete-rule-btn" title="Delete rule">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 6h18"></path>
-        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-      </svg>
-    </button>
+  tr.innerHTML = `
+    <td>
+      <input type="text" class="rule-input rule-url-input" 
+             value="${escapeHtml(urlValue)}" 
+             placeholder="e.g., youtube.com/watch">
+    </td>
+    <td>
+      <input type="checkbox" class="rule-regex-checkbox rule-url-regex" 
+             ${urlIsRegex ? 'checked' : ''} 
+             title="Use regex">
+    </td>
+    <td>
+      <input type="text" class="rule-input rule-title-input" 
+             value="${escapeHtml(titleValue)}" 
+             placeholder="e.g., YouTube">
+    </td>
+    <td>
+      <input type="checkbox" class="rule-regex-checkbox rule-title-regex" 
+             ${titleIsRegex ? 'checked' : ''} 
+             title="Use regex">
+    </td>
+    <td>
+      <button class="delete-rule-btn" title="Delete rule">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18"></path>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
+    </td>
   `;
   
-  rulesList.appendChild(ruleItem);
+  tbody.appendChild(tr);
+  updateEmptyState(tbody);
   
   // Add event listeners
-  const urlInput = ruleItem.querySelector('.rule-url-input');
-  const titleInput = ruleItem.querySelector('.rule-title-input');
-  const urlRegex = ruleItem.querySelector('.rule-url-regex');
-  const titleRegex = ruleItem.querySelector('.rule-title-regex');
-  const deleteBtn = ruleItem.querySelector('.delete-rule-btn');
+  const urlInput = tr.querySelector('.rule-url-input');
+  const titleInput = tr.querySelector('.rule-title-input');
+  const urlRegex = tr.querySelector('.rule-url-regex');
+  const titleRegex = tr.querySelector('.rule-title-regex');
+  const deleteBtn = tr.querySelector('.delete-rule-btn');
   
   urlInput.addEventListener('input', debounce(saveRulesFromUI, 500));
   titleInput.addEventListener('input', debounce(saveRulesFromUI, 500));
   urlRegex.addEventListener('change', saveRulesFromUI);
   titleRegex.addEventListener('change', saveRulesFromUI);
   deleteBtn.addEventListener('click', () => {
-    ruleItem.remove();
+    tr.remove();
+    updateEmptyState(tbody);
     saveRulesFromUI();
   });
 }
@@ -459,13 +488,13 @@ function saveRulesFromUI() {
   const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
   if (!rulesContainer) return;
   
-  // Process each rule item
-  rulesContainer.querySelectorAll('.rule-list-item').forEach(item => {
-    const category = parseInt(item.closest('.rule-category-section').dataset.category);
-    const urlInput = item.querySelector('.rule-url-input');
-    const titleInput = item.querySelector('.rule-title-input');
-    const urlIsRegex = item.querySelector('.rule-url-regex').checked;
-    const titleIsRegex = item.querySelector('.rule-title-regex').checked;
+  // Process each rule row
+  rulesContainer.querySelectorAll('tbody tr').forEach(tr => {
+    const category = parseInt(tr.closest('.rule-category-section').dataset.category);
+    const urlInput = tr.querySelector('.rule-url-input');
+    const titleInput = tr.querySelector('.rule-title-input');
+    const urlIsRegex = tr.querySelector('.rule-url-regex').checked;
+    const titleIsRegex = tr.querySelector('.rule-title-regex').checked;
     
     // Add URL rule if present
     if (urlInput.value.trim()) {
