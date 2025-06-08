@@ -108,15 +108,7 @@ export async function initializeApp() {
       showApiKeyPrompt();
     }
     
-    // Restore UI state
-    await restoreUIState();
-    
-    // Load categorized tabs from background
-    await loadCategorizedTabsFromBackground();
-    
-    console.log('Loaded settings:', state.settings);
-    
-    // Set up event listeners
+    // Set up event listeners early
     setupEventListeners();
     
     // Initialize tab navigation
@@ -130,23 +122,51 @@ export async function initializeApp() {
     const { initializeUnifiedToolbar } = await import('./unified-toolbar.js');
     initializeUnifiedToolbar();
     
-    // Check if we should switch to saved tab when no current tabs exist
+    // First, determine which tab should be active
     const { hasCurrentTabs } = await import('./tab-data-source.js');
     const hasTabs = await hasCurrentTabs();
     
-    if (!hasTabs && state.popupState.activeTab === 'categorize') {
-      console.log('No current tabs found, switching to saved tab');
-      // Switch to saved tab
-      switchToTab('saved');
-      
+    let targetTab = state.popupState?.activeTab || 'categorize';
+    if (!hasTabs && targetTab === 'categorize') {
+      console.log('No current tabs found, will show saved tab');
+      targetTab = 'saved';
+    }
+    
+    // Switch to the target tab immediately (before loading content)
+    console.log('Setting initial tab to:', targetTab);
+    switchToTab(targetTab);
+    
+    // Now load content based on which tab is active
+    if (targetTab === 'saved') {
       // Load saved tabs content
       const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
       const includeCanClose = state.popupState.showAllCategories || false;
       await showSavedTabsContent(savedGroupingSelect?.value || 'category', includeCanClose);
-    } else {
-      // Restore active tab normally
-      await restoreActiveTab();
+      
+      // Restore scroll position for saved tab
+      if (state.popupState?.scrollPositions?.saved) {
+        const savedContent = $id(DOM_IDS.SAVED_CONTENT);
+        if (savedContent) {
+          savedContent.scrollTop = state.popupState.scrollPositions.saved;
+        }
+      }
+    } else if (targetTab === 'categorize') {
+      // Restore UI state for categorize tab
+      await restoreUIState();
+      
+      // Load categorized tabs from background
+      await loadCategorizedTabsFromBackground();
+      
+      // Restore scroll position for categorize tab
+      if (state.popupState?.scrollPositions?.categorize) {
+        const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
+        if (tabsContainer) {
+          tabsContainer.scrollTop = state.popupState.scrollPositions.categorize;
+        }
+      }
     }
+    
+    console.log('Loaded settings:', state.settings);
     
     // Mark initialization complete
     setInitializationComplete();
@@ -242,70 +262,11 @@ async function restoreUIState() {
 
 /**
  * Restore active tab and scroll positions
+ * @deprecated - Now handled directly in initializeApp
  */
 async function restoreActiveTab() {
-  if (state.popupState?.activeTab) {
-    // Set scroll positions with both panes temporarily visible
-    if (state.popupState.scrollPositions) {
-      const categorizeTab = $id('categorizeTab');
-      const savedTab = $id('savedTab');
-      
-      if (categorizeTab) categorizeTab.classList.add(CSS_CLASSES.TAB_PANE_ACTIVE);
-      if (savedTab) savedTab.classList.add(CSS_CLASSES.TAB_PANE_ACTIVE);
-      
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        // Set scroll for categorize tab
-        if (state.popupState.scrollPositions.categorize) {
-          const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
-          if (tabsContainer) {
-            console.log('Pre-setting categorize scroll to:', state.popupState.scrollPositions.categorize);
-            tabsContainer.scrollTop = state.popupState.scrollPositions.categorize;
-          }
-        }
-        
-        // Set scroll for saved tab
-        if (state.popupState.scrollPositions.saved) {
-          const savedContent = $id(DOM_IDS.SAVED_CONTENT);
-          if (savedContent) {
-            console.log('Pre-setting saved scroll to:', state.popupState.scrollPositions.saved);
-            savedContent.scrollTop = state.popupState.scrollPositions.saved;
-          }
-        }
-        
-        // Now switch to the correct tab
-        setTimeout(async () => {
-          console.log('Restoring active tab:', state.popupState.activeTab);
-          switchToTab(state.popupState.activeTab);
-          
-          // If switching to saved tab, load saved content
-          if (state.popupState.activeTab === 'saved') {
-            const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
-            const includeCanClose = state.popupState.showAllCategories || false;
-            await showSavedTabsContent(savedGroupingSelect?.value || 'category', includeCanClose);
-          }
-          
-          // Restore scroll position again after tab switch
-          const activeTabName = state.popupState.activeTab;
-          setTimeout(() => {
-            restoreScrollPosition(activeTabName, 100);
-            restoreScrollPosition(activeTabName, 500);
-            restoreScrollPosition(activeTabName, 1000);
-          }, 100);
-        }, 50);
-      });
-    } else {
-      // No scroll positions, just switch tab
-      switchToTab(state.popupState.activeTab);
-      
-      // If switching to saved tab, load saved content
-      if (state.popupState.activeTab === 'saved') {
-        const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
-        const includeCanClose = state.popupState.showAllCategories || false;
-        showSavedTabsContent(savedGroupingSelect?.value || 'category', includeCanClose);
-      }
-    }
-  }
+  // This function is kept for compatibility but is no longer used
+  // Tab restoration is now handled directly in initializeApp to avoid flicker
 }
 
 /**
