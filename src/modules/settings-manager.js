@@ -85,6 +85,9 @@ export async function initializeSettingsUI() {
   
   // Update prompt status
   updatePromptStatus();
+  
+  // Initialize rules UI
+  initializeRulesUI();
 }
 
 /**
@@ -560,6 +563,253 @@ function onAddRule() {
 }
 
 /**
+ * Restore default rules
+ */
+async function onRestoreDefaultRules() {
+  const confirmed = confirm('This will replace all your current rules with the default rules. Are you sure?');
+  if (!confirmed) return;
+  
+  // Get default rules from state-manager
+  const { default: stateManager } = await import('./state-manager.js');
+  
+  // Call the function to get default rules
+  const getDefaultRules = () => {
+    return [
+      // Common social media and entertainment sites - Can Close
+      {
+        id: 'default-1',
+        type: 'domain',
+        value: 'youtube.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-2',
+        type: 'domain',
+        value: 'facebook.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-3',
+        type: 'domain',
+        value: 'instagram.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-4',
+        type: 'domain',
+        value: 'reddit.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-5',
+        type: 'domain',
+        value: 'tiktok.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-6',
+        type: 'domain',
+        value: 'twitter.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-7',
+        type: 'domain',
+        value: 'x.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-8',
+        type: 'domain',
+        value: 'linkedin.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-9',
+        type: 'urlContains',
+        value: 'netflix.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-10',
+        type: 'urlContains',
+        value: 'twitch.tv',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      
+      // News sites - Can Close
+      {
+        id: 'default-11',
+        type: 'domain',
+        value: 'news.ycombinator.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-12',
+        type: 'urlContains',
+        value: 'medium.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      
+      // Development and work-related sites - Important
+      {
+        id: 'default-13',
+        type: 'domain',
+        value: 'github.com',
+        category: TAB_CATEGORIES.IMPORTANT,
+        enabled: true
+      },
+      {
+        id: 'default-14',
+        type: 'domain',
+        value: 'gitlab.com',
+        category: TAB_CATEGORIES.IMPORTANT,
+        enabled: true
+      },
+      {
+        id: 'default-15',
+        type: 'domain',
+        value: 'stackoverflow.com',
+        category: TAB_CATEGORIES.IMPORTANT,
+        enabled: true
+      },
+      {
+        id: 'default-16',
+        type: 'urlContains',
+        value: '/pull/',
+        category: TAB_CATEGORIES.IMPORTANT,
+        enabled: true
+      },
+      {
+        id: 'default-17',
+        type: 'urlContains',
+        value: '/issues/',
+        category: TAB_CATEGORIES.IMPORTANT,
+        enabled: true
+      },
+      {
+        id: 'default-18',
+        type: 'urlContains',
+        value: 'localhost',
+        category: TAB_CATEGORIES.IMPORTANT,
+        enabled: true
+      },
+      {
+        id: 'default-19',
+        type: 'urlContains',
+        value: '127.0.0.1',
+        category: TAB_CATEGORIES.IMPORTANT,
+        enabled: true
+      },
+      {
+        id: 'default-20',
+        type: 'domain',
+        value: 'claude.ai',
+        category: TAB_CATEGORIES.IMPORTANT,
+        enabled: true
+      },
+      {
+        id: 'default-21',
+        type: 'domain',
+        value: 'chatgpt.com',
+        category: TAB_CATEGORIES.IMPORTANT,
+        enabled: true
+      },
+      
+      // Documentation and Reference - Save for Later
+      {
+        id: 'default-22',
+        type: 'urlContains',
+        value: '/docs/',
+        category: TAB_CATEGORIES.SAVE_LATER,
+        enabled: true
+      },
+      {
+        id: 'default-23',
+        type: 'domain',
+        value: 'developer.mozilla.org',
+        category: TAB_CATEGORIES.SAVE_LATER,
+        enabled: true
+      },
+      {
+        id: 'default-24',
+        type: 'domain',
+        value: 'w3schools.com',
+        category: TAB_CATEGORIES.SAVE_LATER,
+        enabled: true
+      },
+      {
+        id: 'default-25',
+        type: 'urlContains',
+        value: 'wikipedia.org',
+        category: TAB_CATEGORIES.SAVE_LATER,
+        enabled: true
+      },
+      {
+        id: 'default-26',
+        type: 'urlContains',
+        value: '/documentation/',
+        category: TAB_CATEGORIES.SAVE_LATER,
+        enabled: true
+      },
+      {
+        id: 'default-27',
+        type: 'urlContains',
+        value: '/tutorial/',
+        category: TAB_CATEGORIES.SAVE_LATER,
+        enabled: true
+      },
+      {
+        id: 'default-28',
+        type: 'urlContains',
+        value: '/guide/',
+        category: TAB_CATEGORIES.SAVE_LATER,
+        enabled: true
+      },
+      
+      // Shopping sites - Can Close
+      {
+        id: 'default-29',
+        type: 'domain',
+        value: 'amazon.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      },
+      {
+        id: 'default-30',
+        type: 'domain',
+        value: 'ebay.com',
+        category: TAB_CATEGORIES.CAN_CLOSE,
+        enabled: true
+      }
+    ];
+  };
+  
+  const defaultRules = getDefaultRules();
+  
+  // Replace current rules with default rules
+  state.settings.rules = defaultRules;
+  await StorageService.saveSettings(state.settings);
+  
+  // Refresh the UI
+  initializeRulesUI();
+  
+  showStatus('Default rules restored successfully', 'success', 3000);
+}
+
+/**
  * Initialize settings event handlers
  */
 export async function initializeSettings() {
@@ -602,6 +852,12 @@ export async function initializeSettings() {
   const addRuleBtn = $id(DOM_IDS.ADD_RULE_BTN);
   if (addRuleBtn) {
     addRuleBtn.addEventListener('click', onAddRule);
+  }
+  
+  // Restore default rules button
+  const restoreBtn = $id('restoreDefaultRulesBtn');
+  if (restoreBtn) {
+    restoreBtn.addEventListener('click', onRestoreDefaultRules);
   }
   
   // Initialize UI with current settings
