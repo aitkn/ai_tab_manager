@@ -114,6 +114,10 @@ src/
 - **Rule-based categorization**: Applied before LLM categorization
 - Users can opt-out of LLM and use only rule-based categorization
 - Default rules (40) aligned with refindability philosophy in `state-manager.js`
+- **Rule evaluation**: Rules use OR logic - first matching rule wins
+  - Each rule is evaluated independently
+  - A tab only needs to match ONE rule to be categorized
+  - Once a match is found, no further rules are checked
 
 ### DOM Updates and Transitions
 - **Morphdom Integration**: Uses morphdom library (12KB minified) for smooth DOM updates without flicker

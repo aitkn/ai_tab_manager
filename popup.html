@@ -286,7 +286,9 @@
           <div class="setting-group">
             <h3 style="margin-bottom: 12px; font-size: 14px; font-weight: 600;">Rule-Based Categorization</h3>
             <p class="text-muted" style="font-size: 12px; margin-bottom: 12px;">
-              Create rules to automatically categorize tabs. Rules are applied before AI categorization.
+              Create rules to automatically categorize tabs. Rules are applied before AI categorization.<br>
+              <strong>How it works:</strong> Each rule is checked independently. If a tab matches ANY rule, it gets that category.<br>
+              <strong>Priority:</strong> Rules are checked in order. The FIRST matching rule wins.
             </p>
             
             <div style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px;">
@@ -310,15 +312,15 @@
                 <div class="rule-type-sections">
                   <div class="rule-type-section" data-rule-type="domain">
                     <h5 class="rule-type-header">Domain equals</h5>
-                    <textarea class="rule-values-textarea" placeholder="Enter domains, one per line&#10;Example:&#10;youtube.com&#10;facebook.com&#10;reddit.com" rows="4"></textarea>
+                    <textarea class="rule-values-textarea" placeholder="Enter domains, one per line&#10;Example:&#10;youtube.com&#10;facebook.com&#10;reddit.com&#10;&#10;Any tab with these domains will be categorized" rows="4"></textarea>
                   </div>
                   <div class="rule-type-section" data-rule-type="url_contains">
                     <h5 class="rule-type-header">URL contains</h5>
-                    <textarea class="rule-values-textarea" placeholder="Enter URL patterns, one per line&#10;Example:&#10;/watch?v=&#10;netflix.com&#10;/shorts/" rows="4"></textarea>
+                    <textarea class="rule-values-textarea" placeholder="Enter URL patterns, one per line&#10;Example:&#10;/watch?v=&#10;netflix.com&#10;/shorts/&#10;&#10;Any tab containing these patterns will be categorized" rows="4"></textarea>
                   </div>
                   <div class="rule-type-section" data-rule-type="title_contains">
                     <h5 class="rule-type-header">Title contains</h5>
-                    <textarea class="rule-values-textarea" placeholder="Enter title patterns, one per line&#10;Example:&#10;YouTube&#10;Facebook&#10;Twitter" rows="4"></textarea>
+                    <textarea class="rule-values-textarea" placeholder="Enter title patterns, one per line&#10;Example:&#10;YouTube&#10;Facebook&#10;Twitter&#10;&#10;Any tab with titles containing these will be categorized" rows="4"></textarea>
                   </div>
                   <div class="rule-type-section" data-rule-type="regex">
                     <h5 class="rule-type-header">Regex patterns</h5>
