@@ -3,7 +3,7 @@
  * Downloads and caches TensorFlow.js library after installation
  */
 
-import StorageService from '../services/StorageService.js';
+import ChromeAPIService from '../services/ChromeAPIService.js';
 
 const TENSORFLOW_VERSION = '4.17.0';
 const TENSORFLOW_URL = `https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@${TENSORFLOW_VERSION}/dist/tf.min.js`;
@@ -26,10 +26,12 @@ export async function downloadTensorFlow() {
     const scriptContent = await response.text();
     
     // Store in local storage
-    await StorageService.setLocal(STORAGE_KEY, {
-      version: TENSORFLOW_VERSION,
-      content: scriptContent,
-      downloadedAt: Date.now()
+    await ChromeAPIService.setStorageData({
+      [STORAGE_KEY]: {
+        version: TENSORFLOW_VERSION,
+        content: scriptContent,
+        downloadedAt: Date.now()
+      }
     });
     
     console.log('TensorFlow.js downloaded successfully');
@@ -46,7 +48,8 @@ export async function downloadTensorFlow() {
  */
 export async function getCachedTensorFlow() {
   try {
-    const cached = await StorageService.getLocal(STORAGE_KEY);
+    const data = await ChromeAPIService.getStorageData(STORAGE_KEY);
+    const cached = data[STORAGE_KEY];
     
     if (!cached) {
       return null;
@@ -77,7 +80,10 @@ export async function getCachedTensorFlow() {
  * Clear cached TensorFlow.js
  */
 export async function clearTensorFlowCache() {
-  await StorageService.removeLocal(STORAGE_KEY);
+  // Get current storage and remove the TensorFlow key
+  const data = await ChromeAPIService.getStorageData(null);
+  delete data[STORAGE_KEY];
+  await ChromeAPIService.setStorageData(data);
 }
 
 /**
@@ -93,7 +99,8 @@ export async function isTensorFlowDownloaded() {
  */
 export async function getTensorFlowStatus() {
   try {
-    const cached = await StorageService.getLocal(STORAGE_KEY);
+    const data = await ChromeAPIService.getStorageData(STORAGE_KEY);
+    const cached = data[STORAGE_KEY];
     
     if (!cached) {
       return {
