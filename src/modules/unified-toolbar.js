@@ -168,18 +168,30 @@ export async function updateToolbarVisibility(tabType) {
     console.log('DEBUG: Hiding toolbar for settings tab');
     // Hide toolbar and all controls for settings tab
     hideToolbar();
-    hide(currentTabControls);
-    hide(savedTabControls);
+    
+    console.log('DEBUG: Hiding currentTabControls, found:', !!currentTabControls);
+    if (currentTabControls) {
+      hide(currentTabControls);
+      console.log('DEBUG: currentTabControls hidden, display:', currentTabControls.style.display);
+    }
+    
+    console.log('DEBUG: Hiding savedTabControls, found:', !!savedTabControls);
+    if (savedTabControls) {
+      hide(savedTabControls);
+      console.log('DEBUG: savedTabControls hidden, display:', savedTabControls.style.display);
+    }
     
     // Also hide the close all button
     const closeAllBtn = $id(DOM_IDS.CLOSE_ALL_BTN2);
     if (closeAllBtn) {
+      console.log('DEBUG: Hiding closeAllBtn, found:', !!closeAllBtn);
       hide(closeAllBtn);
     }
     
     // Hide grouping controls
     const groupingGroup = document.querySelector('.grouping-group');
     if (groupingGroup) {
+      console.log('DEBUG: Hiding groupingGroup, found:', !!groupingGroup);
       hide(groupingGroup);
     }
   } else {
@@ -209,7 +221,11 @@ export function showToolbar() {
 export function hideToolbar() {
   const toolbar = $id('unifiedToolbar');
   if (toolbar) {
+    console.log('DEBUG: Hiding unified toolbar, current display:', toolbar.style.display);
     hide(toolbar);
+    console.log('DEBUG: Unified toolbar hidden, new display:', toolbar.style.display);
+  } else {
+    console.log('DEBUG: Could not find unifiedToolbar element to hide');
   }
 }
 

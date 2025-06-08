@@ -235,9 +235,17 @@ async function loadCategorizedTabsFromBackground() {
       state.categorizedTabs = categorizedTabs;
       state.urlToDuplicateIds = urlToDuplicateIds;
       
-      // Update UI
-      show($id(DOM_IDS.TABS_CONTAINER));
-      displayTabs();
+      // Update UI - make sure container is visible first
+      const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
+      if (tabsContainer) {
+        show(tabsContainer);
+        console.log('DEBUG: Tabs container shown for existing tabs');
+      }
+      
+      // Force display update
+      await displayTabs();
+      console.log('DEBUG: displayTabs completed for existing tabs');
+      
       updateCategorizeBadge();
       
       // Show unified toolbar
@@ -252,10 +260,18 @@ async function loadCategorizedTabsFromBackground() {
         categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
       }
     } else {
-      console.log('No current tabs found on first run');
-      // Still initialize the UI even with no tabs
-      show($id(DOM_IDS.TABS_CONTAINER));
-      displayTabs(); // This will show empty state
+      console.log('DEBUG: No current tabs found, initializing empty UI');
+      
+      // Initialize empty state but make sure UI is visible
+      const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
+      if (tabsContainer) {
+        show(tabsContainer);
+        console.log('DEBUG: Tabs container shown for empty state');
+      }
+      
+      // Force display update even with empty state
+      await displayTabs(); // This will show empty state
+      console.log('DEBUG: displayTabs completed for empty state');
       
       const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
       if (categorizeBtn) {

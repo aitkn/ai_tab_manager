@@ -19,13 +19,18 @@ export async function handleCategorize() {
   console.log('Categorize clicked');
   
   // Check if this is first-time use
+  console.log('DEBUG: handleCategorize - Checking hasConfiguredSettings:', state.settings.hasConfiguredSettings);
   if (!state.settings.hasConfiguredSettings) {
+    console.log('DEBUG: hasConfiguredSettings is false, showing welcome dialog');
     const shouldRedirect = confirm('Welcome to AI Tab Manager! Would you like to configure your categorization settings first?\n\nYou can choose to use AI-powered categorization or set up rules-based categorization.');
     if (shouldRedirect) {
+      console.log('DEBUG: User chose to redirect to settings');
       const { switchToTab } = await import('./ui-manager.js');
       switchToTab('settings');
       showStatus('Please configure your categorization settings', 'info', 5000);
       return;
+    } else {
+      console.log('DEBUG: User chose not to redirect to settings');
     }
   }
   
