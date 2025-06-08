@@ -40,10 +40,8 @@ export async function initializeMLDashboard() {
     resetModelBtn.addEventListener('click', handleResetModel);
   }
   
-  // Load ML status if enabled
-  if (state.settings.useML !== false) {
-    await updateMLStatus();
-  }
+  // Always load ML status (it will show appropriate state)
+  await updateMLStatus();
 }
 
 /**
@@ -63,10 +61,8 @@ async function handleMLToggle(event) {
     mlDashboard.style.display = enabled ? 'block' : 'none';
   }
   
-  // Update status if enabled
-  if (enabled) {
-    await updateMLStatus();
-  }
+  // Update status regardless of enabled state
+  await updateMLStatus();
 }
 
 /**

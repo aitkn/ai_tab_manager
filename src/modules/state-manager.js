@@ -187,6 +187,8 @@ export async function loadSavedState() {
       }
       
       state.settings.defaultRulesApplied = true;
+      // Also mark as configured since we've set up default rules
+      state.settings.hasConfiguredSettings = true;
       await StorageService.saveSettings(state.settings);
       console.log('Default rules initialization complete. Total rules:', state.settings.rules.length);
     }

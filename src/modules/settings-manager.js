@@ -122,8 +122,10 @@ export async function initializeSettingsUI() {
     }
   }
   
-  // Initialize rules UI
-  initializeRulesUI();
+  // Initialize rules UI - with small delay to ensure state is loaded
+  setTimeout(() => {
+    initializeRulesUI();
+  }, 100);
 }
 
 /**
