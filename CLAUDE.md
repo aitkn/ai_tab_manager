@@ -120,6 +120,8 @@ src/
   - Once a match is found, no further rules are checked
   - **Order matters**: More specific rules must come before general ones
   - Default rules are ordered: Important (most specific) → Useful → Ignore (most general)
+  - **Pattern**: Specific content (youtube.com/watch?v=) before domains (youtube.com)
+  - This ensures specific videos/posts are saved while homepages can be ignored
 
 ### DOM Updates and Transitions
 - **Morphdom Integration**: Uses morphdom library (12KB minified) for smooth DOM updates without flicker

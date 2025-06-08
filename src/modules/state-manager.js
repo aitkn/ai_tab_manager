@@ -214,6 +214,10 @@ export function getDefaultRules() {
   return [
     // IMPORTANT: Rules are evaluated in order - first match wins!
     // More specific rules should come before general ones
+    // 
+    // Pattern: Specific content URLs come before domain rules
+    // Example: youtube.com/watch?v=X (Save Later) before youtube.com (Ignore)
+    // This ensures specific videos/posts are saved while homepages can be closed
     
     // Category 3: Hard to Refind (> 2min) - Most specific rules first
     {
@@ -316,78 +320,149 @@ export function getDefaultRules() {
     },
     
     // Category 2: Moderate Effort (10s-2min) - Less specific, searchable content
+    // Specific content on general sites (must come before domain rules)
     {
       id: 'default-15',
       type: 'urlContains',
-      value: 'github.com/pull/',
+      value: 'youtube.com/watch?v=',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-16',
       type: 'urlContains',
-      value: 'github.com/issues/',
+      value: 'youtube.com/playlist',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-17',
-      type: 'domain',
-      value: 'stackoverflow.com',
+      type: 'urlContains',
+      value: 'reddit.com/r/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-18',
-      type: 'domain',
-      value: 'medium.com',
+      type: 'urlContains',
+      value: 'twitter.com/status/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-19',
-      type: 'domain',
-      value: 'dev.to',
+      type: 'urlContains',
+      value: 'x.com/status/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-20',
       type: 'urlContains',
-      value: '/docs/',
+      value: 'linkedin.com/posts/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-21',
       type: 'urlContains',
-      value: '/documentation/',
+      value: 'facebook.com/posts/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-22',
       type: 'urlContains',
-      value: '/guide/',
+      value: 'instagram.com/p/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-23',
       type: 'urlContains',
-      value: '/tutorial/',
+      value: 'amazon.com/dp/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-24',
       type: 'urlContains',
-      value: '/article/',
+      value: 'amazon.com/gp/product/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-25',
+      type: 'urlContains',
+      value: 'github.com/pull/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-26',
+      type: 'urlContains',
+      value: 'github.com/issues/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-27',
+      type: 'domain',
+      value: 'stackoverflow.com',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-28',
+      type: 'domain',
+      value: 'medium.com',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-29',
+      type: 'domain',
+      value: 'dev.to',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-30',
+      type: 'urlContains',
+      value: '/docs/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-31',
+      type: 'urlContains',
+      value: '/documentation/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-32',
+      type: 'urlContains',
+      value: '/guide/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-33',
+      type: 'urlContains',
+      value: '/tutorial/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-34',
+      type: 'urlContains',
+      value: '/article/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-35',
       type: 'urlContains',
       value: '/blog/',
       category: TAB_CATEGORIES.SAVE_LATER,
@@ -395,106 +470,107 @@ export function getDefaultRules() {
     },
     
     // Category 1: Easy to Refind (< 10 seconds) - Most general rules last
+    // These should be homepages only, not specific content
     {
-      id: 'default-26',
+      id: 'default-36',
       type: 'domain',
       value: 'google.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-27',
+      id: 'default-37',
       type: 'domain',
       value: 'youtube.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-28',
+      id: 'default-38',
       type: 'domain',
       value: 'gmail.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-29',
+      id: 'default-39',
       type: 'domain',
       value: 'amazon.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-30',
+      id: 'default-40',
       type: 'domain',
       value: 'facebook.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-31',
+      id: 'default-41',
       type: 'domain',
       value: 'twitter.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-32',
+      id: 'default-42',
       type: 'domain',
       value: 'x.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-33',
+      id: 'default-43',
       type: 'domain',
       value: 'instagram.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-34',
+      id: 'default-44',
       type: 'domain',
       value: 'linkedin.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-35',
+      id: 'default-45',
       type: 'domain',
       value: 'reddit.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-36',
+      id: 'default-46',
       type: 'domain',
       value: 'netflix.com',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-37',
+      id: 'default-47',
       type: 'urlContains',
       value: '/login',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-38',
+      id: 'default-48',
       type: 'urlContains',
       value: '/signin',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-39',
+      id: 'default-49',
       type: 'titleContains',
       value: 'New Tab',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-40',
+      id: 'default-50',
       type: 'titleContains',
       value: 'Google Search',
       category: TAB_CATEGORIES.CAN_CLOSE,
