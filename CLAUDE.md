@@ -101,12 +101,21 @@ src/
 - Tab click switches to correct window first, then activates tab
 - Save operations update both database and remove from current view
 
+### DOM Updates and Transitions
+- **Morphdom Integration**: Uses morphdom library (12KB minified) for smooth DOM updates without flicker
+- All tab list updates in `tab-display.js` use morphdom for efficient DOM diffing
+- Morphdom configuration preserves node identity via `data-tab-id` attributes
+- Real-time updates (including duplicate counts) are handled smoothly without visual disruption
+
 ## Common Issues and Solutions
 
 1. **"Maximum call stack size exceeded"**: Check for recursive function calls (e.g., `extractDateFromGroupName`)
 2. **Empty settings fields**: Ensure `CONFIG` is loaded before state initialization
 3. **Tabs not updating**: Verify background script connection and message passing
 4. **"0 tabs closed"**: Check that `duplicateIds` or `urlToDuplicateIds` is properly populated
+5. **Database version mismatch**: Ensure `database.js` version matches existing database (currently version 2)
+6. **Duplicate count not updating**: Fixed by checking title changes in `tab-display.js` real-time updates
+7. **UI flickering during updates**: Solved by using morphdom instead of manual DOM manipulation
 
 ## Development Practices
 
@@ -115,3 +124,11 @@ src/
 - Verify all grouping modes after changes
 - Check that state persists across popup close/open
 - Monitor console for API errors or rate limits
+
+## Critical Requirements (DO NOT FORGET)
+
+1. **ALL TABS FROM ALL WINDOWS**: The extension MUST display tabs from ALL browser windows, not just the current window. This is achieved by using `chrome.tabs.query({})` without any window filtering. This requirement has been missed multiple times - always verify this is working correctly.
+
+2. **Real-time Updates**: The extension must update the display in real-time when tabs are opened/closed/updated, including duplicate count changes in tab titles.
+
+3. **Morphdom for DOM Updates**: Use morphdom for all DOM updates to prevent flickering and ensure smooth transitions. Do not use manual DOM manipulation with opacity transitions.
