@@ -118,6 +118,8 @@ src/
   - Each rule is evaluated independently
   - A tab only needs to match ONE rule to be categorized
   - Once a match is found, no further rules are checked
+  - **Order matters**: More specific rules must come before general ones
+  - Default rules are ordered: Important (most specific) → Useful → Ignore (most general)
 
 ### DOM Updates and Transitions
 - **Morphdom Integration**: Uses morphdom library (12KB minified) for smooth DOM updates without flicker
