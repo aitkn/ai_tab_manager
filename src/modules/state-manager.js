@@ -213,11 +213,8 @@ export function restoreScrollPosition(containerId, scrollTop, retryCount = 0) {
 export function getDefaultRules() {
   return [
     // IMPORTANT: Rules are evaluated in order - first match wins!
-    // More specific rules should come before general ones
-    // 
-    // Pattern: Specific content URLs come before domain rules
-    // Example: youtube.com/watch?v=X (Save Later) before youtube.com (Ignore)
-    // This ensures specific videos/posts are saved while homepages can be closed
+    // Rules are designed to be independent - each rule should work correctly
+    // regardless of order by being specific about what it matches
     
     // Category 3: Hard to Refind (> 2min) - Most specific rules first
     {
@@ -315,6 +312,7 @@ export function getDefaultRules() {
       id: 'default-14',
       type: 'regex',
       value: '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
+      field: 'url',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
@@ -469,82 +467,93 @@ export function getDefaultRules() {
       enabled: true
     },
     
-    // Category 1: Easy to Refind (< 10 seconds) - Most general rules last
-    // These should be homepages only, not specific content
+    // Category 1: Easy to Refind (< 10 seconds) - Homepages only
+    // Using regex to match ONLY homepages, not all content on these domains
     {
       id: 'default-36',
-      type: 'domain',
-      value: 'google.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?google\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-37',
-      type: 'domain',
-      value: 'youtube.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?youtube\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-38',
-      type: 'domain',
-      value: 'gmail.com',
+      type: 'regex',
+      value: '^https?://(mail\\.)?google\\.com/(mail/)?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-39',
-      type: 'domain',
-      value: 'amazon.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?amazon\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-40',
-      type: 'domain',
-      value: 'facebook.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?facebook\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-41',
-      type: 'domain',
-      value: 'twitter.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?twitter\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-42',
-      type: 'domain',
-      value: 'x.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?x\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-43',
-      type: 'domain',
-      value: 'instagram.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?instagram\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-44',
-      type: 'domain',
-      value: 'linkedin.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?linkedin\\.com/(feed/)?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-45',
-      type: 'domain',
-      value: 'reddit.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?reddit\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
       id: 'default-46',
-      type: 'domain',
-      value: 'netflix.com',
+      type: 'regex',
+      value: '^https?://(www\\.)?netflix\\.com/(browse)?/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },

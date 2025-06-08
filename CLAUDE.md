@@ -118,10 +118,10 @@ src/
   - Each rule is evaluated independently
   - A tab only needs to match ONE rule to be categorized
   - Once a match is found, no further rules are checked
-  - **Order matters**: More specific rules must come before general ones
-  - Default rules are ordered: Important (most specific) → Useful → Ignore (most general)
-  - **Pattern**: Specific content (youtube.com/watch?v=) before domains (youtube.com)
-  - This ensures specific videos/posts are saved while homepages can be ignored
+  - Rules should be self-contained and specific about what they match
+  - Domain rules match ALL pages on that domain - use regex for homepage-only
+  - Example: `^https?://(www\.)?youtube\.com/?$` matches ONLY the homepage
+  - This prevents accidentally ignoring all YouTube videos when you only want to ignore the homepage
 
 ### DOM Updates and Transitions
 - **Morphdom Integration**: Uses morphdom library (12KB minified) for smooth DOM updates without flicker
