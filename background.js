@@ -214,17 +214,17 @@ function notifyPopupOfTabChange(action, tabInfo) {
 async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPrompt, savedUrls = [] }) {
   console.log('Background: Categorizing tabs with', provider, model, tabs.length, 'tabs');
   console.log('Using custom prompt:', !!customPrompt);
-  console.log('Saved URL+title pairs to exclude from LLM:', savedUrls.length);
+  console.log('Saved URLs to exclude from LLM:', savedUrls.length);
   if (savedUrls.length > 0) {
-    console.log('Sample saved URL+title pairs:', savedUrls.slice(0, 5));
+    console.log('Sample saved URLs:', savedUrls.slice(0, 5));
   }
   
   try {
-    // Convert saved URL+title pairs array to Set for faster lookup
-    const savedUrlTitleSet = new Set(savedUrls);
+    // Convert saved URLs array to Set for faster lookup
+    const savedUrlsSet = new Set(savedUrls);
     
     // Deduplicate tabs before sending to LLM
-    const { deduplicatedTabs, urlToOriginalTabs, savedTabsMap } = deduplicateTabs(tabs, savedUrlTitleSet);
+    const { deduplicatedTabs, urlToOriginalTabs, savedTabsMap } = deduplicateTabs(tabs, savedUrlsSet);
     console.log(`Deduplication: ${tabs.length} tabs -> ${deduplicatedTabs.length} unique URLs`);
     
     // If no tabs to categorize after filtering, return empty result
@@ -313,18 +313,17 @@ async function handleCategorizeTabs({ tabs, apiKey, provider, model, customPromp
 }
 
 // Deduplicate tabs by URL, keeping track of all tabs with the same URL
-function deduplicateTabs(tabs, savedUrlTitlePairs = new Set()) {
+function deduplicateTabs(tabs, savedUrls = new Set()) {
   const urlToOriginalTabs = new Map();
-  const savedTabsMap = new Map(); // Track tabs that match saved URL+title pairs
+  const savedTabsMap = new Map(); // Track tabs that match saved URLs
   const deduplicatedTabs = [];
   let excludedCount = 0;
   
   tabs.forEach((tab, index) => {
     const url = tab.url;
-    const urlTitleKey = `${tab.url}|${tab.title}`;
     
-    // Check if URL+title combination is already saved
-    if (savedUrlTitlePairs.has(urlTitleKey)) {
+    // Check if URL is already saved
+    if (savedUrls.has(url)) {
       excludedCount++;
       // Track saved tabs separately so we can still display them
       if (!savedTabsMap.has(url)) {
@@ -348,7 +347,7 @@ function deduplicateTabs(tabs, savedUrlTitlePairs = new Set()) {
     urlToOriginalTabs.get(url).push({ ...tab, originalIndex: index });
   });
   
-  console.log(`Deduplication: ${excludedCount} already-saved tabs (exact URL+title match) excluded from LLM`);
+  console.log(`Deduplication: ${excludedCount} already-saved URLs excluded from LLM`);
   console.log(`Deduplication: ${tabs.length} input tabs -> ${deduplicatedTabs.length} unique new tabs (${savedTabsMap.size} saved)`);
   console.log('Deduplication map:', Array.from(urlToOriginalTabs.entries()).slice(0, 10).map(([url, tabs]) => ({
     url: url.substring(0, 50) + '...',

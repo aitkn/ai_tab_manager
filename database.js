@@ -40,13 +40,14 @@ class TabDatabase {
           }
         });
 
-        // URLs table - stores unique URL/title combinations with their category
+        // URLs table - stores unique URLs with their category
         if (!db.objectStoreNames.contains('urls')) {
           console.log('Creating urls object store');
           const urlStore = db.createObjectStore('urls', { keyPath: 'id', autoIncrement: true });
-          // Composite index for URL + title uniqueness
+          // Composite index for URL + title uniqueness (for backward compatibility)
           urlStore.createIndex('url_title', ['url', 'title'], { unique: true });
-          urlStore.createIndex('url', 'url', { unique: false });
+          // URL should be unique - one entry per URL
+          urlStore.createIndex('url', 'url', { unique: false }); // Keep as non-unique for now to avoid migration issues
           urlStore.createIndex('category', 'category', { unique: false });
           urlStore.createIndex('domain', 'domain', { unique: false });
           urlStore.createIndex('lastCategorized', 'lastCategorized', { unique: false });
@@ -101,23 +102,44 @@ class TabDatabase {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['urls'], 'readwrite');
       const store = transaction.objectStore('urls');
-      const index = store.index('url_title');
+      const urlIndex = store.index('url');
 
-      // Try to find existing URL with same url+title
-      const request = index.get([tabData.url, tabData.title]);
+      // First, try to find existing URL (regardless of title)
+      const urlRequest = urlIndex.getAll(tabData.url);
 
-      request.onsuccess = () => {
-        if (request.result) {
-          // URL exists, update category if different
-          const existing = request.result;
-          // Update category if it's different AND either:
-          // 1. New category is not 0 (not uncategorized), OR
-          // 2. Existing category is not 0 and we're trying to set it to 0 (unlikely but allowed)
-          if (existing.category !== category && (category !== 0 || existing.category !== 0)) {
+      urlRequest.onsuccess = () => {
+        const existingRecords = urlRequest.result;
+        
+        if (existingRecords && existingRecords.length > 0) {
+          // URL exists - use the first one (should ideally be only one)
+          const existing = existingRecords[0];
+          
+          // Update the record with new data
+          let needsUpdate = false;
+          
+          // Update title if different (keep the latest title)
+          if (existing.title !== tabData.title) {
+            existing.title = tabData.title;
+            needsUpdate = true;
+          }
+          
+          // Update category if different and new category is not 0
+          if (existing.category !== category && category !== 0) {
             existing.category = category;
             existing.lastCategorized = new Date().toISOString();
+            needsUpdate = true;
+          }
+          
+          // Update favicon if provided
+          if (tabData.favIconUrl && existing.favicon !== tabData.favIconUrl) {
+            existing.favicon = tabData.favIconUrl;
+            needsUpdate = true;
+          }
+          
+          if (needsUpdate) {
             store.put(existing);
           }
+          
           resolve(existing.id);
         } else {
           // Create new URL entry
