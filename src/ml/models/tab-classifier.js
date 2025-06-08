@@ -256,6 +256,16 @@ export class TabClassifier {
       await this.initialize();
     }
     
+    // If disabled, return empty predictions
+    if (this.disabled) {
+      return tabs.map(tab => ({
+        tabId: tab.id,
+        category: null,
+        confidence: 0,
+        probabilities: []
+      }));
+    }
+    
     const tf = getTensorFlow();
     
     // Prepare inputs
@@ -384,9 +394,30 @@ export class TabClassifier {
   }
   
   /**
+   * Check if model exists
+   */
+  async exists() {
+    try {
+      const modelData = await loadModel();
+      return modelData !== null && modelData !== undefined;
+    } catch (error) {
+      return false;
+    }
+  }
+  
+  /**
    * Get model summary
    */
   getSummary() {
+    // If model is disabled, return basic info
+    if (this.disabled) {
+      return {
+        architecture: { inputs: [], outputs: [] },
+        parameters: 0,
+        metadata: this.metadata
+      };
+    }
+    
     return {
       architecture: {
         inputs: this.model.inputs.map(i => ({

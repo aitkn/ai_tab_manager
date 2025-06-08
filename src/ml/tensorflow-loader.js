@@ -51,13 +51,23 @@ export async function loadTensorFlow() {
         await new Promise((scriptResolve, scriptReject) => {
           script.onload = () => {
             URL.revokeObjectURL(blobUrl);
-            scriptResolve();
+            if (window.tf) {
+              scriptResolve();
+            } else {
+              scriptReject(new Error('TensorFlow.js did not load properly'));
+            }
           };
           script.onerror = (error) => {
             URL.revokeObjectURL(blobUrl);
-            scriptReject(error);
+            scriptReject(new Error('Failed to load TensorFlow.js script'));
           };
-          document.head.appendChild(script);
+          
+          // Ensure we're in a proper document context
+          if (document && document.head) {
+            document.head.appendChild(script);
+          } else {
+            scriptReject(new Error('Document not ready for script injection'));
+          }
         });
         
         tf = window.tf;

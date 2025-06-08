@@ -33,6 +33,24 @@ export class ModelTrainer {
   }
   
   /**
+   * Prepare training data
+   * @returns {Promise<Array>} Prepared training data
+   */
+  async prepareTrainingData() {
+    const allData = await getTrainingData();
+    return allData;
+  }
+  
+  /**
+   * Train model (alias for trainWithStoredData)
+   * @param {Object} options - Training options
+   * @returns {Promise<Object>} Training results
+   */
+  async trainModel(options = {}) {
+    return this.trainWithStoredData(options);
+  }
+  
+  /**
    * Train model with stored data
    * @param {Object} options - Training options
    * @returns {Promise<Object>} Training results
