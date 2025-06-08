@@ -79,12 +79,16 @@ src/
 
 ## Important Implementation Details
 
-### LLM Integration
+### LLM Integration & Categorization Philosophy
 - API calls go through background script to avoid CORS issues
 - Tabs are deduplicated before sending to LLM to reduce tokens
 - Already-saved URLs are excluded from LLM calls but shown in UI
 - Custom prompts stored in `state.settings.customPrompt`
 - **API Key Help**: Settings page includes direct links to API key pages for each LLM provider
+- **Refindability-based categorization** (v3): Categories based on how long it takes to find a tab again:
+  - Category 1 (Easy to Refind/Can Close): < 10 seconds - common sites, homepages
+  - Category 2 (Moderate Effort/Save for Later): 10s-2min - searchable content, articles
+  - Category 3 (Hard to Refind/Important): > 2min - unique IDs, sessions, deep links
 
 ### Database Operations
 - No individual `saveTab` method - use `saveTabs({ [category]: [tab] })`
@@ -107,6 +111,9 @@ src/
 - Save operations update both database and remove from current view
 - **Warning Dialogs**: Shows warning when closing tabs with uncategorized items (both individual and "Close All")
 - Prevents accidental loss of potentially important uncategorized tabs
+- **Rule-based categorization**: Applied before LLM categorization
+- Users can opt-out of LLM and use only rule-based categorization
+- Default rules (40) aligned with refindability philosophy in `state-manager.js`
 
 ### DOM Updates and Transitions
 - **Morphdom Integration**: Uses morphdom library (12KB minified) for smooth DOM updates without flicker
@@ -131,6 +138,21 @@ src/
 - Verify all grouping modes after changes
 - Check that state persists across popup close/open
 - Monitor console for API errors or rate limits
+
+## Recent Major Changes
+
+### Rule-Based Categorization UI (January 2025)
+- Redesigned rules UI from individual rule items to category-grouped textareas
+- Rules grouped by category (Ignore/Useful/Important) with multiline support
+- Each category shows 4 rule types: domain, url_contains, title_contains, regex
+- Auto-save with debouncing for better UX
+- "Restore Default Rules" button to reset to 40 default rules
+
+### Refindability-Based Categorization (January 2025)
+- Changed from importance-based to refindability-based categorization
+- Three categories based on time to refind: <10s, 10s-2min, >2min
+- Updated default prompt (v3) and 40 default rules to align with new philosophy
+- LLM integration is now optional - users can opt-out and use only rules
 
 ## Critical Requirements (DO NOT FORGET)
 
