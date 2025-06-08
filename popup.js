@@ -85,6 +85,11 @@ async function preInitialize() {
     
     // Determine which tab should be active
     let targetTab = state.popupState?.activeTab || 'categorize';
+    console.log('DEBUG: Target tab determined:', {
+      fromSavedState: state.popupState?.activeTab,
+      finalTarget: targetTab,
+      hasConfiguredSettings: state.settings?.hasConfiguredSettings
+    });
     
     // Quick check if we have any current tabs (just check chrome tabs, not database)
     const allTabs = await ChromeAPIService.queryTabs({});

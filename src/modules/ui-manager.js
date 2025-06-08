@@ -75,7 +75,7 @@ export function initializeTabNavigation() {
  * @param {string} tabName - Tab to switch to
  */
 export async function switchToTab(tabName) {
-  console.log('Switching to tab:', tabName);
+  console.log('DEBUG: Switching to tab:', tabName, 'from:', state.activeTab);
   
   // Save current scroll position before switching
   const savedContent = document.getElementById('savedContent');

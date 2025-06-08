@@ -161,8 +161,15 @@ export async function loadSavedState() {
     }
     
     // Apply default rules if not already applied or if rules array is empty
+    console.log('DEBUG: Checking default rules. Current state:', {
+      defaultRulesApplied: state.settings.defaultRulesApplied,
+      rulesExists: !!state.settings.rules,
+      rulesLength: state.settings.rules?.length || 0,
+      hasConfiguredSettings: state.settings.hasConfiguredSettings
+    });
+    
     if (!state.settings.defaultRulesApplied || !state.settings.rules || state.settings.rules.length === 0) {
-      console.log('Initializing default rules. Current state:', {
+      console.log('DEBUG: Initializing default rules. Current state:', {
         defaultRulesApplied: state.settings.defaultRulesApplied,
         rulesExists: !!state.settings.rules,
         rulesLength: state.settings.rules?.length || 0

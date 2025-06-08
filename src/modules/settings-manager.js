@@ -124,6 +124,7 @@ export async function initializeSettingsUI() {
   
   // Initialize rules UI - with small delay to ensure state is loaded
   setTimeout(() => {
+    console.log('DEBUG: Initializing rules UI. Current rules count:', state.settings?.rules?.length || 0);
     initializeRulesUI();
   }, 100);
 }
@@ -385,8 +386,16 @@ export function onMaxTabsChange(e) {
  * Initialize rules UI
  */
 export function initializeRulesUI() {
+  console.log('DEBUG: initializeRulesUI called. Rules:', {
+    rulesCount: state.settings?.rules?.length || 0,
+    rules: state.settings?.rules?.slice(0, 3) // First 3 rules for debugging
+  });
+  
   const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
-  if (!rulesContainer) return;
+  if (!rulesContainer) {
+    console.log('DEBUG: Rules container not found');
+    return;
+  }
   
   // Clear existing rules
   rulesContainer.querySelectorAll('.rules-list').forEach(list => {

@@ -95,12 +95,20 @@ export function initializeUnifiedToolbar() {
  * Update toolbar when switching tabs
  */
 export async function updateToolbarVisibility(tabType) {
+  console.log('DEBUG: updateToolbarVisibility called with:', tabType);
   currentActiveTab = tabType;
   
   const currentTabControls = $id('currentTabControls');
   const savedTabControls = $id('savedTabControls');
   const searchInput = $id('unifiedSearchInput');
   const groupingSelect = $id('unifiedGroupingSelect');
+  
+  console.log('DEBUG: Toolbar elements found:', {
+    currentTabControls: !!currentTabControls,
+    savedTabControls: !!savedTabControls,
+    searchInput: !!searchInput,
+    groupingSelect: !!groupingSelect
+  });
   
   // Show/hide tab-specific controls
   if (tabType === 'categorize') {

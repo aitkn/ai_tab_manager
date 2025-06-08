@@ -148,11 +148,15 @@ export async function initializeApp() {
         }
       }
     } else if (targetTab === 'categorize') {
+      console.log('DEBUG: Loading categorize tab content...');
+      
       // Load categorized tabs from background FIRST
       await loadCategorizedTabsFromBackground();
+      console.log('DEBUG: Categorized tabs loaded from background');
       
       // Then restore UI state (search, grouping, etc)
       await restoreUIState();
+      console.log('DEBUG: UI state restored');
       
       // Restore scroll position for categorize tab
       if (state.popupState?.scrollPositions?.categorize) {
@@ -203,11 +207,17 @@ async function loadCategorizedTabsFromBackground() {
     initializeTabDataSource(window.tabDatabase);
     console.log('Tab data source re-initialized');
     
+    console.log('DEBUG: Getting current tabs...');
     const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
+    console.log('DEBUG: Current tabs result:', {
+      categorizedTabs: Object.keys(categorizedTabs).map(cat => `${cat}: ${categorizedTabs[cat]?.length || 0}`),
+      totalTabs: Object.values(categorizedTabs).reduce((sum, tabs) => sum + (tabs?.length || 0), 0)
+    });
+    
     const hasTabs = Object.values(categorizedTabs).some(tabs => tabs.length > 0);
     
     if (hasTabs) {
-      console.log('Loaded current tabs from browser');
+      console.log('DEBUG: Loaded current tabs from browser, displaying...');
       state.categorizedTabs = categorizedTabs;
       state.urlToDuplicateIds = urlToDuplicateIds;
       
