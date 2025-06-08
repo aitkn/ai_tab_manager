@@ -190,8 +190,8 @@ class TabDatabase {
             cursor.continue();
           }
         } else if (!found) {
-          // No open event found
-          console.warn('No open event found for tab:', tabId);
+          // No open event found - this is okay, just resolve
+          // console.warn('No open event found for tab:', tabId);
           resolve();
         }
       };
@@ -209,9 +209,7 @@ class TabDatabase {
     const closeTime = new Date().toISOString();
 
     for (const [category, tabs] of Object.entries(categorizedTabs)) {
-      // Skip uncategorized - check both string and number
-      if (category === '0' || category === 0 || parseInt(category) === 0) continue;
-
+      // Save all categories including uncategorized
       for (const tab of tabs) {
         try {
           // Get or create URL entry with the category
