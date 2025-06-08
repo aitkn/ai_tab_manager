@@ -67,6 +67,11 @@ export async function showSavedTabsContent(groupingType, includeCanClose = false
     
     // Get the saved content container
     const savedContent = $id(DOM_IDS.SAVED_CONTENT);
+    
+    // Hide content to prevent scroll jump
+    savedContent.style.opacity = '0';
+    savedContent.style.pointerEvents = 'none';
+    
     savedContent.innerHTML = '';
     
     if (groupingType === 'category') {
@@ -93,13 +98,22 @@ export async function showSavedTabsContent(groupingType, includeCanClose = false
       }
     }
     
-    // Restore scroll position
+    // Restore scroll position before showing content
     if (state.popupState.scrollPositions?.saved) {
-      // Use setTimeout to ensure content is rendered first
-      setTimeout(() => {
-        restoreScrollPosition('savedContent', state.popupState.scrollPositions.saved);
-      }, 100);
+      savedContent.scrollTop = state.popupState.scrollPositions.saved;
     }
+    
+    // Show content with smooth transition
+    requestAnimationFrame(() => {
+      savedContent.style.transition = 'opacity 150ms ease-in-out';
+      savedContent.style.opacity = '1';
+      savedContent.style.pointerEvents = 'auto';
+      
+      // Clean up transition after it completes
+      setTimeout(() => {
+        savedContent.style.transition = '';
+      }, 150);
+    });
     
   } catch (error) {
     showStatus('Error loading saved tabs: ' + error.message, 'error');
