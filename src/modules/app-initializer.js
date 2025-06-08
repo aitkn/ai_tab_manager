@@ -122,19 +122,6 @@ export async function initializeApp() {
     // Initialize tab navigation
     initializeTabNavigation();
     
-    // Initialize saved tabs content
-    if (state.popupState) {
-      const savedGrouping = state.popupState.groupingSelections?.saved || 'category';
-      const includeCanClose = state.popupState.showAllCategories || false;
-      await showSavedTabsContent(savedGrouping, includeCanClose).catch(console.error);
-      
-      // Restore checkbox state
-      const showAllCheckbox = $id('showAllCategoriesCheckbox');
-      if (showAllCheckbox) {
-        showAllCheckbox.checked = includeCanClose;
-      }
-    }
-    
     // Initialize settings UI
     const { initializeSettings } = await import('./settings-manager.js');
     await initializeSettings();
@@ -287,9 +274,16 @@ async function restoreActiveTab() {
         }
         
         // Now switch to the correct tab
-        setTimeout(() => {
+        setTimeout(async () => {
           console.log('Restoring active tab:', state.popupState.activeTab);
           switchToTab(state.popupState.activeTab);
+          
+          // If switching to saved tab, load saved content
+          if (state.popupState.activeTab === 'saved') {
+            const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
+            const includeCanClose = state.popupState.showAllCategories || false;
+            await showSavedTabsContent(savedGroupingSelect?.value || 'category', includeCanClose);
+          }
           
           // Restore scroll position again after tab switch
           const activeTabName = state.popupState.activeTab;
@@ -303,6 +297,13 @@ async function restoreActiveTab() {
     } else {
       // No scroll positions, just switch tab
       switchToTab(state.popupState.activeTab);
+      
+      // If switching to saved tab, load saved content
+      if (state.popupState.activeTab === 'saved') {
+        const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
+        const includeCanClose = state.popupState.showAllCategories || false;
+        showSavedTabsContent(savedGroupingSelect?.value || 'category', includeCanClose);
+      }
     }
   }
 }
