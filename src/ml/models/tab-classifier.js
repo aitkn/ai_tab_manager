@@ -34,6 +34,14 @@ export class TabClassifier {
     // Load TensorFlow.js if not already loaded
     const tf = await loadTensorFlow();
     
+    // If TensorFlow is not available, mark as loaded but disabled
+    if (!tf) {
+      console.log('TensorFlow.js not available - ML classifier disabled');
+      this.isLoaded = true;
+      this.disabled = true;
+      return;
+    }
+    
     // Get or create vocabulary
     if (!this.vocabulary) {
       this.vocabulary = await getOrCreateVocabulary();

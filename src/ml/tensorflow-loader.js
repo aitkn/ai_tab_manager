@@ -21,27 +21,57 @@ export async function loadTensorFlow() {
   
   loadingPromise = new Promise(async (resolve, reject) => {
     try {
-      console.log('Loading TensorFlow.js...');
+      // Try to load from downloaded cache
+      const { getCachedTensorFlow, downloadTensorFlow } = await import('./tensorflow-downloader.js');
       
-      // For Chrome extensions, we'll load from CDN
-      // In production, consider bundling or using a local copy
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js';
+      let scriptContent = await getCachedTensorFlow();
       
-      script.onload = () => {
+      if (!scriptContent) {
+        console.log('TensorFlow.js not in cache, downloading...');
+        try {
+          scriptContent = await downloadTensorFlow();
+        } catch (downloadError) {
+          console.error('Failed to download TensorFlow.js:', downloadError);
+          console.log('ML features will be disabled');
+          resolve(null);
+          return;
+        }
+      }
+      
+      // Execute the script in a safe way
+      try {
+        // Create a blob URL from the script content
+        const blob = new Blob([scriptContent], { type: 'application/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Create script element
+        const script = document.createElement('script');
+        script.src = blobUrl;
+        
+        await new Promise((scriptResolve, scriptReject) => {
+          script.onload = () => {
+            URL.revokeObjectURL(blobUrl);
+            scriptResolve();
+          };
+          script.onerror = (error) => {
+            URL.revokeObjectURL(blobUrl);
+            scriptReject(error);
+          };
+          document.head.appendChild(script);
+        });
+        
         tf = window.tf;
-        console.log('TensorFlow.js loaded successfully');
+        console.log('TensorFlow.js loaded successfully from cache');
         resolve(tf);
-      };
+        
+      } catch (execError) {
+        console.error('Failed to execute TensorFlow.js:', execError);
+        resolve(null);
+      }
       
-      script.onerror = (error) => {
-        console.error('Failed to load TensorFlow.js:', error);
-        reject(error);
-      };
-      
-      document.head.appendChild(script);
     } catch (error) {
-      reject(error);
+      console.error('Error loading TensorFlow.js:', error);
+      resolve(null);
     }
   });
   
@@ -69,21 +99,9 @@ export function isTensorFlowLoaded() {
  * @returns {Promise} Promise that resolves when ready
  */
 export async function loadTensorFlowForWorker() {
-  // For Web Workers, we need to use importScripts
-  if (typeof importScripts === 'function') {
-    try {
-      importScripts('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js');
-      tf = self.tf;
-      console.log('TensorFlow.js loaded in Web Worker');
-      return tf;
-    } catch (error) {
-      console.error('Failed to load TensorFlow.js in Worker:', error);
-      throw error;
-    }
-  } else {
-    // Fallback to regular loading
-    return loadTensorFlow();
-  }
+  // Web Workers also cannot use importScripts for external URLs in Chrome extensions
+  console.log('TensorFlow.js not available in Web Worker due to CSP restrictions');
+  return null;
 }
 
 // Export for convenience

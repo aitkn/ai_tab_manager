@@ -3,13 +3,27 @@
  * Web Worker for background model training
  */
 
-// Import TensorFlow.js for Web Workers
-importScripts('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js');
-
 // Worker state
 let isTraining = false;
 let currentJob = null;
 let tf = null;
+
+// Try to load TensorFlow.js from cached download
+async function loadTensorFlowInWorker() {
+  try {
+    // Import the cached content directly (workers can't use DOM)
+    const response = await fetch('/tensorflow-loader-worker.js');
+    if (response.ok) {
+      const script = await response.text();
+      eval(script); // In worker context, eval is safe for our own code
+      tf = self.tf;
+      return true;
+    }
+  } catch (error) {
+    console.error('Failed to load TensorFlow.js in worker:', error);
+  }
+  return false;
+}
 
 // Message handler
 self.addEventListener('message', async (event) => {
@@ -56,24 +70,38 @@ self.addEventListener('message', async (event) => {
  * Initialize the worker
  */
 async function handleInit() {
-  if (!tf) {
-    tf = self.tf;
-    console.log('TensorFlow.js initialized in worker');
-  }
+  // Try to load TensorFlow.js
+  const loaded = await loadTensorFlowInWorker();
   
-  self.postMessage({
-    type: 'INITIALIZED',
-    data: {
-      tfVersion: tf.version.tfjs,
-      backend: tf.getBackend()
-    }
-  });
+  if (loaded && tf) {
+    self.postMessage({
+      type: 'INITIALIZED',
+      data: {
+        tfVersion: tf.version.tfjs,
+        backend: tf.getBackend()
+      }
+    });
+  } else {
+    self.postMessage({
+      type: 'INITIALIZED',
+      data: {
+        tfVersion: 'unavailable',
+        backend: 'none',
+        message: 'TensorFlow.js not available - please download it first'
+      }
+    });
+  }
 }
 
 /**
  * Handle training request
  */
 async function handleTrain(data, jobId) {
+  // Check if TensorFlow.js is available
+  if (!tf) {
+    throw new Error('TensorFlow.js not loaded - please download it first');
+  }
+  
   if (isTraining) {
     throw new Error('Training already in progress');
   }

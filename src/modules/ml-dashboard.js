@@ -74,36 +74,68 @@ async function handleMLToggle(event) {
  */
 async function updateMLStatus() {
   try {
-    // Get ML categorizer
+    // First check TensorFlow.js status
+    const { getTensorFlowStatus, isTensorFlowDownloaded } = await import('../ml/tensorflow-downloader.js');
+    const tfStatus = await getTensorFlowStatus();
+    
+    const statusContent = $id('mlStatusContent');
+    if (!statusContent) return;
+    
+    // If TensorFlow.js is not downloaded, show download option
+    if (!tfStatus.downloaded) {
+      statusContent.innerHTML = `
+        <div style="margin-bottom: 8px; color: var(--md-sys-color-on-surface-variant);">
+          TensorFlow.js needs to be downloaded to enable ML features.
+        </div>
+        <button id="downloadTensorFlowBtn" class="secondary-btn" style="font-size: 12px; padding: 4px 12px;">
+          Download ML Library (~3MB)
+        </button>
+        <div id="downloadProgress" style="margin-top: 8px; display: none;">
+          <span class="text-muted" style="font-size: 11px;">Downloading...</span>
+        </div>
+      `;
+      
+      // Add download button handler
+      const downloadBtn = $id('downloadTensorFlowBtn');
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', handleDownloadTensorFlow);
+      }
+      return;
+    }
+    
+    // TensorFlow.js is downloaded, show ML status
     const { getMLCategorizer } = await import('../ml/categorization/ml-categorizer.js');
     const mlCategorizer = await getMLCategorizer();
     const status = await mlCategorizer.getStatus();
     
-    // Update model status
-    const statusContent = $id('mlStatusContent');
-    if (statusContent) {
-      statusContent.innerHTML = `
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span>Model exists:</span>
-          <span style="font-weight: 500; color: ${status.modelExists ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-error)'}">
-            ${status.modelExists ? 'Yes' : 'No'}
+    statusContent.innerHTML = `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span>TensorFlow.js:</span>
+        <span style="font-weight: 500; color: var(--md-sys-color-primary)">
+          v${tfStatus.version} (${Math.round(tfStatus.size / 1024 / 1024)}MB)
+        </span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span>Model exists:</span>
+        <span style="font-weight: 500; color: ${status.modelExists ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-error)'}">
+          ${status.modelExists ? 'Yes' : 'No'}
+        </span>
+      </div>
+      ${status.modelExists && status.modelAccuracy ? `
+        <div style="display: flex; justify-content: space-between;">
+          <span>Model accuracy:</span>
+          <span style="font-weight: 500; color: var(--md-sys-color-primary)">
+            ${Math.round(status.modelAccuracy * 100)}%
           </span>
         </div>
-        ${status.modelExists && status.modelAccuracy ? `
-          <div style="display: flex; justify-content: space-between;">
-            <span>Model accuracy:</span>
-            <span style="font-weight: 500; color: var(--md-sys-color-primary)">
-              ${Math.round(status.modelAccuracy * 100)}%
-            </span>
-          </div>
-        ` : ''}
-        ${!status.modelExists ? `
-          <div style="margin-top: 8px; color: var(--md-sys-color-on-surface-variant);">
-            The model will be created after you categorize more tabs.
-          </div>
-        ` : ''}
-      `;
-    }
+      ` : ''}
+      ${!status.modelExists ? `
+        <div style="margin-top: 8px; color: var(--md-sys-color-on-surface-variant);">
+          The model will be created after you categorize more tabs.
+        </div>
+      ` : ''}
+    `;
+  }
     
     // Update trust weights
     const trustContent = $id('mlTrustContent');
@@ -191,6 +223,44 @@ async function updateMLStatus() {
     if (statusContent) {
       statusContent.innerHTML = '<div style="color: var(--md-sys-color-error);">Error loading ML status</div>';
     }
+  }
+}
+
+/**
+ * Handle TensorFlow.js download
+ */
+async function handleDownloadTensorFlow() {
+  const downloadBtn = $id('downloadTensorFlowBtn');
+  const progressDiv = $id('downloadProgress');
+  
+  if (!downloadBtn || !progressDiv) return;
+  
+  // Show progress
+  downloadBtn.disabled = true;
+  downloadBtn.textContent = 'Downloading...';
+  progressDiv.style.display = 'block';
+  progressDiv.innerHTML = '<span class="text-muted" style="font-size: 11px;">Downloading TensorFlow.js...</span>';
+  
+  try {
+    const { downloadTensorFlow } = await import('../ml/tensorflow-downloader.js');
+    await downloadTensorFlow();
+    
+    progressDiv.innerHTML = '<span style="color: var(--md-sys-color-primary); font-size: 11px;">Download complete!</span>';
+    showStatus('TensorFlow.js downloaded successfully', 'success');
+    
+    // Reload ML status after download
+    setTimeout(() => {
+      updateMLStatus();
+    }, 1000);
+    
+  } catch (error) {
+    console.error('Error downloading TensorFlow.js:', error);
+    progressDiv.innerHTML = '<span style="color: var(--md-sys-color-error); font-size: 11px;">Download failed</span>';
+    showStatus('Failed to download TensorFlow.js', 'error');
+    
+    // Re-enable button
+    downloadBtn.disabled = false;
+    downloadBtn.textContent = 'Download ML Library (~3MB)';
   }
 }
 
