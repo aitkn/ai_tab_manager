@@ -84,9 +84,12 @@ src/
 - Tabs are deduplicated before sending to LLM to reduce tokens
 - Already-saved URLs are excluded from LLM calls but shown in UI
 - Custom prompts stored in `state.settings.customPrompt`
+- **API Key Help**: Settings page includes direct links to API key pages for each LLM provider
 
 ### Database Operations
 - No individual `saveTab` method - use `saveTabs({ [category]: [tab] })`
+- **URL-only Storage**: Database stores only one entry per URL (simplified from URL+title)
+- Handles dynamic title changes (e.g., Gmail unread counts, YouTube progress)
 - Duplicate URLs prevented at database level
 - Category priority: Important (3) > Save Later (2) > Can Close (1)
 
@@ -95,11 +98,15 @@ src/
 - Grouping selections persist
 - Search queries maintained
 - Window close triggers state save via `beforeunload`
+- **Flicker-free Initialization**: Synchronous pre-initialization loads saved state before DOM ready
+- Prevents visual artifacts when popup opens by determining correct initial tab early
 
 ### Tab Operations
 - Close operations handle duplicate tabs via `duplicateIds` array
 - Tab click switches to correct window first, then activates tab
 - Save operations update both database and remove from current view
+- **Warning Dialogs**: Shows warning when closing tabs with uncategorized items (both individual and "Close All")
+- Prevents accidental loss of potentially important uncategorized tabs
 
 ### DOM Updates and Transitions
 - **Morphdom Integration**: Uses morphdom library (12KB minified) for smooth DOM updates without flicker
