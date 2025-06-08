@@ -209,7 +209,9 @@ class TabDatabase {
     const closeTime = new Date().toISOString();
 
     for (const [category, tabs] of Object.entries(categorizedTabs)) {
-      // Save all categories including uncategorized
+      // Skip uncategorized - check both string and number
+      if (category === '0' || category === 0 || parseInt(category) === 0) continue;
+
       for (const tab of tabs) {
         try {
           // Get or create URL entry with the category
