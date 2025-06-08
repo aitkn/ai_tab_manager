@@ -366,9 +366,9 @@ function deduplicateTabs(tabs, savedUrls = new Set()) {
 
 // Expand categorized results to show deduplicated tabs but track all duplicate IDs
 function expandCategorizedResults(categorized, urlToOriginalTabs) {
-  const expanded = { 1: [], 2: [], 3: [] };
+  const expanded = { 0: [], 1: [], 2: [], 3: [] };
   
-  [1, 2, 3].forEach(category => {
+  [0, 1, 2, 3].forEach(category => {
     if (categorized[category]) {
       categorized[category].forEach(deduplicatedTab => {
         const originalTabs = urlToOriginalTabs.get(deduplicatedTab.url) || [];
@@ -657,7 +657,7 @@ function organizeTabs(tabs, categorization) {
   console.log('Categorization type:', typeof categorization);
   console.log('Categorization keys:', Object.keys(categorization || {}).slice(0, 10));
   
-  const organized = { 1: [], 2: [], 3: [] };
+  const organized = { 0: [], 1: [], 2: [], 3: [] };  // Include category 0 for uncategorized
   
   tabs.forEach((tab, index) => {
     // Check for categorization by tab ID (for regular tabs) or by index (for imported tabs)
@@ -666,23 +666,30 @@ function organizeTabs(tabs, categorization) {
     try {
       if (tab && tab.deduplicatedId) {
         // For deduplicated tabs, use the deduplicatedId
-        category = categorization[tab.deduplicatedId] || categorization[index.toString()] || 1;
+        console.log(`Looking for deduplicatedId: ${tab.deduplicatedId}, found: ${categorization[tab.deduplicatedId]}`);
+        category = categorization[tab.deduplicatedId] || categorization[index.toString()];
       } else if (tab && tab.id !== undefined && tab.id !== null) {
         const idKey = tab.id.toString();
-        category = categorization[idKey] || 1;
+        category = categorization[idKey];
       } else if (tab && tab.tempId) {
         // For imported tabs with temporary IDs, check both tempId and index
-        category = categorization[tab.tempId] || categorization[index.toString()] || 1;
+        category = categorization[tab.tempId] || categorization[index.toString()];
       } else {
         // For imported tabs without IDs, use the index
         const indexKey = index.toString();
-        category = categorization[indexKey] || 1;
+        category = categorization[indexKey];
+      }
+      
+      // If no category found, mark as uncategorized (0) instead of defaulting to 1
+      if (category === undefined || category === null) {
+        console.warn(`No categorization found for tab at index ${index}, marking as uncategorized`);
+        category = 0;
       }
       
       // Ensure category is valid
-      if (![1, 2, 3].includes(category)) {
-        console.warn(`Invalid category ${category} for tab at index ${index}, defaulting to 1`);
-        category = 1;
+      if (![0, 1, 2, 3].includes(category)) {
+        console.warn(`Invalid category ${category} for tab at index ${index}, marking as uncategorized`);
+        category = 0;
       }
       
       organized[category].push(tab);
