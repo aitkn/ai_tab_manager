@@ -90,8 +90,10 @@ export async function initializeApp() {
     initializeTabDataSource(window.tabDatabase);
     console.log('Tab data source initialized');
     
-    // Load saved state
-    await loadSavedState();
+    // Load saved state (skip if already loaded in preInitialize)
+    if (!window._targetTab) {
+      await loadSavedState();
+    }
     
     // Check if default prompt needs updating
     if (!state.settings.isPromptCustomized && 
@@ -122,22 +124,18 @@ export async function initializeApp() {
     const { initializeUnifiedToolbar } = await import('./unified-toolbar.js');
     initializeUnifiedToolbar();
     
-    // First, determine which tab should be active
-    const { hasCurrentTabs } = await import('./tab-data-source.js');
-    const hasTabs = await hasCurrentTabs();
+    // Use the pre-determined target tab if available
+    let targetTab = window._targetTab || state.popupState?.activeTab || 'categorize';
+    console.log('Using pre-determined target tab:', targetTab);
     
-    let targetTab = state.popupState?.activeTab || 'categorize';
-    if (!hasTabs && targetTab === 'categorize') {
-      console.log('No current tabs found, will show saved tab');
-      targetTab = 'saved';
-    }
+    // The DOM should already have the correct active classes set by preInitialize
+    // Update the state to match
+    state.popupState.activeTab = targetTab;
+    updateState('activeTab', targetTab);
     
-    // Add no-transition class to prevent animation on initial load
-    document.body.classList.add('no-transition');
-    
-    // Switch to the target tab immediately (before loading content)
-    console.log('Setting initial tab to:', targetTab);
-    switchToTab(targetTab);
+    // Update toolbar visibility without animations
+    const { updateToolbarVisibility } = await import('./unified-toolbar.js');
+    await updateToolbarVisibility(targetTab);
     
     // Now load content based on which tab is active
     if (targetTab === 'saved') {
@@ -168,11 +166,6 @@ export async function initializeApp() {
         }
       }
     }
-    
-    // Remove no-transition class after a brief delay to re-enable animations
-    setTimeout(() => {
-      document.body.classList.remove('no-transition');
-    }, 100);
     
     console.log('Loaded settings:', state.settings);
     

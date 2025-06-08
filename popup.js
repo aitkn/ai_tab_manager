@@ -63,8 +63,65 @@ console.log('AI Tab Manager Debug Mode - Version:', window.DEBUG.version);
 // Set up auto-save handlers
 setupAutoSave();
 
-// Initialize app when DOM is ready
-document.addEventListener('DOMContentLoaded', initializeApp);
+// Pre-initialize state synchronously before DOM is ready
+async function preInitialize() {
+  try {
+    // Load saved state from storage synchronously
+    const savedPopupState = await StorageService.loadPopupState();
+    const savedSettings = await StorageService.loadSettings();
+    
+    // Apply saved state
+    if (savedPopupState) {
+      Object.assign(state.popupState, savedPopupState);
+      state.isViewingSaved = savedPopupState.isViewingSaved || false;
+      state.searchQuery = savedPopupState.searchQuery || '';
+    }
+    
+    if (savedSettings) {
+      Object.assign(state.settings, savedSettings);
+    }
+    
+    // Determine which tab should be active
+    let targetTab = state.popupState?.activeTab || 'categorize';
+    
+    // Quick check if we have any current tabs (just check chrome tabs, not database)
+    const allTabs = await ChromeAPIService.queryTabs({});
+    const hasTabs = allTabs && allTabs.length > 0;
+    
+    if (!hasTabs && targetTab === 'categorize') {
+      targetTab = 'saved';
+    }
+    
+    // Set initial DOM state before it's visible
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set the correct active classes immediately
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.tab === targetTab) {
+          btn.classList.add('active');
+        }
+      });
+      
+      document.querySelectorAll('.tab-pane').forEach(pane => {
+        if (pane.id === `${targetTab}Tab`) {
+          pane.classList.add('active');
+        }
+      });
+      
+      // Store the target tab for initializeApp to use
+      window._targetTab = targetTab;
+      
+      // Now initialize the app
+      initializeApp();
+    });
+  } catch (error) {
+    console.error('Pre-initialization error:', error);
+    // Fall back to normal initialization
+    document.addEventListener('DOMContentLoaded', initializeApp);
+  }
+}
+
+// Start pre-initialization immediately
+preInitialize();
 
 // Export commonly used functions for inline event handlers if needed
 window.aiTabManager = {
