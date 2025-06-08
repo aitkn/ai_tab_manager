@@ -165,6 +165,7 @@ export async function updateToolbarVisibility(tabType) {
     showToolbar();
     
   } else if (tabType === 'settings') {
+    console.log('DEBUG: Hiding toolbar for settings tab');
     // Hide toolbar and all controls for settings tab
     hideToolbar();
     hide(currentTabControls);

@@ -78,10 +78,18 @@ async function updateMLStatus() {
       return;
     }
     
-    // Clear the loading message immediately
-    const loadingDiv = statusContent.querySelector('.ml-status-loading');
-    if (loadingDiv) {
-      loadingDiv.remove();
+    // Clear ALL existing content immediately (including any loading message)
+    statusContent.innerHTML = '';
+    
+    // Check if ML is disabled
+    if (state.settings.useML === false) {
+      statusContent.innerHTML = `
+        <div style="color: var(--md-sys-color-on-surface-variant);">
+          <div style="margin-bottom: 4px;">ML features disabled</div>
+          <div style="font-size: 11px;">Enable ML categorization to see status and metrics.</div>
+        </div>
+      `;
+      return;
     }
     
     // Get ML status

@@ -90,10 +90,9 @@ export async function initializeApp() {
     initializeTabDataSource(window.tabDatabase);
     console.log('Tab data source initialized');
     
-    // Load saved state (skip if already loaded in preInitialize)
-    if (!window._targetTab) {
-      await loadSavedState();
-    }
+    // Always load saved state for rules initialization (even if target tab was pre-determined)
+    console.log('DEBUG: Loading saved state for rules initialization...');
+    await loadSavedState();
     
     // Check if default prompt needs updating
     if (!state.settings.isPromptCustomized && 
@@ -158,9 +157,19 @@ export async function initializeApp() {
       await restoreUIState();
       console.log('DEBUG: UI state restored');
       
+      // Always display tabs even if empty to show proper UI state
+      const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
+      if (tabsContainer) {
+        show(tabsContainer);
+        console.log('DEBUG: Tabs container shown');
+      }
+      
+      // Force display update to ensure content is shown
+      await displayTabs();
+      console.log('DEBUG: Display tabs called');
+      
       // Restore scroll position for categorize tab
       if (state.popupState?.scrollPositions?.categorize) {
-        const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
         if (tabsContainer) {
           tabsContainer.scrollTop = state.popupState.scrollPositions.categorize;
         }
@@ -208,10 +217,15 @@ async function loadCategorizedTabsFromBackground() {
     console.log('Tab data source re-initialized');
     
     console.log('DEBUG: Getting current tabs...');
-    const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
+    const result = await getCurrentTabs();
+    console.log('DEBUG: getCurrentTabs result type:', typeof result);
+    console.log('DEBUG: getCurrentTabs result:', result);
+    
+    const { categorizedTabs, urlToDuplicateIds } = result || { categorizedTabs: {}, urlToDuplicateIds: {} };
     console.log('DEBUG: Current tabs result:', {
       categorizedTabs: Object.keys(categorizedTabs).map(cat => `${cat}: ${categorizedTabs[cat]?.length || 0}`),
-      totalTabs: Object.values(categorizedTabs).reduce((sum, tabs) => sum + (tabs?.length || 0), 0)
+      totalTabs: Object.values(categorizedTabs).reduce((sum, tabs) => sum + (tabs?.length || 0), 0),
+      rawCategorizedTabs: categorizedTabs
     });
     
     const hasTabs = Object.values(categorizedTabs).some(tabs => tabs.length > 0);

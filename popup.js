@@ -84,18 +84,33 @@ async function preInitialize() {
     }
     
     // Determine which tab should be active
-    let targetTab = state.popupState?.activeTab || 'categorize';
+    let targetTab = 'categorize'; // Default to categorize
+    
+    // Only override if we have a valid saved activeTab
+    if (savedPopupState && savedPopupState.activeTab) {
+      targetTab = savedPopupState.activeTab;
+    }
+    
     console.log('DEBUG: Target tab determined:', {
-      fromSavedState: state.popupState?.activeTab,
+      fromSavedState: savedPopupState?.activeTab,
       finalTarget: targetTab,
-      hasConfiguredSettings: state.settings?.hasConfiguredSettings
+      hasConfiguredSettings: state.settings?.hasConfiguredSettings,
+      fullSavedState: savedPopupState,
+      fullSettings: savedSettings
     });
     
     // Quick check if we have any current tabs (just check chrome tabs, not database)
     const allTabs = await ChromeAPIService.queryTabs({});
     const hasTabs = allTabs && allTabs.length > 0;
     
+    console.log('DEBUG: Tab switching logic:', {
+      hasTabs: hasTabs,
+      tabCount: allTabs?.length || 0,
+      originalTarget: targetTab
+    });
+    
     if (!hasTabs && targetTab === 'categorize') {
+      console.log('DEBUG: No tabs found, switching from categorize to saved');
       targetTab = 'saved';
     }
     
