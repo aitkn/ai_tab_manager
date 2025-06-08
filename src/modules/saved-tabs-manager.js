@@ -94,7 +94,7 @@ export async function showSavedTabsContent(groupingType, includeCanClose = false
         const groupCount = groupElements.length;
         let groupTypeLabel = getGroupTypeLabel(groupingType, groupCount);
         
-        showStatus(`Viewing ${allSavedTabs.length} saved tabs in ${groupCount} ${groupTypeLabel}`, 'success');
+        // Don't show status message when switching to saved tab
       }
     }
     
@@ -148,7 +148,7 @@ function displayCategoryView(savedContent, savedTabsByCategory, allSavedTabs) {
     // Count non-empty categories
     const nonEmptyCategories = [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT]
       .filter(cat => savedTabsByCategory[cat].length > 0).length;
-    showStatus(`Viewing ${allSavedTabs.length} saved tabs in ${nonEmptyCategories} ${nonEmptyCategories === 1 ? 'category' : 'categories'}`, 'success');
+    // Don't show status message when switching to saved tab
   }
 }
 
