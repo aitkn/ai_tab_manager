@@ -12,6 +12,9 @@
     "https://api.openai.com/*",
     "https://generativelanguage.googleapis.com/*"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' https://cdn.jsdelivr.net; object-src 'self'"
+  },
   "background": {
     "service_worker": "background.js"
   },
