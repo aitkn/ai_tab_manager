@@ -3,7 +3,7 @@
  * Categorization Service - handles tab categorization using LLMs
  */
 
-import { TAB_CATEGORIES, STATUS_MESSAGES, CATEGORY_NAMES } from '../utils/constants.js';
+import { TAB_CATEGORIES, STATUS_MESSAGES, CATEGORY_NAMES, RULE_TYPES, RULE_FIELDS } from '../utils/constants.js';
 import { extractDomain, fallbackCategorization } from '../utils/helpers.js';
 import MessageService from '../services/MessageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
@@ -33,6 +33,69 @@ export async function handleCategorize() {
 }
 
 /**
+ * Apply rules to categorize tabs
+ * @param {Array} tabs - Array of tabs to categorize
+ * @param {Array} rules - Array of rules to apply
+ * @returns {Object} Object with categorized tabs and remaining uncategorized tabs
+ */
+export function applyRulesToTabs(tabs, rules) {
+  const categorizedByRules = {
+    [TAB_CATEGORIES.CAN_CLOSE]: [],
+    [TAB_CATEGORIES.SAVE_LATER]: [],
+    [TAB_CATEGORIES.IMPORTANT]: []
+  };
+  const uncategorizedTabs = [];
+  
+  tabs.forEach(tab => {
+    let categorized = false;
+    
+    // Check each rule
+    for (const rule of rules) {
+      if (!rule.enabled) continue;
+      
+      let matches = false;
+      
+      switch (rule.type) {
+        case RULE_TYPES.DOMAIN:
+          const tabDomain = extractDomain(tab.url);
+          matches = tabDomain === rule.value;
+          break;
+          
+        case RULE_TYPES.URL_CONTAINS:
+          matches = tab.url.includes(rule.value);
+          break;
+          
+        case RULE_TYPES.TITLE_CONTAINS:
+          matches = tab.title && tab.title.includes(rule.value);
+          break;
+          
+        case RULE_TYPES.REGEX:
+          try {
+            const regex = new RegExp(rule.value);
+            const field = rule.field === RULE_FIELDS.TITLE ? tab.title : tab.url;
+            matches = regex.test(field);
+          } catch (e) {
+            console.error('Invalid regex:', rule.value, e);
+          }
+          break;
+      }
+      
+      if (matches) {
+        categorizedByRules[rule.category].push(tab);
+        categorized = true;
+        break; // Apply first matching rule only
+      }
+    }
+    
+    if (!categorized) {
+      uncategorizedTabs.push(tab);
+    }
+  });
+  
+  return { categorizedByRules, uncategorizedTabs };
+}
+
+/**
  * Categorize all open tabs
  */
 export async function categorizeTabs() {
@@ -52,7 +115,24 @@ export async function categorizeTabs() {
       return;
     }
     
-    const tabs = uncategorizedTabs;
+    // Apply rules first if any are defined
+    let tabsForLLM = uncategorizedTabs;
+    let ruleCategorizedTabs = {};
+    
+    if (state.settings.rules && state.settings.rules.length > 0) {
+      const { categorizedByRules, uncategorizedTabs: remainingTabs } = applyRulesToTabs(uncategorizedTabs, state.settings.rules);
+      ruleCategorizedTabs = categorizedByRules;
+      tabsForLLM = remainingTabs;
+      
+      console.log(`Rules applied: ${uncategorizedTabs.length - remainingTabs.length} tabs categorized by rules`);
+      console.log('Rule categorization:', {
+        category1: ruleCategorizedTabs[TAB_CATEGORIES.CAN_CLOSE].length,
+        category2: ruleCategorizedTabs[TAB_CATEGORIES.SAVE_LATER].length,
+        category3: ruleCategorizedTabs[TAB_CATEGORIES.IMPORTANT].length
+      });
+    }
+    
+    const tabs = tabsForLLM;
     
     // Process tabs to add domain info
     const processedTabs = tabs.map(tab => ({
@@ -105,32 +185,52 @@ export async function categorizeTabs() {
     
     let categorized;
     
-    try {
-      // Call LLM for categorization
-      categorized = await MessageService.categorizeTabs({
-        tabs: processedTabs,
-        apiKey,
-        provider,
-        model,
-        customPrompt,
-        savedUrls
-      });
-      
-      console.log('Tabs categorized successfully');
-    } catch (error) {
-      console.error('Error calling API:', error);
-      
-      // Use fallback categorization
-      console.log('Using fallback categorization');
-      categorized = fallbackCategorization(processedTabs);
+    // Only call LLM if there are tabs remaining after rule application
+    if (tabs.length > 0) {
+      try {
+        // Call LLM for categorization
+        categorized = await MessageService.categorizeTabs({
+          tabs: processedTabs,
+          apiKey,
+          provider,
+          model,
+          customPrompt,
+          savedUrls
+        });
+        
+        console.log('Tabs categorized successfully');
+      } catch (error) {
+        console.error('Error calling API:', error);
+        
+        // Use fallback categorization
+        console.log('Using fallback categorization');
+        categorized = fallbackCategorization(processedTabs);
+      }
+    } else {
+      // No tabs for LLM, just use empty categories
+      categorized = {
+        [TAB_CATEGORIES.CAN_CLOSE]: [],
+        [TAB_CATEGORIES.SAVE_LATER]: [],
+        [TAB_CATEGORIES.IMPORTANT]: []
+      };
+      console.log('All tabs categorized by rules, skipping LLM');
     }
     
-    // Ensure all categories exist
+    // Merge rule-based and LLM categorizations
     const result = {
       [TAB_CATEGORIES.UNCATEGORIZED]: [], // Clear uncategorized after categorization
-      [TAB_CATEGORIES.CAN_CLOSE]: categorized[TAB_CATEGORIES.CAN_CLOSE] || [],
-      [TAB_CATEGORIES.SAVE_LATER]: categorized[TAB_CATEGORIES.SAVE_LATER] || [],
-      [TAB_CATEGORIES.IMPORTANT]: categorized[TAB_CATEGORIES.IMPORTANT] || []
+      [TAB_CATEGORIES.CAN_CLOSE]: [
+        ...(ruleCategorizedTabs[TAB_CATEGORIES.CAN_CLOSE] || []),
+        ...(categorized[TAB_CATEGORIES.CAN_CLOSE] || [])
+      ],
+      [TAB_CATEGORIES.SAVE_LATER]: [
+        ...(ruleCategorizedTabs[TAB_CATEGORIES.SAVE_LATER] || []),
+        ...(categorized[TAB_CATEGORIES.SAVE_LATER] || [])
+      ],
+      [TAB_CATEGORIES.IMPORTANT]: [
+        ...(ruleCategorizedTabs[TAB_CATEGORIES.IMPORTANT] || []),
+        ...(categorized[TAB_CATEGORIES.IMPORTANT] || [])
+      ]
     };
     
     console.log('Final categorization:', {
@@ -332,5 +432,6 @@ export default {
   refreshCategorization,
   moveTabToCategory,
   isTabSaved,
-  getCategorizationStats
+  getCategorizationStats,
+  applyRulesToTabs
 };

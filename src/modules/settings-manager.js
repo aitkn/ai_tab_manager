@@ -3,7 +3,7 @@
  * Settings Manager - handles all settings UI and persistence
  */
 
-import { DOM_IDS, LIMITS } from '../utils/constants.js';
+import { DOM_IDS, LIMITS, RULE_TYPES, RULE_FIELDS, TAB_CATEGORIES, CATEGORY_NAMES } from '../utils/constants.js';
 import { $id, show, hide } from '../utils/dom-helpers.js';
 import { showStatus, hideApiKeyPrompt } from './ui-manager.js';
 import { state, updateState } from './state-manager.js';
@@ -329,6 +329,225 @@ export function onMaxTabsChange(e) {
 }
 
 /**
+ * Initialize rules UI
+ */
+export function initializeRulesUI() {
+  const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
+  if (!rulesContainer) return;
+  
+  // Clear existing rules
+  rulesContainer.innerHTML = '';
+  
+  // Add existing rules
+  if (state.settings.rules && state.settings.rules.length > 0) {
+    state.settings.rules.forEach((rule, index) => {
+      addRuleUI(rule, index);
+    });
+  } else {
+    // Show empty state
+    rulesContainer.innerHTML = '<p class="text-muted" style="font-size: 12px; text-align: center; padding: 20px;">No rules defined yet. Click "Add Rule" to create your first rule.</p>';
+  }
+}
+
+/**
+ * Add a rule to the UI
+ */
+function addRuleUI(rule = null, index = null) {
+  const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
+  if (!rulesContainer) return;
+  
+  // Remove empty state message if present
+  if (rulesContainer.querySelector('.text-muted')) {
+    rulesContainer.innerHTML = '';
+  }
+  
+  const ruleId = index !== null ? index : Date.now();
+  const ruleData = rule || {
+    type: RULE_TYPES.DOMAIN,
+    value: '',
+    category: TAB_CATEGORIES.CAN_CLOSE,
+    enabled: true
+  };
+  
+  const ruleElement = document.createElement('div');
+  ruleElement.className = 'rule-item';
+  ruleElement.dataset.ruleId = ruleId;
+  
+  ruleElement.innerHTML = `
+    <div class="rule-row">
+      <select class="rule-type-select" data-rule-id="${ruleId}">
+        <option value="${RULE_TYPES.DOMAIN}" ${ruleData.type === RULE_TYPES.DOMAIN ? 'selected' : ''}>Domain equals</option>
+        <option value="${RULE_TYPES.URL_CONTAINS}" ${ruleData.type === RULE_TYPES.URL_CONTAINS ? 'selected' : ''}>URL contains</option>
+        <option value="${RULE_TYPES.TITLE_CONTAINS}" ${ruleData.type === RULE_TYPES.TITLE_CONTAINS ? 'selected' : ''}>Title contains</option>
+        <option value="${RULE_TYPES.REGEX}" ${ruleData.type === RULE_TYPES.REGEX ? 'selected' : ''}>Regex match</option>
+      </select>
+      
+      <input type="text" class="rule-value-input" data-rule-id="${ruleId}" 
+             placeholder="${getRulePlaceholder(ruleData.type)}" 
+             value="${ruleData.value || ''}">
+      
+      <select class="rule-category-select" data-rule-id="${ruleId}">
+        <option value="${TAB_CATEGORIES.CAN_CLOSE}" ${ruleData.category === TAB_CATEGORIES.CAN_CLOSE ? 'selected' : ''}>${CATEGORY_NAMES[TAB_CATEGORIES.CAN_CLOSE]}</option>
+        <option value="${TAB_CATEGORIES.SAVE_LATER}" ${ruleData.category === TAB_CATEGORIES.SAVE_LATER ? 'selected' : ''}>${CATEGORY_NAMES[TAB_CATEGORIES.SAVE_LATER]}</option>
+        <option value="${TAB_CATEGORIES.IMPORTANT}" ${ruleData.category === TAB_CATEGORIES.IMPORTANT ? 'selected' : ''}>${CATEGORY_NAMES[TAB_CATEGORIES.IMPORTANT]}</option>
+      </select>
+      
+      <label class="rule-enabled-label">
+        <input type="checkbox" class="rule-enabled-checkbox" data-rule-id="${ruleId}" 
+               ${ruleData.enabled !== false ? 'checked' : ''}>
+        <span>Enabled</span>
+      </label>
+      
+      <button class="icon-btn icon-btn-small delete-rule-btn" data-rule-id="${ruleId}" title="Delete rule">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18"></path>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
+    </div>
+    ${ruleData.type === RULE_TYPES.REGEX ? `
+      <div class="rule-regex-field">
+        <select class="rule-field-select" data-rule-id="${ruleId}">
+          <option value="${RULE_FIELDS.URL}" ${ruleData.field === RULE_FIELDS.URL ? 'selected' : ''}>Match against URL</option>
+          <option value="${RULE_FIELDS.TITLE}" ${ruleData.field === RULE_FIELDS.TITLE ? 'selected' : ''}>Match against Title</option>
+        </select>
+      </div>
+    ` : ''}
+  `;
+  
+  rulesContainer.appendChild(ruleElement);
+  
+  // Add event listeners
+  const typeSelect = ruleElement.querySelector('.rule-type-select');
+  const valueInput = ruleElement.querySelector('.rule-value-input');
+  const categorySelect = ruleElement.querySelector('.rule-category-select');
+  const enabledCheckbox = ruleElement.querySelector('.rule-enabled-checkbox');
+  const deleteBtn = ruleElement.querySelector('.delete-rule-btn');
+  const fieldSelect = ruleElement.querySelector('.rule-field-select');
+  
+  typeSelect.addEventListener('change', (e) => onRuleTypeChange(e, ruleId));
+  valueInput.addEventListener('input', () => saveRules());
+  categorySelect.addEventListener('change', () => saveRules());
+  enabledCheckbox.addEventListener('change', () => saveRules());
+  deleteBtn.addEventListener('click', () => deleteRule(ruleId));
+  if (fieldSelect) {
+    fieldSelect.addEventListener('change', () => saveRules());
+  }
+}
+
+/**
+ * Get placeholder text for rule value input
+ */
+function getRulePlaceholder(type) {
+  switch (type) {
+    case RULE_TYPES.DOMAIN:
+      return 'e.g., github.com';
+    case RULE_TYPES.URL_CONTAINS:
+      return 'e.g., /login';
+    case RULE_TYPES.TITLE_CONTAINS:
+      return 'e.g., Sign in';
+    case RULE_TYPES.REGEX:
+      return 'e.g., .*\\.pdf$';
+    default:
+      return '';
+  }
+}
+
+/**
+ * Handle rule type change
+ */
+function onRuleTypeChange(e, ruleId) {
+  const newType = e.target.value;
+  const ruleElement = document.querySelector(`[data-rule-id="${ruleId}"]`);
+  const valueInput = ruleElement.querySelector('.rule-value-input');
+  
+  // Update placeholder
+  valueInput.placeholder = getRulePlaceholder(newType);
+  
+  // Show/hide regex field selector
+  const existingFieldSelect = ruleElement.querySelector('.rule-regex-field');
+  if (newType === RULE_TYPES.REGEX && !existingFieldSelect) {
+    const fieldSelectHtml = `
+      <div class="rule-regex-field">
+        <select class="rule-field-select" data-rule-id="${ruleId}">
+          <option value="${RULE_FIELDS.URL}">Match against URL</option>
+          <option value="${RULE_FIELDS.TITLE}">Match against Title</option>
+        </select>
+      </div>
+    `;
+    ruleElement.insertAdjacentHTML('beforeend', fieldSelectHtml);
+    
+    const fieldSelect = ruleElement.querySelector('.rule-field-select');
+    fieldSelect.addEventListener('change', () => saveRules());
+  } else if (newType !== RULE_TYPES.REGEX && existingFieldSelect) {
+    existingFieldSelect.remove();
+  }
+  
+  saveRules();
+}
+
+/**
+ * Delete a rule
+ */
+function deleteRule(ruleId) {
+  const ruleElement = document.querySelector(`[data-rule-id="${ruleId}"]`);
+  if (ruleElement) {
+    ruleElement.remove();
+    saveRules();
+    
+    // Show empty state if no rules left
+    const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
+    if (rulesContainer && rulesContainer.children.length === 0) {
+      rulesContainer.innerHTML = '<p class="text-muted" style="font-size: 12px; text-align: center; padding: 20px;">No rules defined yet. Click "Add Rule" to create your first rule.</p>';
+    }
+  }
+}
+
+/**
+ * Save all rules to state and storage
+ */
+function saveRules() {
+  const rules = [];
+  const ruleElements = document.querySelectorAll('.rule-item');
+  
+  ruleElements.forEach(ruleElement => {
+    const ruleId = ruleElement.dataset.ruleId;
+    const type = ruleElement.querySelector('.rule-type-select').value;
+    const value = ruleElement.querySelector('.rule-value-input').value.trim();
+    const category = parseInt(ruleElement.querySelector('.rule-category-select').value);
+    const enabled = ruleElement.querySelector('.rule-enabled-checkbox').checked;
+    const fieldSelect = ruleElement.querySelector('.rule-field-select');
+    
+    if (value) {  // Only save rules with values
+      const rule = {
+        type,
+        value,
+        category,
+        enabled
+      };
+      
+      if (type === RULE_TYPES.REGEX && fieldSelect) {
+        rule.field = fieldSelect.value;
+      }
+      
+      rules.push(rule);
+    }
+  });
+  
+  state.settings.rules = rules;
+  updateState('settings', state.settings);
+  StorageService.saveSettings(state.settings);
+}
+
+/**
+ * Handle add rule button click
+ */
+function onAddRule() {
+  addRuleUI();
+  saveRules();
+}
+
+/**
  * Initialize settings event handlers
  */
 export async function initializeSettings() {
@@ -367,8 +586,17 @@ export async function initializeSettings() {
     maxTabsInput.addEventListener('change', onMaxTabsChange);
   }
   
+  // Rule management
+  const addRuleBtn = $id(DOM_IDS.ADD_RULE_BTN);
+  if (addRuleBtn) {
+    addRuleBtn.addEventListener('click', onAddRule);
+  }
+  
   // Initialize UI with current settings
   await initializeSettingsUI();
+  
+  // Initialize rules UI
+  initializeRulesUI();
 }
 
 // Export default object
@@ -382,5 +610,6 @@ export default {
   resetPrompt,
   updatePromptStatus,
   onMaxTabsChange,
-  initializeSettings
+  initializeSettings,
+  initializeRulesUI
 };

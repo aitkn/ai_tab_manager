@@ -1897,6 +1897,161 @@ button svg {
   padding: calc(var(--md-spacing-3) - 1px);
 }
 
+/* Rules container */
+.rules-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--md-spacing-2);
+  margin-top: var(--md-spacing-2);
+}
+
+/* Rule item */
+.rule-item {
+  background-color: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  padding: var(--md-spacing-3);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rule-item:hover {
+  background-color: var(--md-sys-color-surface-container-high);
+  border-color: var(--md-sys-color-outline);
+}
+
+/* Rule row */
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+  flex-wrap: wrap;
+}
+
+/* Rule selects */
+.rule-type-select,
+.rule-category-select,
+.rule-field-select {
+  padding: var(--md-spacing-1) var(--md-spacing-2);
+  padding-right: 30px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-small);
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-small);
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2341484d" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+}
+
+.rule-type-select {
+  min-width: 140px;
+}
+
+.rule-category-select {
+  min-width: 100px;
+}
+
+.rule-field-select {
+  min-width: 150px;
+}
+
+.rule-type-select:hover,
+.rule-category-select:hover,
+.rule-field-select:hover {
+  border-color: var(--md-sys-color-on-surface);
+  background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.rule-type-select:focus,
+.rule-category-select:focus,
+.rule-field-select:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+}
+
+/* Rule value input */
+.rule-value-input {
+  flex: 1;
+  min-width: 200px;
+  padding: var(--md-spacing-1) var(--md-spacing-3);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-small);
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-medium);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rule-value-input:hover {
+  border-color: var(--md-sys-color-on-surface);
+  background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.rule-value-input:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  border-width: 2px;
+  padding: calc(var(--md-spacing-1) - 1px) calc(var(--md-spacing-3) - 1px);
+}
+
+/* Rule enabled label */
+.rule-enabled-label {
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-1);
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--md-sys-typescale-label-medium);
+  color: var(--md-sys-color-on-surface);
+}
+
+.rule-enabled-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--md-sys-color-primary);
+}
+
+/* Delete rule button */
+.delete-rule-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-full);
+  background-color: transparent;
+  color: var(--md-sys-color-error);
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-rule-btn:hover {
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.delete-rule-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Rule regex field */
+.rule-regex-field {
+  margin-top: var(--md-spacing-2);
+  display: flex;
+  align-items: center;
+  gap: var(--md-spacing-2);
+}
+
 /* Theme switcher - Material Design 3 Segmented Button */
 .theme-switcher {
   display: inline-flex;

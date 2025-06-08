@@ -59,6 +59,10 @@ export const DOM_IDS = {
   PROVIDER_SELECT: 'providerSelect',
   MODEL_SELECT: 'modelSelect',
   
+  // Rule management
+  RULES_CONTAINER: 'rulesContainer',
+  ADD_RULE_BTN: 'addRuleBtn',
+  
   // Other elements
   STATUS: 'status',
   API_KEY_PROMPT: 'apiKeyPrompt',
@@ -193,4 +197,18 @@ export const STATUS_MESSAGES = {
   ERROR_CATEGORIZATION: 'Error categorizing tabs:',
   WARNING_NO_TABS: 'No tabs to save',
   WARNING_CLOSE_UNCATEGORIZED: 'Are you sure you want to close all uncategorized tabs? They have not been saved yet.'
+};
+
+// Rule Types
+export const RULE_TYPES = {
+  DOMAIN: 'domain',
+  URL_CONTAINS: 'url_contains',
+  TITLE_CONTAINS: 'title_contains',
+  REGEX: 'regex'
+};
+
+// Rule Fields
+export const RULE_FIELDS = {
+  URL: 'url',
+  TITLE: 'title'
 };

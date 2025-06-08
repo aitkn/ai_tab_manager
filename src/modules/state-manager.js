@@ -30,7 +30,8 @@ export const state = {
     customPrompt: '',
     promptVersion: 1,
     isPromptCustomized: false,
-    maxTabsToOpen: 50
+    maxTabsToOpen: 50,
+    rules: []  // Array of rule objects
   }
 };
 
