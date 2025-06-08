@@ -69,18 +69,37 @@ function willCloseAllCurrentWindowTabs(currentWindowTabIds, tabsToClose) {
  * @returns {Promise<number>} Number of successfully closed tabs
  */
 async function closeTabsWithTracking(tabIds) {
-  let closedCount = 0;
+  if (!tabIds || tabIds.length === 0) return 0;
   
-  for (const tabId of tabIds) {
-    try {
-      await ChromeAPIService.removeTabs(tabId);
-      closedCount++;
-    } catch (error) {
-      console.error(`Error closing tab ${tabId}:`, error);
+  try {
+    // Chrome API accepts either a single ID or an array of IDs
+    // Using batch closing is more efficient and reliable
+    await ChromeAPIService.removeTabs(tabIds);
+    console.log(`Successfully closed ${tabIds.length} tabs`);
+    return tabIds.length;
+  } catch (error) {
+    console.error('Error in batch closing, trying individual closes:', error);
+    
+    // Fallback to individual closing if batch fails
+    let closedCount = 0;
+    const failedTabs = [];
+    
+    for (const tabId of tabIds) {
+      try {
+        await ChromeAPIService.removeTabs(tabId);
+        closedCount++;
+      } catch (error) {
+        console.error(`Error closing tab ${tabId}:`, error.message);
+        failedTabs.push({ id: tabId, error: error.message });
+      }
     }
+    
+    if (failedTabs.length > 0) {
+      console.warn(`Failed to close ${failedTabs.length} tabs:`, failedTabs);
+    }
+    
+    return closedCount;
   }
-  
-  return closedCount;
 }
 
 /**
@@ -284,13 +303,17 @@ export async function saveAndCloseAll() {
     
     // Collect all tab IDs we're about to close (including uncategorized)
     const allTabIds = [];
+    console.log('Collecting tabs from all categories:');
     for (const category of [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT]) {
       const tabs = categorizedTabs[category] || [];
-      allTabIds.push(...collectAllTabIds(tabs, urlToDuplicateIds));
+      const categoryTabIds = collectAllTabIds(tabs, urlToDuplicateIds);
+      console.log(`Category ${category}: ${tabs.length} tabs, ${categoryTabIds.length} total IDs (including duplicates)`);
+      allTabIds.push(...categoryTabIds);
     }
     
     // Remove duplicates
     const uniqueTabIds = [...new Set(allTabIds)];
+    console.log(`Total unique tab IDs to close: ${uniqueTabIds.length}`);
     
     // Separate tabs by window
     const { current: currentWindowTabsToClose, other: otherWindowTabsToClose } = 
