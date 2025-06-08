@@ -64,7 +64,9 @@ async function waitForDatabase() {
  * Main initialization function
  */
 export async function initializeApp() {
-  console.log('Popup loaded, initializing...');
+  console.log('=== POPUP LIFECYCLE: initializeApp started ===');
+  console.log('Document readyState:', document.readyState);
+  console.log('Timestamp:', new Date().toISOString());
   
   try {
     // Wait for database to be available
@@ -184,12 +186,17 @@ export async function initializeApp() {
     
     // Mark initialization complete
     setInitializationComplete();
+    console.log('=== POPUP LIFECYCLE: Initialization marked complete ===');
     
     // Update saved tab badge
     await loadSavedTabsCount();
     
     // Set up tab change listener
     setupTabChangeListener();
+    
+    console.log('=== POPUP LIFECYCLE: initializeApp completed successfully ===');
+    console.log('Final state activeTab:', state.popupState?.activeTab);
+    console.log('Timestamp:', new Date().toISOString());
     
   } catch (error) {
     console.error('Error during initialization:', error);
@@ -389,26 +396,34 @@ function checkExtensionIntegrity() {
  * Set up auto-save on visibility change
  */
 export function setupAutoSave() {
+  console.log('=== POPUP LIFECYCLE: Setting up auto-save listeners ===');
+  
   // Save state when window loses focus or visibility changes
   document.addEventListener('visibilitychange', () => {
+    console.log('=== POPUP LIFECYCLE: Visibility change detected ===');
+    console.log('Hidden:', document.hidden, 'Initializing:', state.isInitializing);
     if (document.hidden && !state.isInitializing) {
-      console.log('Window hidden, saving state');
+      console.log('=== POPUP LIFECYCLE: Saving state on hide ===');
       savePopupState();
     }
   });
   
   // Also save when window loses focus
   window.addEventListener(EVENTS.BLUR, () => {
+    console.log('=== POPUP LIFECYCLE: Window blur detected ===');
+    console.log('Initializing:', state.isInitializing);
     if (!state.isInitializing) {
-      console.log('Window blur, saving state');
+      console.log('=== POPUP LIFECYCLE: Saving state on blur ===');
       savePopupState();
     }
   });
   
   // Save state on window unload
   window.addEventListener('beforeunload', () => {
+    console.log('=== POPUP LIFECYCLE: Window unload detected ===');
+    console.log('Initializing:', state.isInitializing);
     if (!state.isInitializing) {
-      console.log('Window unloading, saving state');
+      console.log('=== POPUP LIFECYCLE: Saving state on unload ===');
       savePopupState();
     }
   });

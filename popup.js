@@ -65,7 +65,7 @@ setupAutoSave();
 
 // Pre-initialize state synchronously before DOM is ready
 async function preInitialize() {
-  console.log('Starting pre-initialization...');
+  console.log('=== POPUP LIFECYCLE: Pre-initialization started ===');
   try {
     // Load saved state from storage synchronously
     const savedPopupState = await StorageService.loadPopupState();
@@ -133,14 +133,17 @@ async function preInitialize() {
       window._targetTab = targetTab;
       
       // Now initialize the app
+      console.log('=== POPUP LIFECYCLE: About to call initializeApp ===');
       initializeApp();
     };
     
     // Check if DOM is already loaded
     if (document.readyState === 'loading') {
+      console.log('=== POPUP LIFECYCLE: DOM still loading, adding DOMContentLoaded listener ===');
       document.addEventListener('DOMContentLoaded', initializeDom);
     } else {
       // DOM is already loaded, initialize immediately
+      console.log('=== POPUP LIFECYCLE: DOM already loaded, initializing immediately ===');
       initializeDom();
     }
   } catch (error) {
@@ -154,7 +157,39 @@ async function preInitialize() {
   }
 }
 
+// Add popup lifecycle logging
+console.log('=== POPUP LIFECYCLE: Script loaded ===');
+console.log('Document readyState:', document.readyState);
+console.log('Timestamp:', new Date().toISOString());
+
+// Log when popup becomes visible/hidden
+document.addEventListener('visibilitychange', () => {
+  console.log('=== POPUP LIFECYCLE: Visibility changed ===');
+  console.log('Hidden:', document.hidden);
+  console.log('Visibility state:', document.visibilityState);
+  console.log('Timestamp:', new Date().toISOString());
+});
+
+// Log when popup is about to close
+window.addEventListener('beforeunload', () => {
+  console.log('=== POPUP LIFECYCLE: About to unload ===');
+  console.log('Timestamp:', new Date().toISOString());
+});
+
+// Log when popup loses focus
+window.addEventListener('blur', () => {
+  console.log('=== POPUP LIFECYCLE: Window blur ===');
+  console.log('Timestamp:', new Date().toISOString());
+});
+
+// Log when popup gains focus
+window.addEventListener('focus', () => {
+  console.log('=== POPUP LIFECYCLE: Window focus ===');
+  console.log('Timestamp:', new Date().toISOString());
+});
+
 // Start pre-initialization immediately
+console.log('=== POPUP LIFECYCLE: Starting pre-initialization ===');
 preInitialize();
 
 // Export commonly used functions for inline event handlers if needed
