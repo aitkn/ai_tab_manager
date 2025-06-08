@@ -363,234 +363,131 @@ export function initializeRulesUI() {
   const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
   if (!rulesContainer) return;
   
-  // Group rules by category and type
-  const rulesByCategory = {
-    1: { domain: [], url_contains: [], title_contains: [], regex: [] },
-    2: { domain: [], url_contains: [], title_contains: [], regex: [] },
-    3: { domain: [], url_contains: [], title_contains: [], regex: [] }
-  };
+  // Clear existing rules
+  rulesContainer.querySelectorAll('.rules-list').forEach(list => {
+    list.innerHTML = '';
+  });
   
-  // Populate with existing rules
+  // Add existing rules
   if (state.settings.rules && state.settings.rules.length > 0) {
-    state.settings.rules.forEach(rule => {
-      if (rule.enabled !== false && rulesByCategory[rule.category] && rulesByCategory[rule.category][rule.type]) {
-        rulesByCategory[rule.category][rule.type].push(rule.value);
+    state.settings.rules.forEach((rule, index) => {
+      if (rule.enabled !== false) {
+        addRuleToUI(rule.category, rule);
       }
     });
   }
   
-  // Update textareas with values
-  Object.entries(rulesByCategory).forEach(([category, types]) => {
-    Object.entries(types).forEach(([type, values]) => {
-      const textarea = rulesContainer.querySelector(
-        `.rule-category-group[data-category="${category}"] .rule-type-section[data-rule-type="${type}"] .rule-values-textarea`
-      );
-      if (textarea) {
-        textarea.value = values.join('\n');
-      }
+  // Add event listeners to add buttons
+  rulesContainer.querySelectorAll('.add-rule-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const category = parseInt(e.currentTarget.dataset.category);
+      addRuleToUI(category);
     });
   });
-  
-  // Add event listeners to all textareas
-  rulesContainer.querySelectorAll('.rule-values-textarea').forEach(textarea => {
-    textarea.addEventListener('input', debounce(saveRulesFromUI, 500));
-  });
 }
+
 
 /**
  * Add a rule to the UI
  */
-function addRuleUI(rule = null, index = null) {
-  const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
-  if (!rulesContainer) return;
+function addRuleToUI(category, rule = null) {
+  const rulesList = document.querySelector(`.rules-list[data-category="${category}"]`);
+  if (!rulesList) return;
   
-  // Remove empty state message if present
-  if (rulesContainer.querySelector('.text-muted')) {
-    rulesContainer.innerHTML = '';
-  }
+  const ruleId = Date.now() + Math.random();
+  const ruleItem = document.createElement('div');
+  ruleItem.className = 'rule-list-item';
+  ruleItem.dataset.ruleId = ruleId;
   
-  const ruleId = index !== null ? index : Date.now();
-  const ruleData = rule || {
-    type: RULE_TYPES.DOMAIN,
-    value: '',
-    category: TAB_CATEGORIES.CAN_CLOSE,
-    enabled: true
+  const urlValue = rule?.field !== 'title' ? (rule?.value || '') : '';
+  const titleValue = rule?.field === 'title' ? (rule?.value || '') : '';
+  const urlIsRegex = rule?.field !== 'title' && rule?.type === 'regex';
+  const titleIsRegex = rule?.field === 'title' && rule?.type === 'regex';
+  
+  // Escape HTML to prevent XSS
+  const escapeHtml = (str) => {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   };
   
-  const ruleElement = document.createElement('div');
-  ruleElement.className = 'rule-item';
-  ruleElement.dataset.ruleId = ruleId;
-  
-  ruleElement.innerHTML = `
-    <div class="rule-row">
-      <select class="rule-type-select" data-rule-id="${ruleId}">
-        <option value="${RULE_TYPES.DOMAIN}" ${ruleData.type === RULE_TYPES.DOMAIN ? 'selected' : ''}>Domain equals</option>
-        <option value="${RULE_TYPES.URL_CONTAINS}" ${ruleData.type === RULE_TYPES.URL_CONTAINS ? 'selected' : ''}>URL contains</option>
-        <option value="${RULE_TYPES.TITLE_CONTAINS}" ${ruleData.type === RULE_TYPES.TITLE_CONTAINS ? 'selected' : ''}>Title contains</option>
-        <option value="${RULE_TYPES.REGEX}" ${ruleData.type === RULE_TYPES.REGEX ? 'selected' : ''}>Regex match</option>
-      </select>
-      
-      <input type="text" class="rule-value-input" data-rule-id="${ruleId}" 
-             placeholder="${getRulePlaceholder(ruleData.type)}" 
-             value="${ruleData.value || ''}">
-      
-      <select class="rule-category-select" data-rule-id="${ruleId}">
-        <option value="${TAB_CATEGORIES.CAN_CLOSE}" ${ruleData.category === TAB_CATEGORIES.CAN_CLOSE ? 'selected' : ''}>${CATEGORY_NAMES[TAB_CATEGORIES.CAN_CLOSE]}</option>
-        <option value="${TAB_CATEGORIES.SAVE_LATER}" ${ruleData.category === TAB_CATEGORIES.SAVE_LATER ? 'selected' : ''}>${CATEGORY_NAMES[TAB_CATEGORIES.SAVE_LATER]}</option>
-        <option value="${TAB_CATEGORIES.IMPORTANT}" ${ruleData.category === TAB_CATEGORIES.IMPORTANT ? 'selected' : ''}>${CATEGORY_NAMES[TAB_CATEGORIES.IMPORTANT]}</option>
-      </select>
-      
-      <label class="rule-enabled-label">
-        <input type="checkbox" class="rule-enabled-checkbox" data-rule-id="${ruleId}" 
-               ${ruleData.enabled !== false ? 'checked' : ''}>
-        <span>Enabled</span>
-      </label>
-      
-      <button class="icon-btn icon-btn-small delete-rule-btn" data-rule-id="${ruleId}" title="Delete rule">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 6h18"></path>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
-      </button>
-    </div>
-    ${ruleData.type === RULE_TYPES.REGEX ? `
-      <div class="rule-regex-field">
-        <select class="rule-field-select" data-rule-id="${ruleId}">
-          <option value="${RULE_FIELDS.URL}" ${ruleData.field === RULE_FIELDS.URL ? 'selected' : ''}>Match against URL</option>
-          <option value="${RULE_FIELDS.TITLE}" ${ruleData.field === RULE_FIELDS.TITLE ? 'selected' : ''}>Match against Title</option>
-        </select>
+  ruleItem.innerHTML = `
+    <div class="rule-fields">
+      <div class="rule-field">
+        <label>URL:</label>
+        <input type="text" class="rule-url-input" value="${escapeHtml(urlValue)}" placeholder="e.g., youtube.com/watch">
+        <input type="checkbox" class="rule-url-regex" ${urlIsRegex ? 'checked' : ''} title="Use regex">
       </div>
-    ` : ''}
+      <div class="rule-field">
+        <label>Title:</label>
+        <input type="text" class="rule-title-input" value="${escapeHtml(titleValue)}" placeholder="e.g., YouTube">
+        <input type="checkbox" class="rule-title-regex" ${titleIsRegex ? 'checked' : ''} title="Use regex">
+      </div>
+    </div>
+    <button class="delete-rule-btn" title="Delete rule">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 6h18"></path>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    </button>
   `;
   
-  rulesContainer.appendChild(ruleElement);
+  rulesList.appendChild(ruleItem);
   
   // Add event listeners
-  const typeSelect = ruleElement.querySelector('.rule-type-select');
-  const valueInput = ruleElement.querySelector('.rule-value-input');
-  const categorySelect = ruleElement.querySelector('.rule-category-select');
-  const enabledCheckbox = ruleElement.querySelector('.rule-enabled-checkbox');
-  const deleteBtn = ruleElement.querySelector('.delete-rule-btn');
-  const fieldSelect = ruleElement.querySelector('.rule-field-select');
+  const urlInput = ruleItem.querySelector('.rule-url-input');
+  const titleInput = ruleItem.querySelector('.rule-title-input');
+  const urlRegex = ruleItem.querySelector('.rule-url-regex');
+  const titleRegex = ruleItem.querySelector('.rule-title-regex');
+  const deleteBtn = ruleItem.querySelector('.delete-rule-btn');
   
-  typeSelect.addEventListener('change', (e) => onRuleTypeChange(e, ruleId));
-  valueInput.addEventListener('input', () => saveRules());
-  categorySelect.addEventListener('change', () => saveRules());
-  enabledCheckbox.addEventListener('change', () => saveRules());
-  deleteBtn.addEventListener('click', () => deleteRule(ruleId));
-  if (fieldSelect) {
-    fieldSelect.addEventListener('change', () => saveRules());
-  }
+  urlInput.addEventListener('input', debounce(saveRulesFromUI, 500));
+  titleInput.addEventListener('input', debounce(saveRulesFromUI, 500));
+  urlRegex.addEventListener('change', saveRulesFromUI);
+  titleRegex.addEventListener('change', saveRulesFromUI);
+  deleteBtn.addEventListener('click', () => {
+    ruleItem.remove();
+    saveRulesFromUI();
+  });
 }
 
 /**
- * Get placeholder text for rule value input
- */
-function getRulePlaceholder(type) {
-  switch (type) {
-    case RULE_TYPES.DOMAIN:
-      return 'e.g., github.com';
-    case RULE_TYPES.URL_CONTAINS:
-      return 'e.g., /login';
-    case RULE_TYPES.TITLE_CONTAINS:
-      return 'e.g., Sign in';
-    case RULE_TYPES.REGEX:
-      return 'e.g., .*\\.pdf$';
-    default:
-      return '';
-  }
-}
-
-/**
- * Handle rule type change
- */
-function onRuleTypeChange(e, ruleId) {
-  const newType = e.target.value;
-  const ruleElement = document.querySelector(`[data-rule-id="${ruleId}"]`);
-  const valueInput = ruleElement.querySelector('.rule-value-input');
-  
-  // Update placeholder
-  valueInput.placeholder = getRulePlaceholder(newType);
-  
-  // Show/hide regex field selector
-  const existingFieldSelect = ruleElement.querySelector('.rule-regex-field');
-  if (newType === RULE_TYPES.REGEX && !existingFieldSelect) {
-    const fieldSelectHtml = `
-      <div class="rule-regex-field">
-        <select class="rule-field-select" data-rule-id="${ruleId}">
-          <option value="${RULE_FIELDS.URL}">Match against URL</option>
-          <option value="${RULE_FIELDS.TITLE}">Match against Title</option>
-        </select>
-      </div>
-    `;
-    ruleElement.insertAdjacentHTML('beforeend', fieldSelectHtml);
-    
-    const fieldSelect = ruleElement.querySelector('.rule-field-select');
-    fieldSelect.addEventListener('change', () => saveRules());
-  } else if (newType !== RULE_TYPES.REGEX && existingFieldSelect) {
-    existingFieldSelect.remove();
-  }
-  
-  saveRules();
-}
-
-/**
- * Delete a rule
- */
-function deleteRule(ruleId) {
-  const ruleElement = document.querySelector(`[data-rule-id="${ruleId}"]`);
-  if (ruleElement) {
-    ruleElement.remove();
-    saveRules();
-    
-    // Show empty state if no rules left
-    const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
-    if (rulesContainer && rulesContainer.children.length === 0) {
-      rulesContainer.innerHTML = '<p class="text-muted" style="font-size: 12px; text-align: center; padding: 20px;">No rules defined yet. Click "Add Rule" to create your first rule.</p>';
-    }
-  }
-}
-
-/**
- * Save rules from the new grouped UI
+ * Save rules from UI
  */
 function saveRulesFromUI() {
   const rules = [];
   const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
   if (!rulesContainer) return;
   
-  // Process each category
-  rulesContainer.querySelectorAll('.rule-category-group').forEach(categoryGroup => {
-    const category = parseInt(categoryGroup.dataset.category);
+  // Process each rule item
+  rulesContainer.querySelectorAll('.rule-list-item').forEach(item => {
+    const category = parseInt(item.closest('.rule-category-section').dataset.category);
+    const urlInput = item.querySelector('.rule-url-input');
+    const titleInput = item.querySelector('.rule-title-input');
+    const urlIsRegex = item.querySelector('.rule-url-regex').checked;
+    const titleIsRegex = item.querySelector('.rule-title-regex').checked;
     
-    // Process each rule type in this category
-    categoryGroup.querySelectorAll('.rule-type-section').forEach(typeSection => {
-      const ruleType = typeSection.dataset.ruleType;
-      const textarea = typeSection.querySelector('.rule-values-textarea');
-      
-      if (textarea && textarea.value.trim()) {
-        // Split by newlines and create a rule for each non-empty line
-        const values = textarea.value.split('\n')
-          .map(line => line.trim())
-          .filter(line => line.length > 0);
-        
-        values.forEach(value => {
-          const rule = {
-            type: ruleType,
-            value: value,
-            category: category,
-            enabled: true
-          };
-          
-          // Add field for regex rules (default to URL)
-          if (ruleType === 'regex') {
-            rule.field = 'url';
-          }
-          
-          rules.push(rule);
-        });
-      }
-    });
+    // Add URL rule if present
+    if (urlInput.value.trim()) {
+      rules.push({
+        type: urlIsRegex ? 'regex' : 'url_contains',
+        value: urlInput.value.trim(),
+        field: 'url',
+        category: category,
+        enabled: true
+      });
+    }
+    
+    // Add title rule if present
+    if (titleInput.value.trim()) {
+      rules.push({
+        type: titleIsRegex ? 'regex' : 'title_contains',
+        value: titleInput.value.trim(),
+        field: 'title',
+        category: category,
+        enabled: true
+      });
+    }
   });
   
   state.settings.rules = rules;

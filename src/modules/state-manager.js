@@ -405,23 +405,47 @@ export function getDefaultRules() {
     },
     {
       id: 'default-27',
-      type: 'domain',
-      value: 'stackoverflow.com',
+      type: 'urlContains',
+      value: 'stackoverflow.com/questions/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-28',
-      type: 'domain',
-      value: 'medium.com',
+      type: 'urlContains',
+      value: 'medium.com/@',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-29',
-      type: 'domain',
-      value: 'dev.to',
+      type: 'urlContains',
+      value: 'dev.to/',
       category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-51',
+      type: 'regex',
+      value: '^https?://(www\.)?stackoverflow\.com/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-52',
+      type: 'regex',
+      value: '^https?://(www\.)?medium\.com/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-53',
+      type: 'regex',
+      value: '^https?://(www\.)?dev\.to/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
