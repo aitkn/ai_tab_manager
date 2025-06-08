@@ -143,8 +143,23 @@ export async function initializeApp() {
     const { initializeUnifiedToolbar } = await import('./unified-toolbar.js');
     initializeUnifiedToolbar();
     
-    // Restore active tab
-    await restoreActiveTab();
+    // Check if we should switch to saved tab when no current tabs exist
+    const { hasCurrentTabs } = await import('./tab-data-source.js');
+    const hasTabs = await hasCurrentTabs();
+    
+    if (!hasTabs && state.popupState.activeTab === 'categorize') {
+      console.log('No current tabs found, switching to saved tab');
+      // Switch to saved tab
+      switchToTab('saved');
+      
+      // Load saved tabs content
+      const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
+      const includeCanClose = state.popupState.showAllCategories || false;
+      await showSavedTabsContent(savedGroupingSelect?.value || 'category', includeCanClose);
+    } else {
+      // Restore active tab normally
+      await restoreActiveTab();
+    }
     
     // Mark initialization complete
     setInitializationComplete();
@@ -436,6 +451,22 @@ async function processTabChange(changeType, tab) {
           duplicatesChanged = true;
         }
       }
+    }
+    
+    // Check if all tabs are gone
+    const totalTabs = Object.values(categorizedTabs).reduce((sum, tabs) => sum + tabs.length, 0);
+    
+    if (totalTabs === 0 && state.popupState.activeTab === 'categorize') {
+      console.log('All tabs closed, switching to saved tab');
+      // Switch to saved tab
+      switchToTab('saved');
+      
+      // Load saved tabs content
+      const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
+      const includeCanClose = state.popupState.showAllCategories || false;
+      await showSavedTabsContent(savedGroupingSelect?.value || 'category', includeCanClose);
+      
+      return; // Exit early since we switched tabs
     }
     
     // Update display
