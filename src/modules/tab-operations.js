@@ -292,11 +292,20 @@ export async function saveAndCloseCategory(category) {
  */
 export async function saveAndCloseAll() {
   try {
-    showStatus('Closing all tabs...', 'loading');
-    
     // Get current tabs from background
     const { getCurrentTabs } = await import('./tab-data-source.js');
     const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
+    
+    // Check if there are uncategorized tabs
+    const uncategorizedTabs = categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED] || [];
+    if (uncategorizedTabs.length > 0) {
+      // Show warning for uncategorized tabs
+      if (!confirm(STATUS_MESSAGES.WARNING_CLOSE_UNCATEGORIZED)) {
+        return;
+      }
+    }
+    
+    showStatus('Closing all tabs...', 'loading');
     
     // Get current window info
     const windowInfo = await getCurrentWindowInfo();
