@@ -406,6 +406,58 @@
             </div>
           </div>
           
+          <div class="setting-group" style="border: 1px solid var(--md-sys-color-outline-variant); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+            <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">Machine Learning (Experimental)</h3>
+            
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+              <input type="checkbox" id="useMLCheckbox" checked>
+              <label for="useMLCheckbox" style="margin: 0; cursor: pointer;">
+                Enable ML categorization
+                <span class="text-muted" style="font-size: 11px; display: block; margin-top: 4px;">
+                  Learns from your categorization patterns over time
+                </span>
+              </label>
+            </div>
+            
+            <div id="mlDashboard">
+              <!-- ML Status -->
+              <div class="ml-status-card" style="background: var(--md-sys-color-surface-container); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 500;">Model Status</h4>
+                <div id="mlStatusContent" style="font-size: 12px;">
+                  <div class="ml-status-loading">Loading ML status...</div>
+                </div>
+              </div>
+              
+              <!-- Trust Weights -->
+              <div class="ml-trust-card" style="background: var(--md-sys-color-surface-container); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 500;">Method Trust Weights</h4>
+                <div id="mlTrustContent" style="font-size: 12px;">
+                  <div class="ml-trust-loading">Loading trust data...</div>
+                </div>
+              </div>
+              
+              <!-- Performance Metrics -->
+              <div class="ml-performance-card" style="background: var(--md-sys-color-surface-container); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 500;">Performance Metrics</h4>
+                <div id="mlPerformanceContent" style="font-size: 12px;">
+                  <div class="ml-performance-loading">Loading performance data...</div>
+                </div>
+              </div>
+              
+              <!-- Training Controls -->
+              <div class="ml-training-card" style="background: var(--md-sys-color-surface-container); padding: 12px; border-radius: 8px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 500;">Training Controls</h4>
+                <div id="mlTrainingContent" style="font-size: 12px;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="trainModelBtn" class="secondary-btn" style="font-size: 12px; padding: 4px 12px;">Train Now</button>
+                    <button id="resetModelBtn" class="secondary-btn" style="font-size: 12px; padding: 4px 12px; color: var(--md-sys-color-error);">Reset Model</button>
+                    <span id="trainingStatus" class="text-muted" style="font-size: 11px;"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div class="setting-group">
             <label for="maxTabsInput">
               Max Tabs to Open at Once:

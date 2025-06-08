@@ -1288,6 +1288,66 @@ button svg {
   color: #66bb6a; /* Green 400 */
 }
 
+/* ML Confidence Indicators */
+.ml-confidence {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.8;
+  transition: opacity 200ms ease;
+}
+
+.tab-item:hover .ml-confidence {
+  opacity: 1;
+}
+
+.ml-confidence svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ml-confidence-high {
+  background-color: rgba(46, 125, 50, 0.1);
+  color: #2e7d32;
+}
+
+.ml-confidence-medium {
+  background-color: rgba(251, 140, 0, 0.1);
+  color: #f57c00;
+}
+
+.ml-confidence-low {
+  background-color: rgba(211, 47, 47, 0.1);
+  color: #d32f2f;
+}
+
+[data-theme="dark"] .ml-confidence-high {
+  background-color: rgba(102, 187, 106, 0.15);
+  color: #66bb6a;
+}
+
+[data-theme="dark"] .ml-confidence-medium {
+  background-color: rgba(255, 167, 38, 0.15);
+  color: #ffa726;
+}
+
+[data-theme="dark"] .ml-confidence-low {
+  background-color: rgba(239, 83, 80, 0.15);
+  color: #ef5350;
+}
+
+.confidence-text {
+  font-size: 10px;
+  line-height: 1;
+}
+
 
 /* Action buttons for tabs */
 .move-buttons {

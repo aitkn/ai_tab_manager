@@ -99,6 +99,14 @@ export async function initializeSettingsUI() {
   // Update prompt status
   updatePromptStatus();
   
+  // Initialize ML dashboard
+  try {
+    const { initializeMLDashboard } = await import('./ml-dashboard.js');
+    await initializeMLDashboard();
+  } catch (error) {
+    console.log('ML dashboard not available:', error);
+  }
+  
   // Initialize rules UI
   initializeRulesUI();
 }

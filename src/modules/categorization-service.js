@@ -115,6 +115,155 @@ export function applyRulesToTabs(tabs, rules) {
 }
 
 /**
+ * Categorize tabs using ML ensemble
+ */
+async function categorizeWithML(tabs, mlCategorizer) {
+  try {
+    // Process tabs to add domain info
+    const processedTabs = tabs.map(tab => ({
+      ...tab,
+      domain: extractDomain(tab.url)
+    }));
+    
+    // Get saved URLs to exclude from LLM
+    let savedUrls = [];
+    try {
+      const savedTabs = await window.tabDatabase.getAllSavedTabs();
+      savedUrls = savedTabs
+        .filter(tab => tab.category !== 0)
+        .map(tab => tab.url);
+    } catch (error) {
+      console.error('Error getting saved tabs:', error);
+    }
+    
+    // Prepare LLM results if enabled
+    let llmResults = null;
+    if (state.settings.useLLM) {
+      const apiKey = state.settings.apiKeys[state.settings.provider];
+      const provider = state.settings.provider;
+      const model = state.settings.model || state.settings.selectedModels[provider];
+      const customPrompt = state.settings.customPrompt;
+      
+      if (apiKey && provider && model) {
+        try {
+          llmResults = await MessageService.categorizeTabs({
+            tabs: processedTabs,
+            apiKey,
+            provider,
+            model,
+            customPrompt,
+            savedUrls
+          });
+        } catch (error) {
+          console.error('Error calling LLM:', error);
+        }
+      }
+    }
+    
+    // Use ML ensemble to categorize
+    const mlResults = await mlCategorizer.categorizeTabs(processedTabs, {
+      rules: state.settings.rules || [],
+      llmResults,
+      useLLM: state.settings.useLLM && llmResults !== null,
+      useML: true,
+      useRules: true
+    });
+    
+    // Extract categorized tabs
+    const result = mlResults.categorized;
+    
+    // Track duplicate tabs by URL
+    const urlToTabs = {};
+    processedTabs.forEach(tab => {
+      const url = tab.url;
+      if (!urlToTabs[url]) {
+        urlToTabs[url] = [];
+      }
+      urlToTabs[url].push(tab);
+    });
+    
+    // Store URL to duplicate IDs mapping
+    const urlToDuplicateIds = {};
+    Object.entries(urlToTabs).forEach(([url, tabsWithUrl]) => {
+      if (tabsWithUrl.length > 1) {
+        urlToDuplicateIds[url] = tabsWithUrl.map(t => t.id);
+      }
+    });
+    
+    // Get fresh current state including already categorized tabs
+    const currentState = await getCurrentTabs();
+    const existingCategorized = currentState.categorizedTabs || {};
+    
+    // Merge result - keep existing categorized tabs and add newly categorized ones
+    const mergedResult = {
+      [TAB_CATEGORIES.UNCATEGORIZED]: [], // Clear uncategorized
+      [TAB_CATEGORIES.CAN_CLOSE]: result[TAB_CATEGORIES.CAN_CLOSE] || [],
+      [TAB_CATEGORIES.SAVE_LATER]: result[TAB_CATEGORIES.SAVE_LATER] || [],
+      [TAB_CATEGORIES.IMPORTANT]: result[TAB_CATEGORIES.IMPORTANT] || []
+    };
+    
+    // Keep existing categorized tabs that weren't recategorized
+    const processedIds = new Set(tabs.map(t => t.id));
+    [TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(cat => {
+      const existing = existingCategorized[cat] || [];
+      
+      // Add existing tabs that weren't in the processed list
+      existing.forEach(tab => {
+        if (!processedIds.has(tab.id)) {
+          mergedResult[cat].push(tab);
+        }
+      });
+    });
+    
+    // Update state with categorized tabs for immediate UI update
+    updateState('categorizedTabs', mergedResult);
+    updateState('urlToDuplicateIds', urlToDuplicateIds);
+    updateState('mlMetadata', mlResults.metadata);
+    
+    // Save categorized tabs to database
+    await window.tabDatabase.saveCategorizedTabs(mergedResult);
+    
+    // Update UI
+    updateCategorizeBadge();
+    
+    // Show success with ML info
+    const summary = mlResults.summary;
+    const mlUsed = summary?.decisionSources?.model > 0;
+    const message = mlUsed 
+      ? `${STATUS_MESSAGES.SUCCESS_CATEGORIZED} (ML: ${Math.round(summary.averageConfidence * 100)}% confidence)`
+      : STATUS_MESSAGES.SUCCESS_CATEGORIZED;
+    showStatus(message, 'success');
+    
+    // Save state
+    await savePopupState();
+    
+    // Trigger display update
+    const { displayTabs } = await import('./tab-display.js');
+    displayTabs();
+    
+    // Show the tabs container and toolbar
+    const { show } = await import('../utils/dom-helpers.js');
+    const { DOM_IDS } = await import('../utils/constants.js');
+    const { $id } = await import('../utils/dom-helpers.js');
+    show($id(DOM_IDS.TABS_CONTAINER));
+    
+    // Show unified toolbar
+    const { showToolbar } = await import('./unified-toolbar.js');
+    showToolbar();
+    
+    // Process user acceptance for ML learning
+    await mlCategorizer.processAcceptance(tabs, mlResults);
+    
+    return mergedResult;
+    
+  } catch (error) {
+    console.error('Error in ML categorization:', error);
+    showStatus(`${STATUS_MESSAGES.ERROR_CATEGORIZATION} ${error.message}`, 'error');
+    return null;
+  }
+}
+
+/**
  * Categorize all open tabs
  */
 export async function categorizeTabs() {
@@ -134,6 +283,29 @@ export async function categorizeTabs() {
       return;
     }
     
+    // Check if ML is enabled and available
+    let useML = state.settings.useML !== false; // Default to true if not set
+    let mlCategorizer = null;
+    
+    if (useML) {
+      try {
+        const { getMLCategorizer } = await import('../ml/categorization/ml-categorizer.js');
+        mlCategorizer = await getMLCategorizer();
+        useML = await mlCategorizer.isMLAvailable();
+        console.log('ML categorization available:', useML);
+      } catch (error) {
+        console.log('ML system not available:', error.message);
+        useML = false;
+      }
+    }
+    
+    // If ML is available and we have all methods enabled, use ensemble
+    if (useML && state.settings.rules?.length > 0) {
+      // Use ML ensemble approach
+      return await categorizeWithML(uncategorizedTabs, mlCategorizer);
+    }
+    
+    // Otherwise use traditional approach
     // Apply rules first if any are defined
     let tabsForLLM = uncategorizedTabs;
     let ruleCategorizedTabs = {};
@@ -349,6 +521,21 @@ export async function moveTabToCategory(tab, fromCategory, toCategory) {
   if (fromCategory === toCategory) return;
   
   try {
+    // Process as user correction for ML learning
+    if (state.mlMetadata && state.mlMetadata[tab.id]) {
+      try {
+        const { getMLCategorizer } = await import('../ml/categorization/ml-categorizer.js');
+        const mlCategorizer = await getMLCategorizer();
+        await mlCategorizer.processCorrection(
+          tab, 
+          fromCategory, 
+          toCategory, 
+          state.mlMetadata[tab.id]
+        );
+      } catch (error) {
+        console.log('Could not process ML correction:', error);
+      }
+    }
     // Update database first
     const urlInfo = await window.tabDatabase.getUrlInfo(tab.url);
     

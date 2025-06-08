@@ -597,6 +597,25 @@ export function createTabElement(tab, category) {
   tabElement.appendChild(favicon);
   
   // Tab info
+  // Add confidence indicator if available
+  if (tab.mlMetadata && tab.mlMetadata.confidence !== undefined) {
+    const confidence = Math.round(tab.mlMetadata.confidence * 100);
+    const confidenceLevel = confidence >= 80 ? 'high' : confidence >= 60 ? 'medium' : 'low';
+    const source = tab.mlMetadata.source || 'unknown';
+    
+    const confidenceIndicator = createElement('div', {
+      className: `ml-confidence ml-confidence-${confidenceLevel}`,
+      title: `${confidence}% confidence (${source})`,
+      innerHTML: `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="${10 * tab.mlMetadata.confidence}" opacity="${0.3 + 0.7 * tab.mlMetadata.confidence}"/>
+        </svg>
+        <span class="confidence-text">${confidence}%</span>
+      `
+    });
+    tabElement.appendChild(confidenceIndicator);
+  }
+  
   const tabInfo = createElement('div', {
     className: 'tab-info',
     onclick: async () => {
