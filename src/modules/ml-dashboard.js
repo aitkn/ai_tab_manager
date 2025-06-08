@@ -74,15 +74,22 @@ async function handleMLToggle(event) {
  */
 async function updateMLStatus() {
   try {
+    console.log('Updating ML status...');
+    
     // First check TensorFlow.js status
     const { getTensorFlowStatus, isTensorFlowDownloaded } = await import('../ml/tensorflow-downloader.js');
     const tfStatus = await getTensorFlowStatus();
+    console.log('TensorFlow status:', tfStatus);
     
     const statusContent = $id('mlStatusContent');
-    if (!statusContent) return;
+    if (!statusContent) {
+      console.error('mlStatusContent element not found');
+      return;
+    }
     
     // If TensorFlow.js is not downloaded, show download option
     if (!tfStatus.downloaded) {
+      console.log('TensorFlow not downloaded, showing download button');
       statusContent.innerHTML = `
         <div style="margin-bottom: 8px; color: var(--md-sys-color-on-surface-variant);">
           TensorFlow.js needs to be downloaded to enable ML features.
@@ -95,11 +102,16 @@ async function updateMLStatus() {
         </div>
       `;
       
-      // Add download button handler
-      const downloadBtn = $id('downloadTensorFlowBtn');
-      if (downloadBtn) {
-        downloadBtn.addEventListener('click', handleDownloadTensorFlow);
-      }
+      // Add download button handler after a small delay to ensure DOM is ready
+      setTimeout(() => {
+        const downloadBtn = $id('downloadTensorFlowBtn');
+        if (downloadBtn) {
+          console.log('Adding click handler to download button');
+          downloadBtn.addEventListener('click', handleDownloadTensorFlow);
+        } else {
+          console.error('Download button not found after setting innerHTML');
+        }
+      }, 100);
       return;
     }
     
