@@ -10,6 +10,19 @@ import { state, updateState } from './state-manager.js';
 import StorageService from '../services/StorageService.js';
 import MessageService from '../services/MessageService.js';
 
+// Debounce utility
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 /**
  * Initialize settings UI
  */
@@ -350,18 +363,38 @@ export function initializeRulesUI() {
   const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
   if (!rulesContainer) return;
   
-  // Clear existing rules
-  rulesContainer.innerHTML = '';
+  // Group rules by category and type
+  const rulesByCategory = {
+    1: { domain: [], url_contains: [], title_contains: [], regex: [] },
+    2: { domain: [], url_contains: [], title_contains: [], regex: [] },
+    3: { domain: [], url_contains: [], title_contains: [], regex: [] }
+  };
   
-  // Add existing rules
+  // Populate with existing rules
   if (state.settings.rules && state.settings.rules.length > 0) {
-    state.settings.rules.forEach((rule, index) => {
-      addRuleUI(rule, index);
+    state.settings.rules.forEach(rule => {
+      if (rule.enabled !== false && rulesByCategory[rule.category] && rulesByCategory[rule.category][rule.type]) {
+        rulesByCategory[rule.category][rule.type].push(rule.value);
+      }
     });
-  } else {
-    // Show empty state
-    rulesContainer.innerHTML = '<p class="text-muted" style="font-size: 12px; text-align: center; padding: 20px;">No rules defined yet. Click "Add Rule" to create your first rule.</p>';
   }
+  
+  // Update textareas with values
+  Object.entries(rulesByCategory).forEach(([category, types]) => {
+    Object.entries(types).forEach(([type, values]) => {
+      const textarea = rulesContainer.querySelector(
+        `.rule-category-group[data-category="${category}"] .rule-type-section[data-rule-type="${type}"] .rule-values-textarea`
+      );
+      if (textarea) {
+        textarea.value = values.join('\n');
+      }
+    });
+  });
+  
+  // Add event listeners to all textareas
+  rulesContainer.querySelectorAll('.rule-values-textarea').forEach(textarea => {
+    textarea.addEventListener('input', debounce(saveRulesFromUI, 500));
+  });
 }
 
 /**
@@ -519,34 +552,45 @@ function deleteRule(ruleId) {
 }
 
 /**
- * Save all rules to state and storage
+ * Save rules from the new grouped UI
  */
-function saveRules() {
+function saveRulesFromUI() {
   const rules = [];
-  const ruleElements = document.querySelectorAll('.rule-item');
+  const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
+  if (!rulesContainer) return;
   
-  ruleElements.forEach(ruleElement => {
-    const ruleId = ruleElement.dataset.ruleId;
-    const type = ruleElement.querySelector('.rule-type-select').value;
-    const value = ruleElement.querySelector('.rule-value-input').value.trim();
-    const category = parseInt(ruleElement.querySelector('.rule-category-select').value);
-    const enabled = ruleElement.querySelector('.rule-enabled-checkbox').checked;
-    const fieldSelect = ruleElement.querySelector('.rule-field-select');
+  // Process each category
+  rulesContainer.querySelectorAll('.rule-category-group').forEach(categoryGroup => {
+    const category = parseInt(categoryGroup.dataset.category);
     
-    if (value) {  // Only save rules with values
-      const rule = {
-        type,
-        value,
-        category,
-        enabled
-      };
+    // Process each rule type in this category
+    categoryGroup.querySelectorAll('.rule-type-section').forEach(typeSection => {
+      const ruleType = typeSection.dataset.ruleType;
+      const textarea = typeSection.querySelector('.rule-values-textarea');
       
-      if (type === RULE_TYPES.REGEX && fieldSelect) {
-        rule.field = fieldSelect.value;
+      if (textarea && textarea.value.trim()) {
+        // Split by newlines and create a rule for each non-empty line
+        const values = textarea.value.split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0);
+        
+        values.forEach(value => {
+          const rule = {
+            type: ruleType,
+            value: value,
+            category: category,
+            enabled: true
+          };
+          
+          // Add field for regex rules (default to URL)
+          if (ruleType === 'regex') {
+            rule.field = 'url';
+          }
+          
+          rules.push(rule);
+        });
       }
-      
-      rules.push(rule);
-    }
+    });
   });
   
   state.settings.rules = rules;
@@ -554,13 +598,6 @@ function saveRules() {
   StorageService.saveSettings(state.settings);
 }
 
-/**
- * Handle add rule button click
- */
-function onAddRule() {
-  addRuleUI();
-  saveRules();
-}
 
 /**
  * Restore default rules
@@ -848,11 +885,7 @@ export async function initializeSettings() {
     maxTabsInput.addEventListener('change', onMaxTabsChange);
   }
   
-  // Rule management
-  const addRuleBtn = $id(DOM_IDS.ADD_RULE_BTN);
-  if (addRuleBtn) {
-    addRuleBtn.addEventListener('click', onAddRule);
-  }
+  // Rules are now handled by the grouped UI with textareas
   
   // Restore default rules button
   const restoreBtn = $id('restoreDefaultRulesBtn');

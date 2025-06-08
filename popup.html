@@ -289,18 +289,7 @@
               Create rules to automatically categorize tabs. Rules are applied before AI categorization.
             </p>
             
-            <div id="rulesContainer" class="rules-container">
-              <!-- Rules will be populated here -->
-            </div>
-            
-            <div style="display: flex; gap: 8px; margin-top: 12px;">
-              <button id="addRuleBtn" class="secondary-btn">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                Add Rule
-              </button>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px;">
               <button id="restoreDefaultRulesBtn" class="secondary-btn">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
                   <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
@@ -309,6 +298,86 @@
                 </svg>
                 Restore Default Rules
               </button>
+            </div>
+            
+            <div id="rulesContainer" class="rules-container">
+              <!-- Category: Ignore (Can Close) -->
+              <div class="rule-category-group" data-category="1">
+                <h4 class="rule-category-header">
+                  <span class="category-icon" style="color: var(--category-ignore-color);">✕</span>
+                  Ignore (Can Close)
+                </h4>
+                <div class="rule-type-sections">
+                  <div class="rule-type-section" data-rule-type="domain">
+                    <h5 class="rule-type-header">Domain equals</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter domains, one per line&#10;Example:&#10;youtube.com&#10;facebook.com&#10;reddit.com" rows="4"></textarea>
+                  </div>
+                  <div class="rule-type-section" data-rule-type="url_contains">
+                    <h5 class="rule-type-header">URL contains</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter URL patterns, one per line&#10;Example:&#10;/watch?v=&#10;netflix.com&#10;/shorts/" rows="4"></textarea>
+                  </div>
+                  <div class="rule-type-section" data-rule-type="title_contains">
+                    <h5 class="rule-type-header">Title contains</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter title patterns, one per line&#10;Example:&#10;YouTube&#10;Facebook&#10;Twitter" rows="4"></textarea>
+                  </div>
+                  <div class="rule-type-section" data-rule-type="regex">
+                    <h5 class="rule-type-header">Regex patterns</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter regex patterns, one per line&#10;Example:&#10;.*\\.social\\..*&#10;^https://[^/]+/feed$" rows="4"></textarea>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Category: Useful (Save for Later) -->
+              <div class="rule-category-group" data-category="2">
+                <h4 class="rule-category-header">
+                  <span class="category-icon" style="color: var(--category-useful-color);">★</span>
+                  Useful (Save for Later)
+                </h4>
+                <div class="rule-type-sections">
+                  <div class="rule-type-section" data-rule-type="domain">
+                    <h5 class="rule-type-header">Domain equals</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter domains, one per line&#10;Example:&#10;developer.mozilla.org&#10;w3schools.com" rows="4"></textarea>
+                  </div>
+                  <div class="rule-type-section" data-rule-type="url_contains">
+                    <h5 class="rule-type-header">URL contains</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter URL patterns, one per line&#10;Example:&#10;/docs/&#10;/tutorial/&#10;/guide/&#10;wikipedia.org" rows="4"></textarea>
+                  </div>
+                  <div class="rule-type-section" data-rule-type="title_contains">
+                    <h5 class="rule-type-header">Title contains</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter title patterns, one per line&#10;Example:&#10;Documentation&#10;Tutorial&#10;Guide" rows="4"></textarea>
+                  </div>
+                  <div class="rule-type-section" data-rule-type="regex">
+                    <h5 class="rule-type-header">Regex patterns</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter regex patterns, one per line" rows="4"></textarea>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Category: Important -->
+              <div class="rule-category-group" data-category="3">
+                <h4 class="rule-category-header">
+                  <span class="category-icon" style="color: var(--category-important-color);">!</span>
+                  Important
+                </h4>
+                <div class="rule-type-sections">
+                  <div class="rule-type-section" data-rule-type="domain">
+                    <h5 class="rule-type-header">Domain equals</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter domains, one per line&#10;Example:&#10;github.com&#10;stackoverflow.com&#10;claude.ai" rows="4"></textarea>
+                  </div>
+                  <div class="rule-type-section" data-rule-type="url_contains">
+                    <h5 class="rule-type-header">URL contains</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter URL patterns, one per line&#10;Example:&#10;/pull/&#10;/issues/&#10;localhost&#10;127.0.0.1" rows="4"></textarea>
+                  </div>
+                  <div class="rule-type-section" data-rule-type="title_contains">
+                    <h5 class="rule-type-header">Title contains</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter title patterns, one per line&#10;Example:&#10;Pull Request&#10;Issue #" rows="4"></textarea>
+                  </div>
+                  <div class="rule-type-section" data-rule-type="regex">
+                    <h5 class="rule-type-header">Regex patterns</h5>
+                    <textarea class="rule-values-textarea" placeholder="Enter regex patterns, one per line" rows="4"></textarea>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           

@@ -104,11 +104,7 @@ export async function initializeApp() {
       await StorageService.saveSettings(state.settings);
     }
     
-    // Check for API key
-    const hasApiKey = Object.values(state.settings.apiKeys).some(key => key);
-    if (!hasApiKey) {
-      showApiKeyPrompt();
-    }
+    // Don't show API key prompt on startup - only when user tries to categorize
     
     // Set up event listeners early
     setupEventListeners();
