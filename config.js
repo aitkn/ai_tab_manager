@@ -78,34 +78,56 @@ const CONFIG = {
   ],
   
   // Prompt versioning - increment this when you update the default prompt
-  PROMPT_VERSION: 2,
+  PROMPT_VERSION: 3,
   
   // Default categorization prompt
-  DEFAULT_PROMPT: `You are a tab categorization assistant. Categorize the following browser tabs into exactly 3 categories:
+  DEFAULT_PROMPT: `You are a tab categorization assistant. Categorize browser tabs based on how difficult they would be to find again if closed.
 
-1. Ignore: Empty tabs, new tabs, error pages (404, 500, etc.), login/signin pages, authentication pages, frequently opened sites (Gmail, X/Twitter homepage, YouTube homepage, etc.), default pages, inbox pages
-2. Useful: Interesting articles/videos that aren't too old, useful posts that might be referenced later, general browsing
-3. Important: Unique websites HARD to find again, important articles/documentation, active LLM conversations that may need continuation, work-related tabs, specific tweets/posts, GitHub repos with code
+  Categories:
+  1. Easy to Refind (can be closed): Takes less than 10 seconds to get back to this exact page
+  2. Moderate Effort to Refind (save for later): Takes 10 seconds to 2 minutes to find again
+  3. Hard to Refind (must save): Takes more than 2 minutes or might be impossible to find again
 
-Consider these domains as category 1 when they're just the homepage/inbox: {FREQUENT_DOMAINS}
+  Category 1 - Easy to Refind:
+  - Well-known domains everyone uses (google.com, youtube.com, gmail.com, amazon.com, etc.)
+  - Login/authentication pages of major services
+  - Empty tabs, new tabs, error pages
+  - Simple Google searches
+  - Major news sites, social media homepages
 
-Rules:
-- Login/signin/authentication pages are ALWAYS category 1 (bankofamerica.com/login, apple.com/auth, etc.)
-- LLM chat conversations (claude.ai/chat/*, chatgpt.com/*, grok.com/chat/*) are ALWAYS category 3
-- GitHub repos (not just github.com) are category 3
-- Specific tweets/posts are category 2 or 3, but twitter/x.com homepage is category 1
-- Documentation sites are category 3
-- Google searches are category 1
-- YouTube videos (not homepage) are category 2
-- Banking/financial sites: login pages are category 1, but transaction history or specific account pages might be category 2
+  Category 2 - Moderate Effort to Refind:
+  - Less common domains that aren't household names
+  - Articles/videos you could find with specific search terms
+  - Product pages from any company (even unknown ones)
+  - Social media posts from accounts you could find again
+  - General documentation or guides
+  - Any .ai, .dev, .io domains (unless extremely well-known like github.io)
 
-For each tab, assign a category (1, 2, or 3) based on the title and URL.
+  Category 3 - Hard to Refind:
+  - Deep links to specific conversations, sessions, or states
+  - URLs with unique IDs or session tokens
+  - Specific social media posts (hard to search for exact tweets/posts)
+  - Complex search results after multiple refinements
+  - Dynamically generated content or temporary links
+  - Pages reached through multiple navigation steps
+  - Work in progress or unsaved content
 
-Tabs data:
-{TABS_DATA}
+  Key considerations:
+  1. Domain familiarity: Is this a domain the average person visits regularly?
+  2. URL complexity: Does the URL contain unique IDs, parameters, or session info?
+  3. Search difficulty: What would you need to remember to find this exact page?
 
-Respond with ONLY a JSON object where keys are tab IDs and values are category numbers (1, 2, or 3).
-Example: {"123": 1, "456": 3, "789": 2}
+  Examples:
+  - devin.ai → Category 2 (not a well-known domain)
+  - github.com/user/repo → Category 2 (specific but searchable)
+  - claude.ai/chat/[unique-id] → Category 3 (specific conversation)
+  - youtube.com → Category 1 (well-known homepage)
 
-Do not include any explanation or other text, just the JSON object.`
+  For each tab, assign a category (1, 2, or 3) based on the title and URL.
+
+  Tabs data:
+  {TABS_DATA}
+
+  Respond with ONLY a JSON object where keys are tab IDs and values are category numbers (1, 2, or 3).
+  Example: {"123": 1, "456": 3, "789": 2}`
 };
