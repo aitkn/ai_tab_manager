@@ -18,11 +18,9 @@ export class CurrentTabsProcessor {
     try {
       // 1. Get all open tabs from browser
       const allTabs = await chrome.tabs.query({});
-      console.log(`Processing ${allTabs.length} current tabs`);
       
       // Debug: Log windows
       const windowIds = new Set(allTabs.map(tab => tab.windowId));
-      console.log(`Tabs are from ${windowIds.size} different windows:`, Array.from(windowIds));
       
       // 2. Get all saved URLs from database for matching
       const savedUrls = await this.database.getSavedUrls([1, 2, 3]); // All categories
@@ -109,13 +107,7 @@ export class CurrentTabsProcessor {
         }
       });
       
-      console.log('Categorized tabs:', {
-        uncategorized: categorizedTabs[TAB_CATEGORIES.UNCATEGORIZED].length,
-        canClose: categorizedTabs[TAB_CATEGORIES.CAN_CLOSE].length,
-        saveLater: categorizedTabs[TAB_CATEGORIES.SAVE_LATER].length,
-        important: categorizedTabs[TAB_CATEGORIES.IMPORTANT].length,
-        duplicates: Object.keys(urlToDuplicateIds).length
-      });
+      // Removed categorization summary log
       
       return { categorizedTabs, urlToDuplicateIds };
       

@@ -21,9 +21,6 @@ class TabDatabase {
 
       request.onsuccess = () => {
         this.db = request.result;
-        console.log('Database opened successfully');
-        console.log('Database version:', this.db.version);
-        console.log('Object stores:', Array.from(this.db.objectStoreNames));
         resolve();
       };
 
@@ -321,7 +318,6 @@ class TabDatabase {
    * @returns {Promise<Object[]>} Array of URL objects
    */
   async getSavedUrls(categories = [2, 3], includeEvents = false) {
-    console.log('getSavedUrls called with categories:', categories, 'includeEvents:', includeEvents);
     return new Promise(async (resolve, reject) => {
       try {
         const transaction = this.db.transaction(['urls', 'events'], 'readonly');
@@ -367,11 +363,9 @@ class TabDatabase {
             results.push(urlData);
           } else {
             skippedRecords++;
-            console.log('Skipped record - category', record.category, 'not in', categories);
           }
           cursor.continue();
         } else {
-          console.log('getSavedUrls complete. Total records:', totalRecords, 'Returned:', results.length, 'Skipped:', skippedRecords);
           resolve(results);
         }
       };
@@ -922,4 +916,3 @@ class TabDatabase {
 // Create and expose the database instance
 // Use globalThis to work in both service workers and regular scripts
 globalThis.tabDatabase = new TabDatabase();
-console.log('AITabManagerDB initialized');

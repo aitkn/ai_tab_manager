@@ -187,8 +187,6 @@ export class TabClassifier {
       metrics: ['accuracy', 'categoricalCrossentropy']
     });
     
-    console.log('Model compiled');
-    console.log('Total parameters:', this.model.countParams());
   }
   
   /**

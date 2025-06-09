@@ -50,7 +50,6 @@ async function waitForDatabase() {
     await new Promise(resolve => setTimeout(resolve, 100));
     attempts++;
     if (attempts % 10 === 0) {
-      console.log(`Waiting for database... (${attempts * 100}ms)`);
     }
   }
   
@@ -58,21 +57,16 @@ async function waitForDatabase() {
     throw new Error('Database failed to load after 5 seconds');
   }
   
-  console.log(`Database loaded after ${attempts * 100}ms`);
 }
 
 /**
  * Main initialization function
  */
 export async function initializeApp() {
-  console.log('=== POPUP LIFECYCLE: initializeApp started ===');
-  console.log('Document readyState:', document.readyState);
-  console.log('Timestamp:', new Date().toISOString());
   
   try {
     // Wait for database to be available
     if (!window.tabDatabase) {
-      console.log('Waiting for database to load...');
       await waitForDatabase();
     }
     
@@ -87,20 +81,16 @@ export async function initializeApp() {
     
     // Initialize database
     await window.tabDatabase.init();
-    console.log('Database initialized');
     
     // Initialize tab data source with database
     initializeTabDataSource(window.tabDatabase);
-    console.log('Tab data source initialized');
     
     // Always load saved state for rules initialization (even if target tab was pre-determined)
-    console.log('DEBUG: Loading saved state for rules initialization...');
     await loadSavedState();
     
     // Check if default prompt needs updating
     if (!state.settings.isPromptCustomized && 
         state.settings.promptVersion < CONFIG.PROMPT_VERSION) {
-      console.log('Updating to new default prompt (version', CONFIG.PROMPT_VERSION, ')');
       state.settings.customPrompt = CONFIG.DEFAULT_PROMPT;
       state.settings.promptVersion = CONFIG.PROMPT_VERSION;
       await StorageService.saveSettings(state.settings);
@@ -124,7 +114,6 @@ export async function initializeApp() {
     
     // Use the pre-determined target tab if available
     let targetTab = window._targetTab || state.popupState?.activeTab || 'categorize';
-    console.log('Using pre-determined target tab:', targetTab);
     
     // The DOM should already have the correct active classes set by preInitialize
     // Update the state to match
@@ -158,18 +147,15 @@ export async function initializeApp() {
       
       // Then restore UI state (search, grouping, etc)
       await restoreUIState();
-      console.log('DEBUG: UI state restored');
       
       // Always display tabs even if empty to show proper UI state
       const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
       if (tabsContainer) {
         show(tabsContainer);
-        console.log('DEBUG: Tabs container shown');
       }
       
       // Force display update to ensure content is shown
       await displayTabs();
-      console.log('DEBUG: Display tabs called');
       
       // Restore scroll position for categorize tab
       if (state.popupState?.scrollPositions?.categorize) {
@@ -183,11 +169,9 @@ export async function initializeApp() {
       showToolbar();
     }
     
-    console.log('Loaded settings:', state.settings);
     
     // Mark initialization complete
     setInitializationComplete();
-    console.log('=== POPUP LIFECYCLE: Initialization marked complete ===');
     
     // Update saved tab badge
     await loadSavedTabsCount();
@@ -198,14 +182,9 @@ export async function initializeApp() {
     // Initialize background ML service
     try {
       const backgroundMLService = await getBackgroundMLService();
-      console.log('Background ML service initialized');
     } catch (error) {
-      console.log('Background ML service initialization failed (may be disabled):', error);
     }
     
-    console.log('=== POPUP LIFECYCLE: initializeApp completed successfully ===');
-    console.log('Final state activeTab:', state.popupState?.activeTab);
-    console.log('Timestamp:', new Date().toISOString());
     
   } catch (error) {
     console.error('Error during initialization:', error);
@@ -368,7 +347,6 @@ async function restoreActiveTab() {
  */
 function initializeTabNavigation() {
   // Tab navigation is now handled by event-handlers.js
-  console.log('Tab navigation initialized via event handlers');
 }
 
 /**
@@ -405,14 +383,10 @@ function checkExtensionIntegrity() {
  * Set up auto-save on visibility change
  */
 export function setupAutoSave() {
-  console.log('=== POPUP LIFECYCLE: Setting up auto-save listeners ===');
   
   // Save state when window loses focus or visibility changes
   document.addEventListener('visibilitychange', () => {
-    console.log('=== POPUP LIFECYCLE: Visibility change detected ===');
-    console.log('Hidden:', document.hidden, 'Initializing:', state.isInitializing);
     if (document.hidden && !state.isInitializing) {
-      console.log('=== POPUP LIFECYCLE: Saving state on hide ===');
       savePopupState();
     }
   });
@@ -429,10 +403,7 @@ export function setupAutoSave() {
   
   // Save state on window unload
   window.addEventListener('beforeunload', () => {
-    console.log('=== POPUP LIFECYCLE: Window unload detected ===');
-    console.log('Initializing:', state.isInitializing);
     if (!state.isInitializing) {
-      console.log('=== POPUP LIFECYCLE: Saving state on unload ===');
       savePopupState();
     }
   });
@@ -442,11 +413,9 @@ export function setupAutoSave() {
  * Set up listener for tab changes from background script
  */
 function setupTabChangeListener() {
-  console.log('Popup: Setting up tab change listener');
   
   // Set up listeners through tab data source
   const port = setupTabEventListeners((changeData) => {
-    console.log('Popup: Received tab change:', changeData);
     handleTabChange(changeData);
   });
   
@@ -463,12 +432,10 @@ let tabChangeDebounceTimer = null;
  * Handle tab change notifications with debouncing
  */
 async function handleTabChange(data) {
-  console.log('Popup: handleTabChange called with:', data);
   const { changeType, tab, timestamp } = data;
   
   // Only handle changes if we're on the categorize tab
   if (state.popupState.activeTab !== TAB_TYPES.CATEGORIZE) {
-    console.log('Popup: Skipping - not on categorize tab');
     return;
   }
   
@@ -492,11 +459,9 @@ async function processTabChange(changeType, tab) {
   const hasCategorizedTabs = await hasCurrentTabs();
   
   if (!hasCategorizedTabs && changeType !== 'created') {
-    console.log('Popup: Skipping - no categorized tabs and not a create event');
     return;
   }
   
-  console.log('Popup: Tab change detected:', changeType, tab);
   
   // For all tab changes, refresh the data from browser
   try {

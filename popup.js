@@ -58,19 +58,16 @@ window.DEBUG = {
     }
   }
 };
-console.log('AI Tab Manager Debug Mode - Version:', window.DEBUG.version);
 
 // Set up auto-save handlers
 setupAutoSave();
 
 // Pre-initialize state synchronously before DOM is ready
 async function preInitialize() {
-  console.log('=== POPUP LIFECYCLE: Pre-initialization started ===');
   try {
     // Load saved state from storage synchronously
     const savedPopupState = await StorageService.loadPopupState();
     const savedSettings = await StorageService.loadSettings();
-    console.log('Loaded saved state:', { savedPopupState, savedSettings });
     
     // Apply saved state
     if (savedPopupState) {
@@ -91,26 +88,13 @@ async function preInitialize() {
       targetTab = savedPopupState.activeTab;
     }
     
-    console.log('DEBUG: Target tab determined:', {
-      fromSavedState: savedPopupState?.activeTab,
-      finalTarget: targetTab,
-      hasConfiguredSettings: state.settings?.hasConfiguredSettings,
-      fullSavedState: savedPopupState,
-      fullSettings: savedSettings
-    });
     
     // Quick check if we have any current tabs (just check chrome tabs, not database)
     const allTabs = await ChromeAPIService.queryTabs({});
     const hasTabs = allTabs && allTabs.length > 0;
     
-    console.log('DEBUG: Tab switching logic:', {
-      hasTabs: hasTabs,
-      tabCount: allTabs?.length || 0,
-      originalTarget: targetTab
-    });
     
     if (!hasTabs && targetTab === 'categorize') {
-      console.log('DEBUG: No tabs found, switching from categorize to saved');
       targetTab = 'saved';
     }
     
@@ -133,17 +117,14 @@ async function preInitialize() {
       window._targetTab = targetTab;
       
       // Now initialize the app
-      console.log('=== POPUP LIFECYCLE: About to call initializeApp ===');
       initializeApp();
     };
     
     // Check if DOM is already loaded
     if (document.readyState === 'loading') {
-      console.log('=== POPUP LIFECYCLE: DOM still loading, adding DOMContentLoaded listener ===');
       document.addEventListener('DOMContentLoaded', initializeDom);
     } else {
       // DOM is already loaded, initialize immediately
-      console.log('=== POPUP LIFECYCLE: DOM already loaded, initializing immediately ===');
       initializeDom();
     }
   } catch (error) {
@@ -175,40 +156,16 @@ window.addEventListener('error', (event) => {
 // Handle unhandled promise rejections that might be CSP related
 window.addEventListener('unhandledrejection', (event) => {
   if (event.reason && event.reason.message && event.reason.message.includes('unsafe-eval')) {
-    console.log('=== CSP PROMISE REJECTION: TensorFlow.js eval blocked (expected) ===');
     event.preventDefault();
     return false;
   }
 });
 
-// Log when popup becomes visible/hidden
-document.addEventListener('visibilitychange', () => {
-  console.log('=== POPUP LIFECYCLE: Visibility changed ===');
-  console.log('Hidden:', document.hidden);
-  console.log('Visibility state:', document.visibilityState);
-  console.log('Timestamp:', new Date().toISOString());
-});
 
-// Log when popup is about to close
-window.addEventListener('beforeunload', () => {
-  console.log('=== POPUP LIFECYCLE: About to unload ===');
-  console.log('Timestamp:', new Date().toISOString());
-});
 
-// Log when popup loses focus
-window.addEventListener('blur', () => {
-  console.log('=== POPUP LIFECYCLE: Window blur ===');
-  console.log('Timestamp:', new Date().toISOString());
-});
 
-// Log when popup gains focus
-window.addEventListener('focus', () => {
-  console.log('=== POPUP LIFECYCLE: Window focus ===');
-  console.log('Timestamp:', new Date().toISOString());
-});
 
 // Start pre-initialization immediately
-console.log('=== POPUP LIFECYCLE: Starting pre-initialization ===');
 preInitialize();
 
 // Export commonly used functions for inline event handlers if needed

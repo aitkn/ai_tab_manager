@@ -148,7 +148,6 @@ export async function loadSavedState() {
     
     // Apply defaults from CONFIG if available and not already set
     if (typeof CONFIG !== 'undefined') {
-      console.log('Applying CONFIG defaults to settings');
       if (!state.settings.provider || state.settings.provider === '') {
         state.settings.provider = CONFIG.DEFAULT_PROVIDER || 'Claude';
       }
@@ -163,22 +162,9 @@ export async function loadSavedState() {
     }
     
     // Apply default rules if not already applied or if rules array is empty
-    console.log('DEBUG: Checking default rules. Current state:', {
-      defaultRulesApplied: state.settings.defaultRulesApplied,
-      rulesExists: !!state.settings.rules,
-      rulesLength: state.settings.rules?.length || 0,
-      hasConfiguredSettings: state.settings.hasConfiguredSettings
-    });
     
     if (!state.settings.defaultRulesApplied || !state.settings.rules || state.settings.rules.length === 0) {
-      console.log('DEBUG: Initializing default rules. Current state:', {
-        defaultRulesApplied: state.settings.defaultRulesApplied,
-        rulesExists: !!state.settings.rules,
-        rulesLength: state.settings.rules?.length || 0
-      });
-      
       const defaultRules = getDefaultRules();
-      console.log('Default rules to apply:', defaultRules.length);
       
       // Ensure rules array exists
       if (!state.settings.rules) {
@@ -665,7 +651,6 @@ export function clearCategorizedTabs() {
  */
 export function setInitializationComplete() {
   state.isInitializing = false;
-  console.log('Initialization complete, state saving enabled');
 }
 
 /**

@@ -27,12 +27,10 @@ function debounce(func, wait) {
  * Initialize settings UI
  */
 export async function initializeSettingsUI() {
-  console.log('Initializing settings UI with state:', state.settings);
   
   // Set current provider
   const providerSelect = $id(DOM_IDS.PROVIDER_SELECT);
   if (providerSelect) {
-    console.log('Setting provider to:', state.settings.provider);
     providerSelect.value = state.settings.provider;
   } else {
     console.error('Provider select not found');
@@ -44,7 +42,6 @@ export async function initializeSettingsUI() {
   // Now set current model after dropdown is populated
   const modelSelect = $id(DOM_IDS.MODEL_SELECT);
   if (modelSelect && state.settings.model) {
-    console.log('Setting model to:', state.settings.model);
     modelSelect.value = state.settings.model;
   }
   
@@ -52,7 +49,6 @@ export async function initializeSettingsUI() {
   const apiKeyInput = $id(DOM_IDS.API_KEY_INPUT);
   if (apiKeyInput) {
     const apiKey = state.settings.apiKeys[state.settings.provider] || '';
-    console.log('Setting API key input for provider:', state.settings.provider, 'Has key:', !!apiKey);
     apiKeyInput.value = apiKey;
     if (CONFIG && CONFIG.PROVIDERS && CONFIG.PROVIDERS[state.settings.provider]) {
       apiKeyInput.placeholder = CONFIG.PROVIDERS[state.settings.provider].apiKeyPlaceholder;
@@ -72,7 +68,6 @@ export async function initializeSettingsUI() {
   const promptTextarea = $id(DOM_IDS.PROMPT_TEXTAREA);
   if (promptTextarea) {
     const promptValue = state.settings.customPrompt || (CONFIG ? CONFIG.DEFAULT_PROMPT : '');
-    console.log('Setting prompt textarea, custom:', !!state.settings.customPrompt, 'Using default:', !state.settings.customPrompt);
     promptTextarea.value = promptValue;
   } else {
     console.error('Prompt textarea not found');
@@ -130,7 +125,6 @@ export async function initializeSettingsUI() {
   
   // Initialize rules UI - with small delay to ensure state is loaded
   setTimeout(() => {
-    console.log('DEBUG: Initializing rules UI. Current rules count:', state.settings?.rules?.length || 0);
     initializeRulesUI();
   }, 100);
 }
@@ -140,7 +134,6 @@ export async function initializeSettingsUI() {
  */
 export async function updateModelDropdown() {
   const modelSelect = $id(DOM_IDS.MODEL_SELECT);
-  console.log('updateModelDropdown called, modelSelect element:', modelSelect);
   if (!modelSelect) {
     console.error('Model select element not found!');
     return;
@@ -154,7 +147,6 @@ export async function updateModelDropdown() {
     // Try to fetch models dynamically
     const apiKey = state.settings.apiKeys[state.settings.provider];
     const response = await MessageService.fetchModels(state.settings.provider, apiKey);
-    console.log('Response from fetchModels:', response);
     
     let models = [];
     let needsApiKey = false;
@@ -162,19 +154,15 @@ export async function updateModelDropdown() {
     if (response && response.success) {
       models = response.models || [];
       needsApiKey = response.needsApiKey || false;
-      console.log('Fetched models for', state.settings.provider, ':', models);
     } else if (response && response.models) {
       // Handle case where success flag might be missing
       models = response.models;
-      console.log('Models found without success flag:', models);
     }
     
     // Clear and populate models
     modelSelect.innerHTML = '';
-    console.log('Clearing dropdown, about to populate with', models.length, 'models');
     
     if (needsApiKey || (!apiKey && models.length === 0)) {
-      console.log('No API key or no models, showing message');
       const option = document.createElement('option');
       option.value = '';
       option.textContent = 'Please add API key to see available models';
@@ -392,14 +380,8 @@ export function onMaxTabsChange(e) {
  * Initialize rules UI
  */
 export function initializeRulesUI() {
-  console.log('DEBUG: initializeRulesUI called. Rules:', {
-    rulesCount: state.settings?.rules?.length || 0,
-    rules: state.settings?.rules?.slice(0, 3) // First 3 rules for debugging
-  });
-  
   const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
   if (!rulesContainer) {
-    console.log('DEBUG: Rules container not found');
     return;
   }
   
@@ -411,17 +393,13 @@ export function initializeRulesUI() {
   
   // Add existing rules
   if (state.settings.rules && state.settings.rules.length > 0) {
-    console.log('Initializing rules UI with', state.settings.rules.length, 'rules');
     state.settings.rules.forEach((rule, index) => {
       if (rule.enabled !== false) {
         addRuleToUI(rule.category, rule);
       }
     });
-  } else {
-    console.log('No rules found in settings during initialization');
   }
   
-  // Add event listeners to add buttons
   rulesContainer.querySelectorAll('.add-rule-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const category = parseInt(e.currentTarget.dataset.category);

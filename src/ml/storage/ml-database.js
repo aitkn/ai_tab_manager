@@ -32,7 +32,6 @@ export async function initMLDatabase() {
     
     request.onsuccess = () => {
       db = request.result;
-      console.log('ML database initialized');
       resolve(db);
     };
     

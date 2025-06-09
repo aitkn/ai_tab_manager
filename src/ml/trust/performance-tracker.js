@@ -63,7 +63,6 @@ export class PerformanceTracker {
       // Recalculate trust weights based on loaded accuracies
       this.updateTrustWeights();
       
-      console.log('Loaded historical metrics:', this.accuracy);
     } catch (error) {
       console.error('Error loading historical metrics:', error);
     }

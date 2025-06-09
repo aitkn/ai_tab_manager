@@ -42,7 +42,6 @@ export class MLCategorizer {
       }
       
       this.isInitialized = true;
-      console.log('ML Categorizer initialized');
       
     } catch (error) {
       console.error('Error initializing ML categorizer:', error);
