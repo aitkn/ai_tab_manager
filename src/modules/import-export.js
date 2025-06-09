@@ -7,6 +7,7 @@ import { DOM_IDS, TAB_TYPES } from '../utils/constants.js';
 import { $id } from '../utils/dom-helpers.js';
 import { showStatus, switchToTab } from './ui-manager.js';
 import { state } from './state-manager.js';
+import { getUnifiedDatabase } from '../services/UnifiedDatabaseService.js';
 import { showSavedTabsContent } from './saved-tabs-manager.js';
 // Database is available as window.window.tabDatabase
 
@@ -66,7 +67,8 @@ export async function handleCSVImport(event) {
         useLLM: state.settings.useLLM !== false
       };
       
-      const result = await window.tabDatabase.importFromCSV(csvContent, importSettings);
+      const unifiedDB = await getUnifiedDatabase();
+      const result = await unifiedDB.importFromCSV(csvContent, importSettings);
       
       // Build status message
       let statusMessage;

@@ -40,6 +40,7 @@ export const ML_CONFIG = {
     minTrainingExamples: 100,
     minExamplesPerClass: 10,
     
+    
     // Incremental training
     incrementalBatchSize: 16,
     incrementalEpochs: 3
@@ -111,7 +112,7 @@ export const ML_CONFIG = {
     metricsStorageKey: 'tab_classifier_metrics',
     
     // Storage limits
-    maxTrainingDataSize: 10000,  // Maximum training examples to store
+    maxTrainingDataSize: 50000,  // Maximum training examples to store (increased from 10k)
     maxMetricsHistory: 1000      // Maximum metric records
   },
   

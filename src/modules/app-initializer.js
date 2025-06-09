@@ -15,6 +15,7 @@ import { initializeTabDataSource, getCurrentTabs, setupTabEventListeners } from 
 // Database is available as window.window.tabDatabase
 import StorageService from '../services/StorageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
+import { getBackgroundMLService } from '../services/BackgroundMLService.js';
 
 /**
  * Initialize category names from constants
@@ -193,6 +194,14 @@ export async function initializeApp() {
     
     // Set up tab change listener
     setupTabChangeListener();
+    
+    // Initialize background ML service
+    try {
+      const backgroundMLService = await getBackgroundMLService();
+      console.log('Background ML service initialized');
+    } catch (error) {
+      console.log('Background ML service initialization failed (may be disabled):', error);
+    }
     
     console.log('=== POPUP LIFECYCLE: initializeApp completed successfully ===');
     console.log('Final state activeTab:', state.popupState?.activeTab);

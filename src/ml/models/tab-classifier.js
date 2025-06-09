@@ -75,33 +75,37 @@ export class TabClassifier {
     
     // Add hidden layers from config
     ML_CONFIG.model.architecture.hiddenUnits.forEach((units, index) => {
-      x = tf.layers.dense({
+      const denseLayer = tf.layers.dense({
         units,
         activation: 'relu',
         kernelRegularizer: tf.regularizers.l2({ 
           l2: ML_CONFIG.model.architecture.l2Regularization 
         }),
         name: `hidden_${index + 1}`
-      })(x);
+      });
+      x = denseLayer.apply(x);
       
       // Add batch normalization for better training
-      x = tf.layers.batchNormalization({
+      const batchNormLayer = tf.layers.batchNormalization({
         name: `batch_norm_${index + 1}`
-      })(x);
+      });
+      x = batchNormLayer.apply(x);
       
       // Add dropout
-      x = tf.layers.dropout({
+      const dropoutLayer = tf.layers.dropout({
         rate: ML_CONFIG.model.architecture.dropout,
         name: `dropout_${index + 1}`
-      })(x);
+      });
+      x = dropoutLayer.apply(x);
     });
     
     // Output layer
-    const output = tf.layers.dense({
+    const outputLayer = tf.layers.dense({
       units: ML_CONFIG.model.output.numClasses,
       activation: ML_CONFIG.model.output.activation,
       name: 'category_output'
-    })(x);
+    });
+    const output = outputLayer.apply(x);
     
     // Create classifier model
     this.classifier = tf.model({
@@ -117,7 +121,7 @@ export class TabClassifier {
     
     // Connect embedder to classifier
     const embeddings = this.embedder.outputs[0];
-    const predictions = this.classifier(embeddings);
+    const predictions = this.classifier.apply(embeddings);
     
     this.model = tf.model({
       inputs: [urlInput, titleInput, featuresInput],

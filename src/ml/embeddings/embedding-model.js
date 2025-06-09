@@ -5,7 +5,7 @@
 
 import { ML_CONFIG } from '../model-config.js';
 import { getTensorFlow } from '../tensorflow-loader.js';
-import { extractAllFeatures } from '../features/url-parser.js';
+import { extractAllFeatures, extractPatternFeatures, extractTokenFeatures, extractNumericalFeatures } from '../features/url-parser.js';
 import { extractSpecialTokens } from '../features/tokenizer.js';
 
 /**
@@ -62,36 +62,41 @@ export function createFeatureEmbedder(vocabulary) {
   const embeddingLayer = createEmbeddingLayer(vocabulary.size(), config.embeddingDim);
   
   // Apply embeddings
-  const urlEmbeddings = embeddingLayer(urlInput);
-  const titleEmbeddings = embeddingLayer(titleInput);
+  const urlEmbeddings = embeddingLayer.apply(urlInput);
+  const titleEmbeddings = embeddingLayer.apply(titleInput);
   
   // Average pooling for variable-length sequences
-  const urlPooled = tf.layers.globalAveragePooling1d({ 
+  const urlPoolingLayer = tf.layers.globalAveragePooling1d({ 
     name: 'url_pooling' 
-  })(urlEmbeddings);
+  });
+  const urlPooled = urlPoolingLayer.apply(urlEmbeddings);
   
-  const titlePooled = tf.layers.globalAveragePooling1d({ 
+  const titlePoolingLayer = tf.layers.globalAveragePooling1d({ 
     name: 'title_pooling' 
-  })(titleEmbeddings);
+  });
+  const titlePooled = titlePoolingLayer.apply(titleEmbeddings);
   
   // Concatenate all features
-  const concatenated = tf.layers.concatenate({ 
+  const concatenateLayer = tf.layers.concatenate({ 
     name: 'feature_concatenation' 
-  })([urlPooled, titlePooled, featuresInput]);
+  });
+  const concatenated = concatenateLayer.apply([urlPooled, titlePooled, featuresInput]);
   
   // Feature transformation layer
-  const transformed = tf.layers.dense({
+  const denseLayer = tf.layers.dense({
     units: 128,
     activation: 'relu',
     kernelRegularizer: tf.regularizers.l2({ l2: 0.01 }),
     name: 'feature_transformation'
-  })(concatenated);
+  });
+  const transformed = denseLayer.apply(concatenated);
   
   // Dropout for regularization
-  const output = tf.layers.dropout({
+  const dropoutLayer = tf.layers.dropout({
     rate: 0.2,
     name: 'feature_dropout'
-  })(transformed);
+  });
+  const output = dropoutLayer.apply(transformed);
   
   return tf.model({
     inputs: [urlInput, titleInput, featuresInput],
@@ -110,22 +115,24 @@ export function prepareEmbeddingInputs(tab, vocabulary) {
   // Encode tokens
   const encoded = vocabulary.encode(tab.url, tab.title);
   
-  // Extract engineered features
+  // Extract engineered features - simplified to match expected shape
   const urlFeatures = extractAllFeatures(tab.url);
   const specialTokens = extractSpecialTokens(tab.url, tab.title);
   
-  // Combine engineered features
+  // Create exactly the right number of features to match the model
+  const patterns = extractPatternFeatures(tab.url);  // Should be 7
+  const tokens = extractTokenFeatures(tab.url);      // Should be 18  
+  const numerical = extractNumericalFeatures(urlFeatures.parsed); // Should be 10
+  
   const engineeredFeatures = [
-    ...urlFeatures.patterns,
-    ...urlFeatures.tokens,
-    ...urlFeatures.numerical,
-    // Add special token indicators as binary features
-    specialTokens.hasLogin ? 1 : 0,
-    specialTokens.hasCheckout ? 1 : 0,
-    specialTokens.hasDocs ? 1 : 0,
-    specialTokens.hasAPI ? 1 : 0,
-    specialTokens.hasAdmin ? 1 : 0
+    ...patterns,     // 7 URL pattern features
+    ...tokens,       // 18 important token features  
+    ...numerical     // 10 numerical features
   ];
+  
+  console.log(`Feature breakdown: patterns=${patterns.length}, tokens=${tokens.length}, numerical=${numerical.length}, total=${engineeredFeatures.length}`);
+  
+  // Should total exactly 35 features
   
   return {
     urlTokens: encoded.url,

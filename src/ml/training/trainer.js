@@ -33,29 +33,27 @@ export class ModelTrainer {
   }
   
   /**
-   * Prepare training data
+   * Prepare training data - directly from saved tabs + user corrections
    * @returns {Promise<Array>} Prepared training data
    */
   async prepareTrainingData() {
-    // First try to get existing ML training data
-    let allData = await getTrainingData();
-    console.log(`Found ${allData.length} existing ML training examples`);
+    console.log('Preparing training data directly from saved tabs...');
     
-    // If we have very little ML data, import from saved tabs
-    if (allData.length < 50) {
-      console.log('Converting saved tabs to training data...');
-      const convertedData = await this.convertSavedTabsToTrainingData();
-      console.log(`Converted ${convertedData.length} saved tabs to training data`);
-      
-      // Add converted data to ML database
-      for (const example of convertedData) {
-        await addTrainingData(example);
-      }
-      
-      // Reload all data
-      allData = await getTrainingData();
-      console.log(`Total training examples after conversion: ${allData.length}`);
-    }
+    // Get saved tabs (the source of truth)
+    const savedTabsData = await this.convertSavedTabsToTrainingData();
+    console.log(`Found ${savedTabsData.length} categorized saved tabs`);
+    
+    // Get additional ML training data (user corrections, feedback)
+    const mlData = await getTrainingData();
+    const correctionsData = mlData.filter(item => 
+      item.source === 'user_correction' || 
+      item.source === 'user_feedback'
+    );
+    console.log(`Found ${correctionsData.length} user corrections/feedback`);
+    
+    // Combine saved tabs + corrections (saved tabs are primary source)
+    const allData = [...savedTabsData, ...correctionsData];
+    console.log(`Total training examples: ${allData.length} (${savedTabsData.length} saved + ${correctionsData.length} corrections)`);
     
     return allData;
   }
@@ -102,6 +100,131 @@ export class ModelTrainer {
   async trainModel(options = {}) {
     return this.trainWithStoredData(options);
   }
+
+  /**
+   * Train model with provided data (avoids duplicate data preparation)
+   * @param {Array} trainingData - Pre-prepared training data
+   * @param {Object} options - Training options
+   * @returns {Promise<Object>} Training results
+   */
+  async trainWithData(trainingData, options = {}) {
+    if (this.isTraining) {
+      throw new Error('Training already in progress');
+    }
+    
+    this.isTraining = true;
+    const startTime = Date.now();
+    
+    try {
+      console.log(`Training with ${trainingData.length} provided examples`);
+      
+      // Validate data
+      const validationResult = validateTrainingData(trainingData);
+      if (!validationResult.isValid) {
+        throw new Error(`Invalid training data: ${validationResult.errors.join(', ')}`);
+      }
+      
+      // Update vocabulary with all data
+      await updateVocabulary(trainingData);
+      
+      // Ensure classifier is initialized with updated vocabulary
+      await this.classifier.initialize();
+      
+      // Prepare data for training
+      const generator = new DataGenerator(trainingData);
+      const { trainData, validData } = generator.splitData(
+        options.validationSplit || ML_CONFIG.training.validationSplit
+      );
+      
+      console.log(`Training with ${trainData.length} examples, validating with ${validData.length}`);
+      
+      // Check class balance
+      const classDistribution = this.getClassDistribution(trainData);
+      console.log('Class distribution:', classDistribution);
+      
+      // Balance classes if needed
+      const balancedData = options.balanceClasses ? 
+        generator.balanceClasses(trainData) : trainData;
+      
+      // Set up training callbacks
+      const trainingCallbacks = {
+        onProgress: (progress) => {
+          if (this.callbacks.onProgress) {
+            this.callbacks.onProgress({
+              ...progress,
+              elapsed: Date.now() - startTime
+            });
+          }
+        },
+        earlyStoppingCallback: async (epoch, logs) => {
+          // Implement early stopping
+          if (this.shouldStopEarly(epoch, logs)) {
+            console.log('Early stopping triggered');
+            return true;
+          }
+          return false;
+        }
+      };
+      
+      // Train the model
+      const history = await this.classifier.train(balancedData, {
+        ...options,
+        ...trainingCallbacks
+      });
+      
+      // Evaluate on validation data
+      const evaluation = await this.classifier.evaluate(validData);
+      
+      // Save the model
+      await this.classifier.save();
+      
+      // Record metrics
+      await this.recordTrainingMetrics({
+        accuracy: evaluation.accuracy,
+        loss: evaluation.loss,
+        trainingExamples: trainData.length,
+        validationExamples: validData.length,
+        duration: Date.now() - startTime,
+        classDistribution,
+        perClassMetrics: evaluation.perClassMetrics
+      });
+      
+      // Update training history
+      this.trainingHistory.push({
+        timestamp: Date.now(),
+        accuracy: evaluation.accuracy,
+        loss: evaluation.loss,
+        samples: trainData.length
+      });
+      
+      const result = {
+        success: true,
+        history,
+        evaluation,
+        duration: Date.now() - startTime,
+        modelSummary: this.classifier.getSummary(),
+        accuracy: evaluation.accuracy
+      };
+      
+      if (this.callbacks.onComplete) {
+        this.callbacks.onComplete(result);
+      }
+      
+      return result;
+      
+    } catch (error) {
+      console.error('Training error:', error);
+      
+      if (this.callbacks.onError) {
+        this.callbacks.onError(error);
+      }
+      
+      throw error;
+      
+    } finally {
+      this.isTraining = false;
+    }
+  }
   
   /**
    * Train model with stored data
@@ -117,8 +240,8 @@ export class ModelTrainer {
     const startTime = Date.now();
     
     try {
-      // Load training data
-      const allData = await getTrainingData();
+      // Load training data using our prepared method
+      const allData = await this.prepareTrainingData();
       console.log(`Loaded ${allData.length} training examples`);
       
       // Validate data

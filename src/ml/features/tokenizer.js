@@ -4,11 +4,12 @@
  */
 
 /**
- * Tokenize a URL into meaningful parts
+ * Tokenize a URL into meaningful parts with n-grams
  * @param {string} url - URL to tokenize
+ * @param {boolean} includeNGrams - Whether to include n-grams (default: true)
  * @returns {Array<string>} Array of tokens
  */
-export function tokenizeURL(url) {
+export function tokenizeURL(url, includeNGrams = true) {
   try {
     const urlObj = new URL(url);
     const tokens = [];
@@ -16,9 +17,18 @@ export function tokenizeURL(url) {
     // Protocol (without colon)
     tokens.push(urlObj.protocol.replace(':', ''));
     
-    // Hostname parts
+    // Hostname parts with character n-grams for domains
     const hostParts = urlObj.hostname.split('.');
     tokens.push(...hostParts);
+    
+    // Add character n-grams for main domain (not subdomains or TLD)
+    if (includeNGrams && hostParts.length >= 2) {
+      const mainDomain = hostParts[hostParts.length - 2]; // e.g., 'github' from 'api.github.com'
+      if (mainDomain.length >= 4) { // Only for domains 4+ chars
+        const domainNGrams = extractCharNGrams(mainDomain, 3, 4);
+        tokens.push(...domainNGrams.map(ngram => `dom_${ngram}`)); // Prefix to distinguish
+      }
+    }
     
     // Path segments
     const pathSegments = urlObj.pathname
@@ -26,11 +36,22 @@ export function tokenizeURL(url) {
       .filter(segment => segment.length > 1 && !/^\d+$/.test(segment)); // Filter out numbers and single chars
     tokens.push(...pathSegments);
     
+    // Add token bigrams for path segments (if we have multiple segments)
+    if (includeNGrams && pathSegments.length >= 2) {
+      const pathBigrams = extractNGrams(pathSegments, 2);
+      tokens.push(...pathBigrams.map(bigram => `path_${bigram}`)); // Prefix to distinguish
+    }
+    
     // Query parameter keys (not values for privacy)
     if (urlObj.search) {
       const params = new URLSearchParams(urlObj.search);
-      for (const key of params.keys()) {
-        tokens.push(key);
+      const paramKeys = Array.from(params.keys());
+      tokens.push(...paramKeys);
+      
+      // Add parameter bigrams if we have multiple parameters
+      if (includeNGrams && paramKeys.length >= 2) {
+        const paramBigrams = extractNGrams(paramKeys, 2);
+        tokens.push(...paramBigrams.map(bigram => `param_${bigram}`));
       }
     }
     
@@ -49,11 +70,12 @@ export function tokenizeURL(url) {
 }
 
 /**
- * Tokenize a title into words
+ * Tokenize a title into words with n-grams
  * @param {string} title - Title to tokenize
+ * @param {boolean} includeNGrams - Whether to include n-grams (default: true)
  * @returns {Array<string>} Array of tokens
  */
-export function tokenizeTitle(title) {
+export function tokenizeTitle(title, includeNGrams = true) {
   if (!title) return [];
   
   // Remove special characters and split by whitespace
@@ -76,7 +98,26 @@ export function tokenizeTitle(title) {
     'under', 'again', 'then', 'once'
   ]);
   
-  return tokens.filter(token => !stopWords.has(token));
+  const filteredTokens = tokens.filter(token => !stopWords.has(token));
+  
+  // Start with individual tokens
+  const result = [...filteredTokens];
+  
+  if (includeNGrams && filteredTokens.length >= 2) {
+    // Add word bigrams for common phrases
+    const wordBigrams = extractNGrams(filteredTokens, 2);
+    result.push(...wordBigrams.map(bigram => `title_${bigram}`)); // Prefix to distinguish
+    
+    // Add character n-grams for handling compound words, abbreviations, model numbers
+    filteredTokens.forEach(token => {
+      if (token.length >= 4) { // Only for longer tokens
+        const charNGrams = extractCharNGrams(token, 3, 4);
+        result.push(...charNGrams.map(ngram => `char_${ngram}`)); // Prefix to distinguish
+      }
+    });
+  }
+  
+  return result;
 }
 
 /**
@@ -93,6 +134,45 @@ export function extractNGrams(tokens, n = 2) {
   }
   
   return ngrams;
+}
+
+/**
+ * Extract character n-grams from a string
+ * @param {string} text - Text to extract character n-grams from
+ * @param {number} minN - Minimum n-gram size
+ * @param {number} maxN - Maximum n-gram size
+ * @returns {Array<string>} Array of character n-grams
+ */
+export function extractCharNGrams(text, minN = 3, maxN = 4) {
+  const ngrams = [];
+  const cleanText = text.toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  if (cleanText.length < minN) {
+    return ngrams;
+  }
+  
+  for (let n = minN; n <= maxN; n++) {
+    for (let i = 0; i <= cleanText.length - n; i++) {
+      const ngram = cleanText.slice(i, i + n);
+      // Filter out n-grams that are all numbers or too repetitive
+      if (!/^\d+$/.test(ngram) && !isRepetitive(ngram)) {
+        ngrams.push(ngram);
+      }
+    }
+  }
+  
+  return ngrams;
+}
+
+/**
+ * Check if a string is too repetitive (same character repeated)
+ * @param {string} str - String to check
+ * @returns {boolean} True if repetitive
+ */
+function isRepetitive(str) {
+  if (str.length <= 2) return false;
+  const firstChar = str[0];
+  return str.split('').every(char => char === firstChar);
 }
 
 /**
@@ -192,6 +272,7 @@ export default {
   tokenizeURL,
   tokenizeTitle,
   extractNGrams,
+  extractCharNGrams,
   combineTokens,
   cleanToken,
   isValidToken,

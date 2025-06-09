@@ -7,6 +7,7 @@ import { TAB_CATEGORIES, STATUS_MESSAGES, CATEGORY_NAMES, RULE_TYPES, RULE_FIELD
 import { extractDomain, fallbackCategorization } from '../utils/helpers.js';
 import MessageService from '../services/MessageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
+import { getUnifiedDatabase } from '../services/UnifiedDatabaseService.js';
 import { state, updateState, clearCategorizedTabs, savePopupState } from './state-manager.js';
 import { showStatus, clearStatus, updateCategorizeBadge, hideApiKeyPrompt } from './ui-manager.js';
 import { getCurrentTabs } from './tab-data-source.js';
@@ -225,8 +226,18 @@ async function categorizeWithML(tabs, mlCategorizer) {
     updateState('urlToDuplicateIds', urlToDuplicateIds);
     updateState('mlMetadata', mlResults.metadata);
     
-    // Save categorized tabs to database
-    await window.tabDatabase.saveCategorizedTabs(mergedResult);
+    // Collect predictions for accuracy assessment
+    const predictions = await collectPredictions(tabs, mergedResult, mlResults);
+    
+    // Save categorized tabs to database with ML sync
+    const unifiedDB = await getUnifiedDatabase();
+    await unifiedDB.saveCategorizedTabs(mergedResult, {
+      provider: state.settings.provider,
+      model: state.settings.model,
+      closedAfterSave: false,
+      mlEnabled: state.settings.useML,
+      source: 'llm_categorization'
+    }, predictions);
     
     // Update UI
     updateCategorizeBadge();
@@ -472,8 +483,13 @@ export async function categorizeTabs() {
     updateState('categorizedTabs', mergedResult);
     updateState('urlToDuplicateIds', urlToDuplicateIds);
     
-    // Save categorized tabs to database
-    await window.tabDatabase.saveCategorizedTabs(mergedResult);
+    // Save categorized tabs to database with ML sync
+    const unifiedDB = await getUnifiedDatabase();
+    await unifiedDB.saveCategorizedTabs(mergedResult, {
+      source: 'rules_only_categorization',
+      mlEnabled: state.settings.useML,
+      rulesOnly: true
+    });
     
     // Update UI
     updateCategorizeBadge();
@@ -541,20 +557,9 @@ export async function moveTabToCategory(tab, fromCategory, toCategory) {
         console.log('Could not process ML correction:', error);
       }
     }
-    // Update database first
-    const urlInfo = await window.tabDatabase.getUrlInfo(tab.url);
-    
-    if (urlInfo) {
-      // Tab already exists in database, update it
-      const success = await window.tabDatabase.updateUrlCategory(tab.url, toCategory);
-      if (!success) {
-        // If update failed, try to create new entry
-        await window.tabDatabase.getOrCreateUrl(tab, toCategory);
-      }
-    } else {
-      // Tab not in database yet, create it
-      await window.tabDatabase.getOrCreateUrl(tab, toCategory);
-    }
+    // Update database with user correction using unified service
+    const unifiedDB = await getUnifiedDatabase();
+    await unifiedDB.updateTabCategory(tab.url, fromCategory, toCategory, 'user_correction');
     
     // Update local state
     const categorizedTabs = state.categorizedTabs || {};
@@ -642,6 +647,90 @@ export async function getCategorizationStats() {
   });
   
   return stats;
+}
+
+/**
+ * Collect predictions from different methods for accuracy assessment
+ * @param {Array} tabs - Original tabs
+ * @param {Object} categorizedTabs - Final categorized result
+ * @param {Object} mlResults - ML categorization results
+ * @returns {Promise<Object>} Predictions map by URL
+ */
+async function collectPredictions(tabs, categorizedTabs, mlResults) {
+  const predictions = {};
+  
+  try {
+    // Get unified database for ML predictions
+    const unifiedDB = await getUnifiedDatabase();
+    
+    for (const tab of tabs) {
+      const predictionData = {};
+      
+      // Rules-based prediction
+      const ruleResult = applyRulesToTabs([tab], state.settings.rules);
+      if (ruleResult.categorizedByRules && Object.keys(ruleResult.categorizedByRules).length > 0) {
+        // Find which category this tab was assigned to
+        let assignedCategory = null;
+        for (const [category, tabsInCategory] of Object.entries(ruleResult.categorizedByRules)) {
+          if (tabsInCategory && tabsInCategory.find(t => t.url === tab.url)) {
+            assignedCategory = parseInt(category);
+            break;
+          }
+        }
+        
+        if (assignedCategory) {
+          predictionData.rules = {
+            category: assignedCategory,
+            confidence: 0.9, // High confidence for rule-based categorization
+            predictionId: `rules_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          };
+        }
+      }
+      
+      // ML model prediction (if available)
+      try {
+        const mlPrediction = await unifiedDB.getMLPrediction(tab);
+        if (mlPrediction && mlPrediction.category) {
+          predictionData.ml_model = {
+            category: mlPrediction.category,
+            confidence: mlPrediction.confidence,
+            predictionId: mlPrediction.predictionId
+          };
+        }
+      } catch (mlError) {
+        console.log('ML prediction not available for tab:', tab.url);
+      }
+      
+      // LLM prediction (from mlResults)
+      const llmResult = mlResults?.detailed?.find(result => result.url === tab.url);
+      if (llmResult) {
+        predictionData.llm = {
+          category: llmResult.category,
+          confidence: llmResult.confidence || 0.8, // Default confidence if not provided
+          predictionId: `llm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        };
+      }
+      
+      // Find final category for this tab
+      let finalCategory = null;
+      for (const [category, tabsInCategory] of Object.entries(categorizedTabs)) {
+        if (tabsInCategory && tabsInCategory.find(t => t.url === tab.url)) {
+          finalCategory = parseInt(category);
+          break;
+        }
+      }
+      
+      if (finalCategory && Object.keys(predictionData).length > 0) {
+        predictionData.finalCategory = finalCategory;
+        predictions[tab.url] = predictionData;
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error collecting predictions:', error);
+  }
+  
+  return predictions;
 }
 
 // Export default object

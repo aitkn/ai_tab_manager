@@ -299,31 +299,54 @@ async function handleTrainModel() {
     await trainer.initialize();
     console.log('DEBUG: ModelTrainer initialized');
     
-    // Check saved tabs in main database first
-    const savedTabs = await window.tabDatabase.getAllSavedTabs();
-    const categorizedSavedTabs = savedTabs.filter(tab => tab.category && tab.category > 0);
-    console.log(`Found ${savedTabs.length} saved tabs, ${categorizedSavedTabs.length} categorized`);
+    // Prepare training data directly from saved tabs
+    statusSpan.textContent = 'Loading training data from saved tabs...';
+    const trainingData = await trainer.prepareTrainingData();
+    console.log(`Prepared ${trainingData.length} training examples`);
     
-    if (categorizedSavedTabs.length < 20) {
+    if (trainingData.length < 20) {
+      // Get saved tabs count for better error message
+      const savedTabs = await window.tabDatabase.getAllSavedTabs();
+      const categorizedSavedTabs = savedTabs.filter(tab => tab.category && tab.category > 0);
+      
+      // If we have saved tabs but no training data, sync them
+      if (categorizedSavedTabs.length >= 20 && trainingData.length === 0) {
+        statusSpan.textContent = 'Syncing existing saved tabs to ML database...';
+        try {
+          const { getUnifiedDatabase } = await import('../services/UnifiedDatabaseService.js');
+          const unifiedDB = await getUnifiedDatabase();
+          await unifiedDB.syncExistingSavedTabs();
+          
+          // Try training again after sync
+          statusSpan.textContent = 'Retrying training after sync...';
+          const newTrainingData = await trainer.prepareTrainingData();
+          if (newTrainingData.length >= 20) {
+            // Continue with training using the newly synced data
+            statusSpan.textContent = 'Training model...';
+            const result = await trainer.trainWithData(newTrainingData, {
+              onProgress: (progress) => {
+                statusSpan.textContent = `Training: ${Math.round(progress.progress * 100)}%`;
+              }
+            });
+            
+            statusSpan.textContent = `Training complete! Accuracy: ${Math.round(result.accuracy * 100)}%`;
+            showStatus('Model trained successfully after data sync', 'success');
+            await updateMLStatus();
+            return;
+          }
+        } catch (syncError) {
+          console.error('Error syncing existing saved tabs:', syncError);
+        }
+      }
+      
       statusSpan.textContent = `Need more data (${categorizedSavedTabs.length}/20 categorized saved tabs)`;
       showStatus(`Need at least 20 categorized saved tabs to train the model. You have ${categorizedSavedTabs.length}.`, 'error');
       return;
     }
     
-    // Prepare training data (this will convert saved tabs if needed)
-    statusSpan.textContent = 'Converting saved tabs to training data...';
-    const trainingData = await trainer.prepareTrainingData();
-    console.log(`Prepared ${trainingData.length} training examples`);
-    
-    if (trainingData.length < 20) {
-      statusSpan.textContent = `Training data preparation failed (${trainingData.length}/20 examples)`;
-      showStatus('Error preparing training data from saved tabs', 'error');
-      return;
-    }
-    
-    // Train model
+    // Train model with prepared data
     statusSpan.textContent = 'Training model...';
-    const result = await trainer.trainModel({
+    const result = await trainer.trainWithData(trainingData, {
       onProgress: (progress) => {
         statusSpan.textContent = `Training: ${Math.round(progress.progress * 100)}%`;
       }
