@@ -55,11 +55,8 @@ export class ModelTrainer {
    * @returns {Promise<Array>} Prepared training data
    */
   async prepareTrainingData() {
-    console.log('Preparing training data directly from saved tabs...');
-    
     // Get saved tabs (the source of truth)
     const savedTabsData = await this.convertSavedTabsToTrainingData();
-    console.log(`Found ${savedTabsData.length} categorized saved tabs`);
     
     // Get additional ML training data (user corrections, feedback)
     const mlData = await getTrainingData();
@@ -67,11 +64,8 @@ export class ModelTrainer {
       item.source === 'user_correction' || 
       item.source === 'user_feedback'
     );
-    console.log(`Found ${correctionsData.length} user corrections/feedback`);
-    
     // Combine saved tabs + corrections (saved tabs are primary source)
     const allData = [...savedTabsData, ...correctionsData];
-    console.log(`Total training examples: ${allData.length} (${savedTabsData.length} saved + ${correctionsData.length} corrections)`);
     
     return allData;
   }
@@ -84,8 +78,7 @@ export class ModelTrainer {
     try {
       // Get saved tabs from main database
       const savedTabs = await window.tabDatabase.getAllSavedTabs();
-      console.log(`Found ${savedTabs.length} saved tabs to convert`);
-      
+        
       // Filter out uncategorized tabs (category 0) and convert to training format
       const trainingData = savedTabs
         .filter(tab => tab.category && tab.category > 0) // Only categorized tabs
@@ -102,7 +95,6 @@ export class ModelTrainer {
           }
         }));
       
-      console.log(`Converted ${trainingData.length} saved tabs (filtered out uncategorized)`);
       return trainingData;
     } catch (error) {
       console.error('Error converting saved tabs to training data:', error);
@@ -134,8 +126,6 @@ export class ModelTrainer {
     const startTime = Date.now();
     
     try {
-      console.log(`Training with ${trainingData.length} provided examples`);
-      
       // Validate data
       const validationResult = validateTrainingData(trainingData);
       if (!validationResult.isValid) {
@@ -153,12 +143,6 @@ export class ModelTrainer {
       const { trainData, validData } = generator.splitData(
         options.validationSplit || ML_CONFIG.training.validationSplit
       );
-      
-      console.log(`Training with ${trainData.length} examples, validating with ${validData.length}`);
-      
-      // Check class balance
-      const classDistribution = this.getClassDistribution(trainData);
-      console.log('Class distribution:', classDistribution);
       
       // Balance classes if needed
       const balancedData = options.balanceClasses ? 
@@ -205,7 +189,6 @@ export class ModelTrainer {
         trainingExamples: trainData.length,
         validationExamples: validData.length,
         duration: Date.now() - startTime,
-        classDistribution,
         perClassMetrics: evaluation.perClassMetrics
       });
       
@@ -262,7 +245,6 @@ export class ModelTrainer {
     try {
       // Load training data using our prepared method
       const allData = await this.prepareTrainingData();
-      console.log(`Loaded ${allData.length} training examples`);
       
       // Validate data
       const validationResult = validateTrainingData(allData);
@@ -281,12 +263,6 @@ export class ModelTrainer {
       const { trainData, validData } = generator.splitData(
         options.validationSplit || ML_CONFIG.training.validationSplit
       );
-      
-      console.log(`Training with ${trainData.length} examples, validating with ${validData.length}`);
-      
-      // Check class balance
-      const classDistribution = this.getClassDistribution(trainData);
-      console.log('Class distribution:', classDistribution);
       
       // Balance classes if needed
       const balancedData = options.balanceClasses ? 
@@ -333,7 +309,6 @@ export class ModelTrainer {
         trainingExamples: trainData.length,
         validationExamples: validData.length,
         duration: Date.now() - startTime,
-        classDistribution,
         perClassMetrics: evaluation.perClassMetrics
       });
       
@@ -388,8 +363,6 @@ export class ModelTrainer {
     const startTime = Date.now();
     
     try {
-      console.log(`Incremental training with ${trainingData.length} examples`);
-      
       // Validate data
       const validationResult = validateTrainingData(trainingData);
       if (!validationResult.isValid) {
@@ -400,15 +373,12 @@ export class ModelTrainer {
       await updateVocabulary(trainingData);
       
       // Continue training from existing model with accumulated data
-      
       const incrementalOptions = {
         ...options,
         epochs: getEpochsFromSettings(options),
         learningRate: (options.learningRate || ML_CONFIG.training.learningRate) * 0.1, // 10x lower learning rate
         batchSize: options.batchSize || ML_CONFIG.training.incrementalBatchSize
       };
-      
-      console.log(`Incremental training: ${incrementalOptions.epochs} epochs, LR: ${incrementalOptions.learningRate}`);
       
       // Set up training callbacks
       const trainingCallbacks = {
@@ -435,8 +405,6 @@ export class ModelTrainer {
       // Create optimizer with lower learning rate for fine-tuning
       const optimizer = tf.train.adam(incrementalOptions.learningRate);
       
-      console.log('GPU Memory before training:', tf.memory());
-      
       let history;
       try {
         // Continue training the existing model using fit() with custom optimizer
@@ -445,18 +413,10 @@ export class ModelTrainer {
         batchSize: incrementalOptions.batchSize,
         validationSplit: 0.2,
         shuffle: true,
-        verbose: 1, // Enable verbose logging to see epoch progress
-        optimizer: optimizer, // Use custom optimizer with lower learning rate
+        verbose: 0,
+        optimizer: optimizer,
         callbacks: {
           onEpochEnd: async (epoch, logs) => {
-            // Log incremental training progress to console
-            console.log(`Incremental Epoch ${epoch + 1}: loss=${logs.loss.toFixed(4)}, accuracy=${(logs.acc || logs.accuracy).toFixed(4)}`);
-            
-            // Force garbage collection every 10 epochs to prevent memory buildup
-            if ((epoch + 1) % 10 === 0) {
-              console.log('GPU Memory at epoch', epoch + 1, ':', tf.memory());
-            }
-            
             if (this.callbacks.onProgress) {
               this.callbacks.onProgress({
                 epoch: epoch + 1,
@@ -469,8 +429,6 @@ export class ModelTrainer {
           }
         }
       });
-      
-      console.log('GPU Memory after training:', tf.memory());
       
       } catch (webglError) {
         console.error('WebGL training error:', webglError);
@@ -502,12 +460,10 @@ export class ModelTrainer {
             batchSize: incrementalOptions.batchSize,
             validationSplit: 0.2,
             shuffle: true,
-            verbose: 1,
+            verbose: 0,
             optimizer: cpuOptimizer,
             callbacks: {
               onEpochEnd: async (epoch, logs) => {
-                console.log(`Incremental Epoch ${epoch + 1} (CPU): loss=${logs.loss.toFixed(4)}, accuracy=${(logs.acc || logs.accuracy).toFixed(4)}`);
-                
                 if (this.callbacks.onProgress) {
                   this.callbacks.onProgress({
                     epoch: epoch + 1,
@@ -528,7 +484,6 @@ export class ModelTrainer {
           
           // Switch back to GPU for inference
           await switchBackend('webgl');
-          console.log('Training completed on CPU, switched back to GPU for inference');
           
         } else {
           throw webglError; // Re-throw if it's not a WebGL-specific error

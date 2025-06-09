@@ -13,8 +13,6 @@ import StorageService from '../services/StorageService.js';
  * Initialize ML Dashboard
  */
 export async function initializeMLDashboard() {
-  console.log('Initializing ML dashboard');
-  
   // Set up ML checkbox
   const useMLCheckbox = $id('useMLCheckbox');
   if (useMLCheckbox) {
@@ -71,11 +69,8 @@ async function handleMLToggle(event) {
  */
 async function updateMLStatus() {
   try {
-    console.log('Updating ML status...');
-    
     const statusContent = $id('mlStatusContent');
     if (!statusContent) {
-      console.error('mlStatusContent element not found');
       return;
     }
     
@@ -100,7 +95,6 @@ async function updateMLStatus() {
       mlCategorizer = await getMLCategorizer();
       status = await mlCategorizer.getStatus();
     } catch (mlError) {
-      console.log('ML module not available:', mlError.message);
       // Show a more user-friendly message if ML modules are not available
       const isCSPError = mlError.message && mlError.message.includes('unsafe-eval');
       statusContent.innerHTML = `
@@ -348,7 +342,6 @@ async function handleTrainModel() {
     // Prepare training data directly from saved tabs
     statusSpan.textContent = 'Loading training data from saved tabs...';
     const trainingData = await trainer.prepareTrainingData();
-    console.log(`Prepared ${trainingData.length} training examples`);
     
     if (trainingData.length < 20) {
       // Get saved tabs count for better error message
@@ -393,10 +386,8 @@ async function handleTrainModel() {
     
     // Check if model already exists for incremental training
     const { getMLCategorizer } = await import('../ml/categorization/ml-categorizer.js');
-    const mlCategorizer = await getMLCategorizer(true); // Force reload to detect saved models
+    const mlCategorizer = await getMLCategorizer(true);
     const mlStatus = await mlCategorizer.getStatus();
-    
-    console.log('ML Status check:', { modelExists: mlStatus.modelExists, accuracy: mlStatus.modelAccuracy });
     
     let result;
     if (mlStatus.modelExists) {
@@ -414,10 +405,6 @@ async function handleTrainModel() {
       if (result && result.success) {
         statusSpan.textContent = `Incremental training complete! Accuracy: ${Math.round(result.accuracy * 100)}%`;
         showStatus('Model updated with incremental training', 'success');
-        
-        // Print detailed model architecture after incremental training
-        console.log('\n🔄 INCREMENTAL TRAINING COMPLETED');
-        trainer.classifier.printModel();
       }
     } else {
       // Train new model from scratch
@@ -434,10 +421,6 @@ async function handleTrainModel() {
       if (result && result.success) {
         statusSpan.textContent = `Initial training complete! Accuracy: ${Math.round(result.accuracy * 100)}%`;
         showStatus('New model trained successfully', 'success');
-        
-        // Print detailed model architecture after initial training
-        console.log('\n🆕 NEW MODEL TRAINING COMPLETED');
-        trainer.classifier.printModel();
       }
     }
     
@@ -527,7 +510,6 @@ async function handleSwitchBackend() {
   switchBtn.textContent = 'Switching...';
   
   try {
-    console.log(`Switching to ${targetBackend} backend...`);
     const success = await switchBackend(targetBackend);
     
     if (success) {

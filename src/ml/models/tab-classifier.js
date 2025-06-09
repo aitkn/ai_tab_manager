@@ -585,112 +585,18 @@ export class TabClassifier {
   }
   
   /**
-   * Print detailed model architecture
+   * Print simplified model summary
    */
   printModel() {
-    if (this.disabled) {
-      console.log('🚫 Model is disabled');
+    if (this.disabled || !this.model) {
       return;
     }
     
-    console.log('\n🧠 AI Tab Manager - Neural Network Architecture');
-    console.log('=' * 60);
+    console.log(`Model: ${this.model.countParams().toLocaleString()} parameters, ${this.model.layers.length} layers`);
     
-    // Model overview
-    console.log(`📊 Model Overview:`);
-    console.log(`   Total Parameters: ${this.model.countParams().toLocaleString()}`);
-    console.log(`   Total Layers: ${this.model.layers.length}`);
-    console.log(`   Model Name: ${this.model.name}`);
-    
-    // Input information
-    console.log(`\n📥 Model Inputs:`);
-    this.model.inputs.forEach((input, idx) => {
-      console.log(`   Input ${idx + 1}: ${input.name}`);
-      console.log(`     Shape: [${input.shape.join(', ')}]`);
-      console.log(`     Data Type: ${input.dtype}`);
-    });
-    
-    // Detailed layer information
-    console.log(`\n🏗️ Layer Architecture:`);
-    this.model.layers.forEach((layer, idx) => {
-      const params = layer.countParams();
-      
-      console.log(`   Layer ${idx + 1}: ${layer.name} (${layer.getClassName()})`);
-      
-      // Handle output shape safely for layers with multiple inbound nodes
-      try {
-        const outputShape = layer.outputShape;
-        if (outputShape) {
-          console.log(`     Output Shape: [${Array.isArray(outputShape[0]) ? outputShape.map(s => `[${s.join(', ')}]`).join(', ') : outputShape.join(', ')}]`);
-        }
-      } catch (shapeError) {
-        // Handle layers with multiple inbound nodes (like shared embedding layers)
-        if (layer.getClassName() === 'Embedding') {
-          console.log(`     Output Shape: [batch_size, sequence_length, ${layer.outputDim}] (shared layer)`);
-        } else {
-          console.log(`     Output Shape: Multiple shapes (shared layer)`);
-        }
-      }
-      
-      console.log(`     Parameters: ${params.toLocaleString()}`);
-      
-      // Layer-specific details
-      if (layer.getClassName() === 'Dense') {
-        console.log(`     Units: ${layer.units}`);
-        console.log(`     Activation: ${layer.activation.getClassName()}`);
-        if (layer.kernelRegularizer) {
-          console.log(`     Regularization: L2`);
-        }
-      } else if (layer.getClassName() === 'Embedding') {
-        console.log(`     Vocabulary Size: ${layer.inputDim}`);
-        console.log(`     Embedding Dimension: ${layer.outputDim}`);
-        console.log(`     Shared: Yes (used by URL and Title inputs)`);
-      } else if (layer.getClassName() === 'Dropout') {
-        console.log(`     Dropout Rate: ${layer.rate}`);
-      } else if (layer.getClassName() === 'Concatenate') {
-        console.log(`     Concatenation Axis: ${layer.axis}`);
-      } else if (layer.getClassName() === 'GlobalAveragePooling1D') {
-        console.log(`     Pooling: Global average across sequence dimension`);
-      } else if (layer.getClassName() === 'BatchNormalization') {
-        console.log(`     Normalization: Batch normalization`);
-      }
-    });
-    
-    // Output information
-    console.log(`\n📤 Model Outputs:`);
-    this.model.outputs.forEach((output, idx) => {
-      console.log(`   Output ${idx + 1}: ${output.name}`);
-      console.log(`     Shape: [${output.shape.join(', ')}]`);
-      console.log(`     Data Type: ${output.dtype}`);
-    });
-    
-    // Vocabulary information
-    if (this.vocabulary) {
-      console.log(`\n📚 Vocabulary:`);
-      console.log(`   Size: ${this.vocabulary.size()} tokens`);
-      console.log(`   Coverage: ${(this.vocabulary.calculateCoverage() * 100).toFixed(1)}%`);
+    if (this.metadata?.accuracy) {
+      console.log(`Accuracy: ${(this.metadata.accuracy * 100).toFixed(1)}%`);
     }
-    
-    // Model metadata
-    if (this.metadata) {
-      console.log(`\n📈 Model Metadata:`);
-      console.log(`   Version: ${this.metadata.version}`);
-      console.log(`   Created: ${new Date(this.metadata.createdAt).toLocaleString()}`);
-      console.log(`   Accuracy: ${this.metadata.accuracy ? (this.metadata.accuracy * 100).toFixed(2) + '%' : 'N/A'}`);
-      console.log(`   Training Samples: ${this.metadata.trainingSamples || 'N/A'}`);
-      if (this.metadata.lastTrainingDate) {
-        console.log(`   Last Training: ${new Date(this.metadata.lastTrainingDate).toLocaleString()}`);
-      }
-    }
-    
-    // Feature breakdown
-    console.log(`\n🔧 Feature Engineering:`);
-    console.log(`   URL Pattern Features: 7`);
-    console.log(`   Important Token Features: 18`);
-    console.log(`   Numerical Features: 10`);
-    console.log(`   Total Engineered Features: 35`);
-    
-    console.log('\n' + '=' * 60);
   }
   
   /**

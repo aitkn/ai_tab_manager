@@ -26,11 +26,8 @@ class BackgroundMLService {
     if (this.isInitialized) return;
     
     try {
-      console.log('Initializing Background ML Service...');
-      
       // Check if ML is enabled
       if (state.settings?.useML === false) {
-        console.log('ML disabled, skipping background ML service');
         return;
       }
       
@@ -41,7 +38,6 @@ class BackgroundMLService {
       setTimeout(() => this.checkRetrainingNeed(), 10000); // 10 second delay
       
       this.isInitialized = true;
-      console.log('Background ML Service initialized');
       
     } catch (error) {
       console.error('Error initializing Background ML Service:', error);
@@ -57,8 +53,6 @@ class BackgroundMLService {
     this.intervalId = setInterval(() => {
       this.checkRetrainingNeed();
     }, this.CHECK_INTERVAL);
-    
-    console.log('Background ML retraining checks started');
   }
 
   /**
@@ -68,7 +62,6 @@ class BackgroundMLService {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      console.log('Background ML retraining checks stopped');
     }
   }
 
@@ -77,7 +70,6 @@ class BackgroundMLService {
    */
   async checkRetrainingNeed() {
     if (this.retrainingInProgress) {
-      console.log('Retraining already in progress, skipping check');
       return;
     }
 
@@ -89,8 +81,6 @@ class BackgroundMLService {
       }
       this.lastRetrainingCheck = now;
 
-      console.log('Checking if ML model retraining is needed...');
-      
       // Check if we have enough new training data
       const unifiedDB = await getUnifiedDatabase();
       
@@ -99,7 +89,6 @@ class BackgroundMLService {
       const recentData = await getTrainingData(100); // Get last 100 examples
       
       if (!recentData || recentData.length < 20) {
-        console.log('Not enough training data for retraining');
         return;
       }
 
@@ -109,11 +98,8 @@ class BackgroundMLService {
         return item.metadata?.addedToML && item.metadata.addedToML > oneDayAgo;
       });
 
-      if (recentNewData.length >= 10) { // At least 10 new examples
-        console.log(`Found ${recentNewData.length} new training examples, triggering retraining`);
+      if (recentNewData.length >= 10) {
         await this.triggerBackgroundRetraining();
-      } else {
-        console.log(`Only ${recentNewData.length} new examples, retraining not needed`);
       }
 
     } catch (error) {
@@ -126,18 +112,14 @@ class BackgroundMLService {
    */
   async triggerBackgroundRetraining() {
     if (this.retrainingInProgress) {
-      console.log('Retraining already in progress');
       return;
     }
 
     try {
       this.retrainingInProgress = true;
-      console.log('Starting background model retraining...');
 
       const unifiedDB = await getUnifiedDatabase();
-      await unifiedDB.triggerRetraining(false); // Don't force, use normal checks
-
-      console.log('Background model retraining completed successfully');
+      await unifiedDB.triggerRetraining(false);
 
     } catch (error) {
       console.error('Background model retraining failed:', error);
@@ -151,12 +133,9 @@ class BackgroundMLService {
    */
   async forceRetraining() {
     try {
-      console.log('Forcing immediate model retraining...');
-      
       const unifiedDB = await getUnifiedDatabase();
-      await unifiedDB.triggerRetraining(true); // Force retraining
+      await unifiedDB.triggerRetraining(true);
       
-      console.log('Forced retraining completed');
       return true;
       
     } catch (error) {
@@ -186,13 +165,9 @@ class BackgroundMLService {
     const mlIsEnabled = newSettings?.useML !== false;
     
     if (mlWasEnabled && !mlIsEnabled) {
-      // ML was disabled, stop background service
       this.stopPeriodicChecks();
-      console.log('ML disabled, stopped background service');
     } else if (!mlWasEnabled && mlIsEnabled) {
-      // ML was enabled, start background service
       await this.initialize();
-      console.log('ML enabled, started background service');
     }
   }
 
@@ -203,7 +178,6 @@ class BackgroundMLService {
     this.stopPeriodicChecks();
     this.isInitialized = false;
     this.retrainingInProgress = false;
-    console.log('Background ML Service destroyed');
   }
 }
 

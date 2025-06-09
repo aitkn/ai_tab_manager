@@ -33,7 +33,6 @@ class UnifiedDatabaseService {
     }
     
     this.mlEnabled = state.settings?.useML !== false;
-    console.log('UnifiedDatabaseService initialized, ML enabled:', this.mlEnabled);
   }
 
   /**
@@ -46,7 +45,6 @@ class UnifiedDatabaseService {
   async saveCategorizedTabs(categorizedTabs, metadata = {}, predictions = null) {
     try {
       // Save to main database first
-      console.log('Saving tabs to main database...');
       const saveResults = await this.mainDatabase.saveTabs(categorizedTabs, metadata);
       
       if (this.mlEnabled) {
@@ -175,8 +173,6 @@ class UnifiedDatabaseService {
   async importFromCSV(csvContent, settings = {}) {
     try {
       // Use main database import with some modifications for ML sync
-      console.log('Starting CSV import with ML sync...');
-      
       // Import to main database
       const importResults = await this.mainDatabase.importFromCSV(csvContent, settings);
       
@@ -290,11 +286,8 @@ class UnifiedDatabaseService {
     }
 
     try {
-      console.log('Syncing existing saved tabs to ML database...');
-      
       // Get all saved tabs
       const savedTabs = await this.mainDatabase.getAllSavedTabs();
-      console.log(`Found ${savedTabs.length} existing saved tabs`);
       
       // Group by category
       const categorizedTabs = {};
@@ -313,8 +306,6 @@ class UnifiedDatabaseService {
         syncedAt: Date.now()
       }, 'migration_sync');
       
-      console.log('Existing saved tabs sync completed');
-      
     } catch (error) {
       console.error('Error syncing existing saved tabs:', error);
     }
@@ -328,8 +319,6 @@ class UnifiedDatabaseService {
    */
   async _syncToMLDatabase(categorizedTabs, metadata, source) {
     try {
-      console.log('Syncing data to ML database...');
-      
       // Convert categorized tabs to ML training format
       const trainingData = [];
       
@@ -358,8 +347,6 @@ class UnifiedDatabaseService {
         await addTrainingData(data);
         this.newDataCount++;
       }
-      
-      console.log(`Added ${trainingData.length} records to ML database`);
       
     } catch (error) {
       console.error('Error syncing to ML database:', error);
