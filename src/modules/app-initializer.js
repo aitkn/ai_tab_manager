@@ -110,33 +110,18 @@ export async function initializeApp() {
     const { initializeSettings } = await import('./settings-manager.js');
     await initializeSettings();
     
-    // Use the pre-determined target tab if available
+    // Use the pre-determined target tab (DOM classes already set by preInitialize)
     let targetTab = window._targetTab || state.popupState?.activeTab || 'categorize';
     
-    // Set the correct active classes immediately BEFORE initializing toolbar
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.classList.remove('active');
-      if (btn.dataset.tab === targetTab) {
-        btn.classList.add('active');
-      }
-    });
-    
-    document.querySelectorAll('.tab-pane').forEach(pane => {
-      pane.classList.remove('active');
-      if (pane.id === `${targetTab}Tab`) {
-        pane.classList.add('active');
-      }
-    });
-    
-    // Update state to match
+    // Update state to match (DOM classes already set)
     state.popupState.activeTab = targetTab;
     updateState('activeTab', targetTab);
     
-    // NOW initialize unified toolbar with correct active tab
+    // Initialize unified toolbar with correct active tab
     const { initializeUnifiedToolbar, updateToolbarVisibility } = await import('./unified-toolbar.js');
     initializeUnifiedToolbar();
     
-    // Update toolbar visibility for the correct tab (without animation since this is initial load)
+    // Update toolbar visibility for the correct tab
     await updateToolbarVisibility(targetTab);
     
     // Now load content based on which tab is active

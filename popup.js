@@ -62,14 +62,14 @@ window.DEBUG = {
 // Set up auto-save handlers
 setupAutoSave();
 
-// Pre-initialize state synchronously before DOM is ready
-async function preInitialize() {
-  try {
-    // Load saved state from storage COMPLETELY before any DOM operations
-    const savedPopupState = await StorageService.loadPopupState();
-    const savedSettings = await StorageService.loadSettings();
+// Load state and initialize DOM atomically - no async operations
+function initializeWithState() {
+  // Load both popup state and settings in a single call
+  chrome.storage.local.get(['popupState', 'settings'], (result) => {
+    // Apply loaded state immediately
+    const savedPopupState = result.popupState || null;
+    const savedSettings = result.settings || null;
     
-    // Apply saved state to global state object
     if (savedPopupState) {
       Object.assign(state.popupState, savedPopupState);
       state.isViewingSaved = savedPopupState.isViewingSaved || false;
@@ -80,47 +80,43 @@ async function preInitialize() {
       Object.assign(state.settings, savedSettings);
     }
     
-    // Determine which tab should be active BEFORE any DOM operations
+    // Determine target tab
     let targetTab = 'categorize'; // Default
-    
-    // Override with saved state if available
     if (savedPopupState && savedPopupState.activeTab) {
       targetTab = savedPopupState.activeTab;
     }
     
-    // Check if we have current tabs (fallback logic)
-    const allTabs = await ChromeAPIService.queryTabs({});
-    const hasTabs = allTabs && allTabs.length > 0;
-    
-    if (!hasTabs && targetTab === 'categorize') {
-      targetTab = 'saved';
-    }
-    
-    // Store the determined tab globally for app initialization
+    // Store globally and update state
     window._targetTab = targetTab;
     state.popupState.activeTab = targetTab;
     
-    // Wait for DOM to be ready, then initialize with pre-loaded state
-    const initializeDom = () => {
-      // Initialize the app with pre-loaded state
-      initializeApp();
-    };
+    // Set correct DOM state immediately BEFORE any initialization
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.dataset.tab === targetTab) {
+        btn.classList.add('active');
+      }
+    });
     
-    // Check if DOM is already loaded
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initializeDom);
-    } else {
-      // DOM is already loaded, initialize immediately
-      initializeDom();
-    }
-  } catch (error) {
-    console.error('Pre-initialization error:', error);
-    // Fall back to normal initialization
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initializeApp);
-    } else {
-      initializeApp();
-    }
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      pane.classList.remove('active');
+      if (pane.id === `${targetTab}Tab`) {
+        pane.classList.add('active');
+      }
+    });
+    
+    // NOW initialize the app with DOM already in correct state
+    initializeApp();
+  });
+}
+
+// Initialize when DOM is ready
+function preInitialize() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeWithState);
+  } else {
+    // DOM is already loaded, initialize immediately
+    initializeWithState();
   }
 }
 
