@@ -9,6 +9,24 @@ import { getTrainingData, addTrainingData, recordMetric } from '../storage/ml-da
 import { updateVocabulary } from '../features/vocabulary.js';
 import DataGenerator from './data-generator.js';
 import { validateTrainingData } from './validation.js';
+import { state } from '../../modules/state-manager.js';
+
+/**
+ * Get epochs from user settings or fall back to config default
+ */
+function getEpochsFromSettings(options = {}) {
+  if (options.epochs && options.epochs > 0) {
+    return options.epochs; // Use provided epochs
+  }
+  
+  // Use user settings if available
+  if (state && state.settings && state.settings.mlEpochs) {
+    return state.settings.mlEpochs;
+  }
+  
+  // Fall back to config default
+  return ML_CONFIG.training.epochs;
+}
 
 /**
  * Model Trainer class
@@ -166,9 +184,11 @@ export class ModelTrainer {
         }
       };
       
-      // Train the model
+      // Train the model with epochs from settings
+      const epochs = getEpochsFromSettings(options);
       const history = await this.classifier.train(balancedData, {
         ...options,
+        epochs: epochs,
         ...trainingCallbacks
       });
       
@@ -292,9 +312,11 @@ export class ModelTrainer {
         }
       };
       
-      // Train the model
+      // Train the model with epochs from settings
+      const epochs = getEpochsFromSettings(options);
       const history = await this.classifier.train(balancedData, {
         ...options,
+        epochs: epochs,
         ...trainingCallbacks
       });
       
@@ -352,38 +374,233 @@ export class ModelTrainer {
   }
   
   /**
-   * Incremental training with new examples
-   * @param {Array} newExamples - New training examples
+   * Incremental training - continues training existing model
+   * @param {Array} trainingData - All available training data
    * @param {Object} options - Training options
    * @returns {Promise<Object>} Training results
    */
-  async incrementalTrain(newExamples, options = {}) {
-    if (newExamples.length < ML_CONFIG.training.minExamplesPerClass) {
-      console.log('Not enough new examples for incremental training');
-      return null;
+  async incrementalTrain(trainingData, options = {}) {
+    if (this.isTraining) {
+      throw new Error('Training already in progress');
     }
     
-    // Add new examples to storage
-    for (const example of newExamples) {
-      await addTrainingData(example);
+    this.isTraining = true;
+    const startTime = Date.now();
+    
+    try {
+      console.log(`Incremental training with ${trainingData.length} examples`);
+      
+      // Validate data
+      const validationResult = validateTrainingData(trainingData);
+      if (!validationResult.isValid) {
+        throw new Error(`Invalid training data: ${validationResult.errors.join(', ')}`);
+      }
+      
+      // Update vocabulary with all data
+      await updateVocabulary(trainingData);
+      
+      // IMPORTANT: Due to TensorFlow.js WebGL weight loading issues (GitHub #5508),
+      // we train a fresh model with ALL data instead of loading existing weights
+      console.log('Starting incremental training with fresh model (due to WebGL weight loading limitations)');
+      
+      const incrementalOptions = {
+        ...options,
+        epochs: getEpochsFromSettings(options),
+        learningRate: (options.learningRate || ML_CONFIG.training.learningRate) * 0.1, // 10x lower learning rate
+        batchSize: options.batchSize || ML_CONFIG.training.incrementalBatchSize
+      };
+      
+      console.log(`Incremental training: ${incrementalOptions.epochs} epochs, LR: ${incrementalOptions.learningRate}`);
+      
+      // Set up training callbacks
+      const trainingCallbacks = {
+        onProgress: (progress) => {
+          if (this.callbacks.onProgress) {
+            this.callbacks.onProgress({
+              ...progress,
+              elapsed: Date.now() - startTime
+            });
+          }
+        }
+      };
+      
+      // Prepare data for incremental training
+      const generator = new DataGenerator(trainingData);
+      const { trainData, validData } = generator.splitData(0.2);
+      
+      // Prepare training tensors for incremental training
+      const { xs, ys } = this.classifier.prepareTrainingData(trainData);
+      
+      // Get TensorFlow for optimizer with lower learning rate
+      const tf = await import('../tensorflow-loader.js').then(module => module.getTensorFlow());
+      
+      // Create optimizer with lower learning rate for fine-tuning
+      const optimizer = tf.train.adam(incrementalOptions.learningRate);
+      
+      console.log('GPU Memory before training:', tf.memory());
+      
+      let history;
+      try {
+        // Continue training the existing model using fit() with custom optimizer
+        history = await this.classifier.model.fit(xs, ys, {
+        epochs: incrementalOptions.epochs,
+        batchSize: incrementalOptions.batchSize,
+        validationSplit: 0.2,
+        shuffle: true,
+        verbose: 1, // Enable verbose logging to see epoch progress
+        optimizer: optimizer, // Use custom optimizer with lower learning rate
+        callbacks: {
+          onEpochEnd: async (epoch, logs) => {
+            // Log incremental training progress to console
+            console.log(`Incremental Epoch ${epoch + 1}: loss=${logs.loss.toFixed(4)}, accuracy=${(logs.acc || logs.accuracy).toFixed(4)}`);
+            
+            // Force garbage collection every 10 epochs to prevent memory buildup
+            if ((epoch + 1) % 10 === 0) {
+              console.log('GPU Memory at epoch', epoch + 1, ':', tf.memory());
+            }
+            
+            if (this.callbacks.onProgress) {
+              this.callbacks.onProgress({
+                epoch: epoch + 1,
+                totalEpochs: incrementalOptions.epochs,
+                progress: (epoch + 1) / incrementalOptions.epochs,
+                loss: logs.loss,
+                accuracy: logs.acc || logs.accuracy
+              });
+            }
+          }
+        }
+      });
+      
+      console.log('GPU Memory after training:', tf.memory());
+      
+      } catch (webglError) {
+        console.error('WebGL training error:', webglError);
+        
+        // Check if it's a stack overflow or WebGL-specific error
+        if (webglError.message && (webglError.message.includes('Maximum call stack') || 
+                                   webglError.message.includes('WebGL') ||
+                                   webglError.name === 'RangeError')) {
+          console.log('WebGL error detected, attempting CPU fallback for training...');
+          
+          // Dispose current tensors to free GPU memory
+          if (Array.isArray(xs)) {
+            xs.forEach(tensor => tensor && typeof tensor.dispose === 'function' && tensor.dispose());
+          }
+          if (ys && typeof ys.dispose === 'function') ys.dispose();
+          if (optimizer && typeof optimizer.dispose === 'function') optimizer.dispose();
+          
+          // Switch to CPU temporarily
+          const { switchBackend } = await import('../tensorflow-loader.js');
+          await switchBackend('cpu');
+          
+          // Recreate tensors and optimizer for CPU
+          const { xs: cpuXs, ys: cpuYs } = this.classifier.prepareTrainingData(trainData);
+          const cpuOptimizer = tf.train.adam(incrementalOptions.learningRate);
+          
+          // Retry training on CPU
+          history = await this.classifier.model.fit(cpuXs, cpuYs, {
+            epochs: incrementalOptions.epochs,
+            batchSize: incrementalOptions.batchSize,
+            validationSplit: 0.2,
+            shuffle: true,
+            verbose: 1,
+            optimizer: cpuOptimizer,
+            callbacks: {
+              onEpochEnd: async (epoch, logs) => {
+                console.log(`Incremental Epoch ${epoch + 1} (CPU): loss=${logs.loss.toFixed(4)}, accuracy=${(logs.acc || logs.accuracy).toFixed(4)}`);
+                
+                if (this.callbacks.onProgress) {
+                  this.callbacks.onProgress({
+                    epoch: epoch + 1,
+                    totalEpochs: incrementalOptions.epochs,
+                    progress: (epoch + 1) / incrementalOptions.epochs,
+                    loss: logs.loss,
+                    accuracy: logs.acc || logs.accuracy
+                  });
+                }
+              }
+            }
+          });
+          
+          // Clean up CPU tensors
+          cpuXs.forEach(tensor => tensor && typeof tensor.dispose === 'function' && tensor.dispose());
+          if (cpuYs && typeof cpuYs.dispose === 'function') cpuYs.dispose();
+          if (cpuOptimizer && typeof cpuOptimizer.dispose === 'function') cpuOptimizer.dispose();
+          
+          // Switch back to GPU for inference
+          await switchBackend('webgl');
+          console.log('Training completed on CPU, switched back to GPU for inference');
+          
+        } else {
+          throw webglError; // Re-throw if it's not a WebGL-specific error
+        }
+      }
+      
+      // Clean up training tensors and optimizer
+      if (Array.isArray(xs)) {
+        xs.forEach(tensor => {
+          if (tensor && typeof tensor.dispose === 'function') {
+            tensor.dispose();
+          }
+        });
+      } else if (xs && typeof xs.dispose === 'function') {
+        xs.dispose();
+      }
+      
+      if (ys && typeof ys.dispose === 'function') {
+        ys.dispose();
+      }
+      
+      // Clean up custom optimizer
+      if (optimizer && typeof optimizer.dispose === 'function') {
+        optimizer.dispose();
+      }
+      
+      // Evaluate the updated model
+      const evaluation = await this.classifier.evaluate(validData);
+      
+      // Save the updated model
+      await this.classifier.save();
+      
+      // Record metrics (incremental training may not have perClassMetrics)
+      await this.recordTrainingMetrics({
+        accuracy: evaluation.accuracy,
+        loss: evaluation.loss,
+        trainingExamples: trainingData.length,
+        validationExamples: validData.length,
+        duration: Date.now() - startTime,
+        trainingType: 'incremental',
+        perClassMetrics: evaluation.perClassMetrics || [] // Provide empty array if not available
+      });
+      
+      const result = {
+        success: true,
+        history,
+        evaluation,
+        duration: Date.now() - startTime,
+        trainingType: 'incremental',
+        accuracy: evaluation.accuracy
+      };
+      
+      if (this.callbacks.onComplete) {
+        this.callbacks.onComplete(result);
+      }
+      
+      return result;
+      
+    } catch (error) {
+      console.error('Incremental training error:', error);
+      
+      if (this.callbacks.onError) {
+        this.callbacks.onError(error);
+      }
+      
+      throw error;
+      
+    } finally {
+      this.isTraining = false;
     }
-    
-    // Update vocabulary
-    await updateVocabulary(newExamples);
-    
-    // Use smaller epochs for incremental training
-    const incrementalOptions = {
-      ...options,
-      epochs: options.epochs || ML_CONFIG.training.incrementalEpochs,
-      batchSize: options.batchSize || ML_CONFIG.training.incrementalBatchSize
-    };
-    
-    // Get recent training data for fine-tuning
-    const recentData = await getTrainingData(1000); // Last 1000 examples
-    const combinedData = [...recentData, ...newExamples];
-    
-    // Train with combined data
-    return this.classifier.train(combinedData, incrementalOptions);
   }
   
   /**
@@ -472,14 +689,16 @@ export class ModelTrainer {
       metadata: metrics
     });
     
-    // Per-class metrics
-    for (const classMetric of metrics.perClassMetrics) {
-      await recordMetric({
-        method: 'model',
-        type: `class_${classMetric.class}_f1`,
-        value: classMetric.f1,
-        metadata: classMetric
-      });
+    // Per-class metrics (if available)
+    if (metrics.perClassMetrics && Array.isArray(metrics.perClassMetrics)) {
+      for (const classMetric of metrics.perClassMetrics) {
+        await recordMetric({
+          method: 'model',
+          type: `class_${classMetric.class}_f1`,
+          value: classMetric.f1,
+          metadata: classMetric
+        });
+      }
     }
   }
   

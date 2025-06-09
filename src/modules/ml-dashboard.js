@@ -6,6 +6,7 @@
 import { $id } from '../utils/dom-helpers.js';
 import { state, updateState } from './state-manager.js';
 import { showStatus } from './ui-manager.js';
+import { getBackendInfo, switchBackend } from '../ml/tensorflow-loader.js';
 import StorageService from '../services/StorageService.js';
 
 /**
@@ -116,11 +117,20 @@ async function updateMLStatus() {
       return;
     }
     
+    // Get backend information
+    const backendInfo = getBackendInfo();
+    
     statusContent.innerHTML = `
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span>Status:</span>
-        <span style="font-weight: 500; color: var(--md-sys-color-on-surface-variant)">
-          Experimental (TensorFlow.js bundled)
+        <span>Backend:</span>
+        <span style="font-weight: 500; color: ${backendInfo.isGPU ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)'}">
+          ${backendInfo.isGPU ? '🚀 GPU (WebGL)' : '💻 CPU'} ${backendInfo.backend ? `(${backendInfo.backend})` : ''}
+        </span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span>Available:</span>
+        <span style="font-weight: 500; color: var(--md-sys-color-on-surface-variant); font-size: 11px;">
+          ${backendInfo.available.join(', ') || 'None'}
         </span>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
@@ -130,10 +140,18 @@ async function updateMLStatus() {
         </span>
       </div>
       ${status.modelExists && status.modelAccuracy ? `
-        <div style="display: flex; justify-content: space-between;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
           <span>Model accuracy:</span>
           <span style="font-weight: 500; color: var(--md-sys-color-primary)">
             ${Math.round(status.modelAccuracy * 100)}%
+          </span>
+        </div>
+      ` : ''}
+      ${backendInfo.memory ? `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span>GPU Memory:</span>
+          <span style="font-weight: 500; color: var(--md-sys-color-on-surface-variant); font-size: 11px;">
+            ${Math.round(backendInfo.memory.numBytes / 1024 / 1024)}MB
           </span>
         </div>
       ` : ''}
@@ -142,7 +160,23 @@ async function updateMLStatus() {
           The model will be created after you categorize more tabs.
         </div>
       ` : ''}
+      ${backendInfo.available.length > 1 ? `
+        <div style="margin-top: 8px;">
+          <button id="switchBackendBtn" style="font-size: 11px; padding: 4px 8px;">
+            Switch to ${backendInfo.isGPU ? 'CPU' : 'GPU'}
+          </button>
+        </div>
+      ` : ''}
     `;
+    
+    // Add event listeners for GPU controls if they exist
+    setTimeout(() => {
+      const switchBackendBtn = $id('switchBackendBtn');
+      
+      if (switchBackendBtn) {
+        switchBackendBtn.addEventListener('click', handleSwitchBackend);
+      }
+    }, 100); // Small delay to ensure DOM is updated
     
     // Update trust weights
     const trustContent = $id('mlTrustContent');
@@ -211,6 +245,18 @@ async function updateMLStatus() {
         performanceContent.innerHTML = html || '<div>No performance data yet</div>';
       } else {
         performanceContent.innerHTML = '<div>No performance data yet</div>';
+      }
+    }
+    
+    // Update training button text based on model existence
+    const trainBtn = $id('trainModelBtn');
+    if (trainBtn) {
+      if (status.modelExists) {
+        trainBtn.textContent = 'Continue Training';
+        trainBtn.title = 'Continue training the existing model with additional epochs';
+      } else {
+        trainBtn.textContent = 'Train New Model';
+        trainBtn.title = 'Create and train a new model from scratch';
       }
     }
     
@@ -291,13 +337,13 @@ async function handleTrainModel() {
   statusSpan.textContent = 'Starting training...';
   
   try {
-    console.log('DEBUG: Starting ML training process...');
+    // Get epochs from settings
+    const epochs = state.settings.mlEpochs || 10;
     
     // Get model trainer
     const { ModelTrainer } = await import('../ml/training/trainer.js');
     const trainer = new ModelTrainer();
     await trainer.initialize();
-    console.log('DEBUG: ModelTrainer initialized');
     
     // Prepare training data directly from saved tabs
     statusSpan.textContent = 'Loading training data from saved tabs...';
@@ -324,8 +370,9 @@ async function handleTrainModel() {
             // Continue with training using the newly synced data
             statusSpan.textContent = 'Training model...';
             const result = await trainer.trainWithData(newTrainingData, {
+              epochs: epochs,
               onProgress: (progress) => {
-                statusSpan.textContent = `Training: ${Math.round(progress.progress * 100)}%`;
+                statusSpan.textContent = `Training: ${Math.round(progress.progress * 100)}% (${epochs} epochs)`;
               }
             });
             
@@ -344,17 +391,56 @@ async function handleTrainModel() {
       return;
     }
     
-    // Train model with prepared data
-    statusSpan.textContent = 'Training model...';
-    const result = await trainer.trainWithData(trainingData, {
-      onProgress: (progress) => {
-        statusSpan.textContent = `Training: ${Math.round(progress.progress * 100)}%`;
-      }
-    });
+    // Check if model already exists for incremental training
+    const { getMLCategorizer } = await import('../ml/categorization/ml-categorizer.js');
+    const mlCategorizer = await getMLCategorizer(true); // Force reload to detect saved models
+    const mlStatus = await mlCategorizer.getStatus();
     
-    // Show success
-    statusSpan.textContent = `Training complete! Accuracy: ${Math.round(result.accuracy * 100)}%`;
-    showStatus('Model trained successfully', 'success');
+    console.log('ML Status check:', { modelExists: mlStatus.modelExists, accuracy: mlStatus.modelAccuracy });
+    
+    let result;
+    if (mlStatus.modelExists) {
+      // Use incremental training to continue from existing model
+      statusSpan.textContent = `Continuing training (${epochs} additional epochs)...`;
+      
+      result = await trainer.incrementalTrain(trainingData, {
+        epochs: epochs,
+        onProgress: (progress) => {
+          statusSpan.textContent = `Continue Training: Epoch ${progress.epoch}/${progress.totalEpochs} (${Math.round(progress.progress * 100)}%)`;
+        }
+      });
+      
+      // Show that this was incremental training
+      if (result && result.success) {
+        statusSpan.textContent = `Incremental training complete! Accuracy: ${Math.round(result.accuracy * 100)}%`;
+        showStatus('Model updated with incremental training', 'success');
+        
+        // Print detailed model architecture after incremental training
+        console.log('\n🔄 INCREMENTAL TRAINING COMPLETED');
+        console.log('Note: Due to WebGL weight loading limitations, this was fresh training with all data');
+        trainer.classifier.printModel();
+      }
+    } else {
+      // Train new model from scratch
+      statusSpan.textContent = `Training new model (${epochs} epochs)...`;
+      
+      result = await trainer.trainWithData(trainingData, {
+        epochs: epochs,
+        onProgress: (progress) => {
+          statusSpan.textContent = `Initial Training: ${Math.round(progress.progress * 100)}% (${epochs} epochs)`;
+        }
+      });
+      
+      // Show that this was initial training
+      if (result && result.success) {
+        statusSpan.textContent = `Initial training complete! Accuracy: ${Math.round(result.accuracy * 100)}%`;
+        showStatus('New model trained successfully', 'success');
+        
+        // Print detailed model architecture after initial training
+        console.log('\n🆕 NEW MODEL TRAINING COMPLETED');
+        trainer.classifier.printModel();
+      }
+    }
     
     // Update dashboard
     await updateMLStatus();
@@ -423,6 +509,46 @@ async function handleResetModel() {
     }, 3000);
   }
 }
+
+/**
+ * Handle backend switching
+ */
+async function handleSwitchBackend() {
+  const switchBtn = $id('switchBackendBtn');
+  const statusContent = $id('mlStatusContent');
+  
+  if (!switchBtn || !statusContent) return;
+  
+  // Get current backend info
+  const backendInfo = getBackendInfo();
+  const targetBackend = backendInfo.isGPU ? 'cpu' : 'webgl';
+  
+  // Disable button during switch
+  switchBtn.disabled = true;
+  switchBtn.textContent = 'Switching...';
+  
+  try {
+    console.log(`Switching to ${targetBackend} backend...`);
+    const success = await switchBackend(targetBackend);
+    
+    if (success) {
+      showStatus(`Switched to ${targetBackend === 'webgl' ? 'GPU' : 'CPU'} backend`, 'success');
+      // Update status to reflect new backend
+      await updateMLStatus();
+    } else {
+      showStatus(`Failed to switch to ${targetBackend} backend`, 'error');
+    }
+    
+  } catch (error) {
+    console.error('Error switching backend:', error);
+    showStatus('Error switching backend', 'error');
+  } finally {
+    // Re-enable button
+    switchBtn.disabled = false;
+    // Button text will be updated by updateMLStatus
+  }
+}
+
 
 // Export functions
 export default {

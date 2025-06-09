@@ -444,6 +444,17 @@
                 </div>
               </div>
               
+              <!-- Training Settings -->
+              <div class="ml-settings-card" style="background: var(--md-sys-color-surface-container); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 500;">Training Settings</h4>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label for="mlEpochsInput" style="font-size: 12px; min-width: 80px;">Epochs:</label>
+                  <input type="number" id="mlEpochsInput" min="1" max="100" value="10" 
+                         style="width: 60px; padding: 4px 6px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 4px; font-size: 12px;">
+                  <span class="text-muted" style="font-size: 11px;">Training iterations (1-100)</span>
+                </div>
+              </div>
+              
               <!-- Training Controls -->
               <div class="ml-training-card" style="background: var(--md-sys-color-surface-container); padding: 12px; border-radius: 8px;">
                 <h4 style="margin: 0 0 8px 0; font-size: 13px; font-weight: 500;">Training Controls</h4>

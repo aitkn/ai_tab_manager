@@ -33,6 +33,8 @@ export const state = {
     maxTabsToOpen: 50,
     rules: [],  // Array of rule objects
     useLLM: true,  // Whether to use LLM for categorization
+    useML: true,  // Whether to use ML categorization
+    mlEpochs: 10,  // Number of epochs for ML training
     hasConfiguredSettings: false,  // First-time use flag
     defaultRulesApplied: false  // Whether default rules have been added
   }

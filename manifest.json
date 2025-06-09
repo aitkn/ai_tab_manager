@@ -35,7 +35,8 @@
       "resources": [
         "tensorflow.min.js",
         "tf-core.min.js",
-        "tf-backend-cpu.min.js", 
+        "tf-backend-cpu.min.js",
+        "tf-backend-webgl.min.js",
         "tf-layers.min.js"
       ],
       "matches": ["<all_urls>"]

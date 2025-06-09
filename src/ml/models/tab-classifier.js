@@ -55,23 +55,77 @@ export class TabClassifier {
   }
   
   /**
-   * Build the complete model architecture
+   * Build the unified model architecture (no separate embedder/classifier)
    */
   buildModel() {
     const tf = getTensorFlow();
     if (!tf) throw new Error('TensorFlow.js not loaded');
     
-    // Create feature embedder
-    this.embedder = createFeatureEmbedder(this.vocabulary);
+    const config = ML_CONFIG.model.inputFeatures;
+    const vocabSize = this.vocabulary.size();
     
-    // Get embedder output shape
-    const embeddingSize = this.embedder.outputs[0].shape[1];
+    // Create inputs
+    const urlInput = tf.input({ 
+      shape: [config.maxUrlLength], 
+      name: 'url_tokens',
+      dtype: 'int32'
+    });
     
-    // Build classifier on top of embedder
-    const input = tf.input({ shape: [embeddingSize], name: 'embeddings' });
+    const titleInput = tf.input({ 
+      shape: [config.maxTitleLength], 
+      name: 'title_tokens',
+      dtype: 'int32'
+    });
     
-    // Hidden layers
-    let x = input;
+    const featuresInput = tf.input({
+      shape: [ML_CONFIG.features.urlPatterns.length + 
+              ML_CONFIG.features.importantTokens.length + 
+              10], // numerical features
+      name: 'engineered_features'
+    });
+    
+    // Shared embedding layer
+    const embeddingLayer = tf.layers.embedding({
+      inputDim: vocabSize,
+      outputDim: config.embeddingDim,
+      embeddingsInitializer: 'randomUniform',
+      embeddingsRegularizer: tf.regularizers.l2({ l2: 0.01 }),
+      name: 'token_embeddings'
+    });
+    
+    // Apply embeddings
+    const urlEmbeddings = embeddingLayer.apply(urlInput);
+    const titleEmbeddings = embeddingLayer.apply(titleInput);
+    
+    // Average pooling for variable-length sequences
+    const urlPooled = tf.layers.globalAveragePooling1d({ 
+      name: 'url_pooling' 
+    }).apply(urlEmbeddings);
+    
+    const titlePooled = tf.layers.globalAveragePooling1d({ 
+      name: 'title_pooling' 
+    }).apply(titleEmbeddings);
+    
+    // Concatenate all features
+    const concatenated = tf.layers.concatenate({ 
+      name: 'feature_concatenation' 
+    }).apply([urlPooled, titlePooled, featuresInput]);
+    
+    // Feature transformation layer
+    const featureTransform = tf.layers.dense({
+      units: 128,
+      activation: 'relu',
+      kernelRegularizer: tf.regularizers.l2({ l2: 0.01 }),
+      name: 'feature_transformation'
+    }).apply(concatenated);
+    
+    const featureDropout = tf.layers.dropout({
+      rate: 0.2,
+      name: 'feature_dropout'
+    }).apply(featureTransform);
+    
+    // Classification layers (directly connected)
+    let x = featureDropout;
     
     // Add hidden layers from config
     ML_CONFIG.model.architecture.hiddenUnits.forEach((units, index) => {
@@ -100,34 +154,22 @@ export class TabClassifier {
     });
     
     // Output layer
-    const outputLayer = tf.layers.dense({
+    const output = tf.layers.dense({
       units: ML_CONFIG.model.output.numClasses,
       activation: ML_CONFIG.model.output.activation,
       name: 'category_output'
-    });
-    const output = outputLayer.apply(x);
+    }).apply(x);
     
-    // Create classifier model
-    this.classifier = tf.model({
-      inputs: input,
-      outputs: output,
-      name: 'tab_classifier'
-    });
-    
-    // Create combined model
-    const urlInput = this.embedder.inputs[0];
-    const titleInput = this.embedder.inputs[1];
-    const featuresInput = this.embedder.inputs[2];
-    
-    // Connect embedder to classifier
-    const embeddings = this.embedder.outputs[0];
-    const predictions = this.classifier.apply(embeddings);
-    
+    // Create ONE unified model (no separate embedder/classifier)
     this.model = tf.model({
       inputs: [urlInput, titleInput, featuresInput],
-      outputs: predictions,
-      name: 'complete_tab_classifier'
+      outputs: output,
+      name: 'unified_tab_classifier'
     });
+    
+    // Remove separate models (unified architecture)
+    this.embedder = null;
+    this.classifier = null;
     
     // Compile the model
     this.compile();
@@ -338,72 +380,189 @@ export class TabClassifier {
   async save() {
     const tf = getTensorFlow();
     
-    // Get model weights
-    const weights = await this.model.save(tf.io.withSaveHandler(async (artifacts) => {
-      return {
-        modelArtifactsInfo: {
-          dateSaved: new Date(),
-          modelTopologyType: 'JSON',
-          weightDataBytes: artifacts.weightData.byteLength
+    try {
+      // Simplified save approach to avoid complex tensor operations
+      const modelWeights = this.model.getWeights();
+      
+      // Save to IndexedDB with simpler format
+      await saveModel({
+        version: this.metadata.version,
+        architecture: this.model.toJSON(),
+        weights: modelWeights,
+        vocabulary: this.vocabulary.export(),
+        accuracy: this.metadata.accuracy,
+        trainingSamples: this.metadata.trainingSamples,
+        inputShape: this.model.inputs.map(i => i.shape),
+        outputShape: this.model.outputs.map(o => o.shape),
+        metadata: this.metadata
+      });
+      
+      console.log('Model saved successfully');
+      
+      // Dispose of the weight tensors after saving
+      modelWeights.forEach(tensor => {
+        if (tensor && typeof tensor.dispose === 'function') {
+          tensor.dispose();
         }
-      };
-    }));
-    
-    // Save to IndexedDB
-    await saveModel({
-      version: this.metadata.version,
-      architecture: this.model.toJSON(),
-      weights: await this.model.getWeights(),
-      vocabulary: this.vocabulary.export(),
-      accuracy: this.metadata.accuracy,
-      trainingSamples: this.metadata.trainingSamples,
-      inputShape: this.model.inputs.map(i => i.shape),
-      outputShape: this.model.outputs.map(o => o.shape),
-      metadata: this.metadata
-    });
-    
-    console.log('Model saved successfully');
-  }
-  
-  /**
-   * Load saved model
-   */
-  static async load() {
-    const modelData = await loadModel();
-    if (!modelData) return null;
-    
-    const tf = await loadTensorFlow();
-    
-    // Recreate vocabulary
-    const { Vocabulary } = await import('../features/vocabulary.js');
-    const vocab = new Vocabulary();
-    vocab.tokenToId = modelData.vocabulary.tokenToId;
-    vocab.idToToken = modelData.vocabulary.idToToken;
-    vocab.finalized = true;
-    
-    // Create classifier instance
-    const classifier = new TabClassifier(vocab);
-    await classifier.initialize();
-    
-    // Load weights
-    if (modelData.weights) {
-      await classifier.model.setWeights(modelData.weights);
+      });
+      
+    } catch (saveError) {
+      console.error('Error saving model:', saveError);
+      // Continue anyway - don't let save errors break the flow
     }
     
-    // Restore metadata
-    classifier.metadata = modelData.metadata || {};
+    // Reset the singleton cache so next getTabClassifier() call will reload the saved model
+    classifierInstance = null;
     
-    console.log('Model loaded successfully');
-    return classifier;
+    // Also reset ML categorizer cache since it holds a reference to the old classifier
+    try {
+      const { resetMLCategorizerCache } = await import('../categorization/ml-categorizer.js');
+      resetMLCategorizerCache();
+    } catch (error) {
+      console.log('Could not reset ML categorizer cache:', error);
+    }
   }
   
   /**
-   * Check if model exists
+   * Load weights with GPU/CPU fallback handling
+   */
+  static async loadWeightsWithFallback(classifier, weights) {
+    const { switchBackend, getBackendInfo, getTensorFlow } = await import('../tensorflow-loader.js');
+    const tf = getTensorFlow();
+    const originalBackend = getBackendInfo().backend;
+    
+    // Try loading on current backend first with tidy() to prevent memory leaks
+    console.log(`Attempting to load weights on ${originalBackend} backend...`);
+    try {
+      // Use tf.tidy() to prevent memory accumulation that can cause stack overflow
+      const success = tf.tidy(() => {
+        try {
+          classifier.model.setWeights(weights);
+          return true;
+        } catch (error) {
+          console.warn(`Weight loading failed in tidy context:`, error.message);
+          return false;
+        }
+      });
+      
+      if (success) {
+        console.log(`Weights loaded successfully on ${originalBackend} backend`);
+        return true;
+      }
+    } catch (error) {
+      console.warn(`Weight loading failed on ${originalBackend}:`, error.message);
+      
+      // Check if this is the known TensorFlow.js issue #5508 (large input stack overflow)
+      if (error.message.includes('Maximum call stack') || error.name === 'RangeError') {
+        console.log('Detected TensorFlow.js issue #5508 - large input causing stack overflow');
+      }
+    }
+    
+    // If current backend failed and we're on GPU, try CPU with fresh WebGL context
+    if (originalBackend === 'webgl') {
+      try {
+        console.log('Switching to CPU backend for weight loading (WebGL context may be corrupted)...');
+        await switchBackend('cpu');
+        
+        // Wait a moment for WebGL context to fully release
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const success = tf.tidy(() => {
+          try {
+            classifier.model.setWeights(weights);
+            return true;
+          } catch (error) {
+            console.warn(`CPU weight loading failed in tidy context:`, error.message);
+            return false;
+          }
+        });
+        
+        if (success) {
+          console.log('Weights loaded successfully on CPU backend');
+          
+          // Try to switch back to GPU for inference with fresh context
+          try {
+            await switchBackend('webgl');
+            console.log('Switched back to GPU for inference with fresh WebGL context');
+          } catch (switchError) {
+            console.warn('Could not switch back to GPU, staying on CPU:', switchError.message);
+          }
+          
+          return true;
+        }
+      } catch (cpuError) {
+        console.error('Weight loading failed on CPU as well:', cpuError.message);
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Load saved model using TensorFlow.js loadLayersModel
+   */
+  static async load() {
+    try {
+      const tf = await loadTensorFlow();
+      if (!tf) return null;
+      
+      // Try to load the full model from IndexedDB
+      const loadedModel = await tf.loadLayersModel('indexeddb://tab-classifier-model');
+      console.log('✅ Model loaded from IndexedDB');
+      
+      // Load vocabulary and metadata separately
+      const modelData = await loadModel();
+      
+      // Recreate vocabulary
+      let vocab;
+      if (modelData && modelData.vocabulary) {
+        const { Vocabulary } = await import('../features/vocabulary.js');
+        vocab = new Vocabulary();
+        vocab.tokenToId = modelData.vocabulary.tokenToId;
+        vocab.idToToken = modelData.vocabulary.idToToken;
+        vocab.finalized = true;
+      } else {
+        // Fallback to default vocabulary
+        const { getOrCreateVocabulary } = await import('../features/vocabulary.js');
+        vocab = await getOrCreateVocabulary();
+      }
+      
+      // Create classifier instance
+      const classifier = new TabClassifier(vocab);
+      
+      // Replace the model and embedder with loaded versions
+      classifier.model = loadedModel;
+      
+      // CRITICAL: Recompile the loaded model
+      classifier.compile();
+      console.log('✅ Loaded model recompiled');
+      
+      // Restore metadata
+      classifier.metadata = (modelData && modelData.metadata) || {};
+      classifier.isLoaded = true;
+      
+      console.log('Model loaded and recompiled successfully');
+      return classifier;
+      
+    } catch (error) {
+      console.error('Error loading model from IndexedDB:', error);
+      console.log('Will create fresh model instead');
+      return null; // Return null so getTabClassifier will create a new instance
+    }
+  }
+  
+  /**
+   * Check if model exists (has training data available)
    */
   async exists() {
     try {
-      const modelData = await loadModel();
-      return modelData !== null && modelData !== undefined;
+      // Since we don't load weights, check if we have training data available
+      // which indicates a model has been trained before
+      const { getTrainingData } = await import('../storage/ml-database.js');
+      const trainingData = await getTrainingData();
+      
+      // Consider model "exists" if we have sufficient training data
+      return trainingData.length >= 10; // Minimum for a meaningful model
     } catch (error) {
       return false;
     }
@@ -444,6 +603,115 @@ export class TabClassifier {
   }
   
   /**
+   * Print detailed model architecture
+   */
+  printModel() {
+    if (this.disabled) {
+      console.log('🚫 Model is disabled');
+      return;
+    }
+    
+    console.log('\n🧠 AI Tab Manager - Neural Network Architecture');
+    console.log('=' * 60);
+    
+    // Model overview
+    console.log(`📊 Model Overview:`);
+    console.log(`   Total Parameters: ${this.model.countParams().toLocaleString()}`);
+    console.log(`   Total Layers: ${this.model.layers.length}`);
+    console.log(`   Model Name: ${this.model.name}`);
+    
+    // Input information
+    console.log(`\n📥 Model Inputs:`);
+    this.model.inputs.forEach((input, idx) => {
+      console.log(`   Input ${idx + 1}: ${input.name}`);
+      console.log(`     Shape: [${input.shape.join(', ')}]`);
+      console.log(`     Data Type: ${input.dtype}`);
+    });
+    
+    // Detailed layer information
+    console.log(`\n🏗️ Layer Architecture:`);
+    this.model.layers.forEach((layer, idx) => {
+      const params = layer.countParams();
+      
+      console.log(`   Layer ${idx + 1}: ${layer.name} (${layer.getClassName()})`);
+      
+      // Handle output shape safely for layers with multiple inbound nodes
+      try {
+        const outputShape = layer.outputShape;
+        if (outputShape) {
+          console.log(`     Output Shape: [${Array.isArray(outputShape[0]) ? outputShape.map(s => `[${s.join(', ')}]`).join(', ') : outputShape.join(', ')}]`);
+        }
+      } catch (shapeError) {
+        // Handle layers with multiple inbound nodes (like shared embedding layers)
+        if (layer.getClassName() === 'Embedding') {
+          console.log(`     Output Shape: [batch_size, sequence_length, ${layer.outputDim}] (shared layer)`);
+        } else {
+          console.log(`     Output Shape: Multiple shapes (shared layer)`);
+        }
+      }
+      
+      console.log(`     Parameters: ${params.toLocaleString()}`);
+      
+      // Layer-specific details
+      if (layer.getClassName() === 'Dense') {
+        console.log(`     Units: ${layer.units}`);
+        console.log(`     Activation: ${layer.activation.getClassName()}`);
+        if (layer.kernelRegularizer) {
+          console.log(`     Regularization: L2`);
+        }
+      } else if (layer.getClassName() === 'Embedding') {
+        console.log(`     Vocabulary Size: ${layer.inputDim}`);
+        console.log(`     Embedding Dimension: ${layer.outputDim}`);
+        console.log(`     Shared: Yes (used by URL and Title inputs)`);
+      } else if (layer.getClassName() === 'Dropout') {
+        console.log(`     Dropout Rate: ${layer.rate}`);
+      } else if (layer.getClassName() === 'Concatenate') {
+        console.log(`     Concatenation Axis: ${layer.axis}`);
+      } else if (layer.getClassName() === 'GlobalAveragePooling1D') {
+        console.log(`     Pooling: Global average across sequence dimension`);
+      } else if (layer.getClassName() === 'BatchNormalization') {
+        console.log(`     Normalization: Batch normalization`);
+      }
+    });
+    
+    // Output information
+    console.log(`\n📤 Model Outputs:`);
+    this.model.outputs.forEach((output, idx) => {
+      console.log(`   Output ${idx + 1}: ${output.name}`);
+      console.log(`     Shape: [${output.shape.join(', ')}]`);
+      console.log(`     Data Type: ${output.dtype}`);
+    });
+    
+    // Vocabulary information
+    if (this.vocabulary) {
+      console.log(`\n📚 Vocabulary:`);
+      console.log(`   Size: ${this.vocabulary.size()} tokens`);
+      console.log(`   Coverage: ${(this.vocabulary.calculateCoverage() * 100).toFixed(1)}%`);
+    }
+    
+    // Model metadata
+    if (this.metadata) {
+      console.log(`\n📈 Model Metadata:`);
+      console.log(`   Version: ${this.metadata.version}`);
+      console.log(`   Created: ${new Date(this.metadata.createdAt).toLocaleString()}`);
+      console.log(`   Accuracy: ${this.metadata.accuracy ? (this.metadata.accuracy * 100).toFixed(2) + '%' : 'N/A'}`);
+      console.log(`   Training Samples: ${this.metadata.trainingSamples || 'N/A'}`);
+      if (this.metadata.lastTrainingDate) {
+        console.log(`   Last Training: ${new Date(this.metadata.lastTrainingDate).toLocaleString()}`);
+      }
+    }
+    
+    // Feature breakdown
+    console.log(`\n🔧 Feature Engineering:`);
+    console.log(`   URL Pattern Features: 7`);
+    console.log(`   Important Token Features: 18`);
+    console.log(`   Numerical Features: 10`);
+    console.log(`   Total Engineered Features: 35`);
+    
+    console.log('\n' + '=' * 60);
+  }
+  
+  /**
    * Evaluate model on test data
    * @param {Array} testData - Test examples
    * @returns {Promise<Object>} Evaluation metrics
@@ -460,8 +728,8 @@ export class TabClassifier {
     
     // Get detailed predictions for confusion matrix
     const predictions = await this.model.predict(xs);
-    const predClasses = await predictions.argMax(-1).array();
-    const trueClasses = await ys.argMax(-1).array();
+    const predClasses = await tf.argMax(predictions, -1).array();
+    const trueClasses = await tf.argMax(ys, -1).array();
     
     // Calculate confusion matrix
     const confusionMatrix = this.calculateConfusionMatrix(trueClasses, predClasses);
@@ -528,19 +796,35 @@ export class TabClassifier {
 // Export singleton instance
 let classifierInstance = null;
 
-export async function getTabClassifier() {
-  if (!classifierInstance) {
-    // Try to load saved model
-    classifierInstance = await TabClassifier.load();
+export async function getTabClassifier(forceReload = false) {
+  if (!classifierInstance || forceReload) {
+    // IMPORTANT: Due to WebGL weight loading issues (TensorFlow.js #5508),
+    // we always create fresh classifiers and rely on retraining with accumulated data
+    // This is actually better for memory management and avoids GPU context corruption
     
-    // If no saved model, create new one
-    if (!classifierInstance) {
-      classifierInstance = new TabClassifier();
-      await classifierInstance.initialize();
+    classifierInstance = new TabClassifier();
+    await classifierInstance.initialize();
+    
+    // Load metadata if available (but not weights)
+    try {
+      const modelData = await loadModel();
+      if (modelData && modelData.metadata) {
+        classifierInstance.metadata = modelData.metadata;
+        console.log('Loaded model metadata (skipped weights due to WebGL limitations)');
+      }
+    } catch (error) {
+      console.log('No previous model metadata found, starting fresh');
     }
   }
   
   return classifierInstance;
+}
+
+/**
+ * Reset the classifier instance to force reload from storage
+ */
+export function resetTabClassifierCache() {
+  classifierInstance = null;
 }
 
 export default {

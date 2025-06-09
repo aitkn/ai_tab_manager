@@ -460,6 +460,33 @@ export class PerformanceTracker {
   }
   
   /**
+   * Reset all performance data to initial state
+   */
+  async reset() {
+    // Reset predictions counters
+    this.predictions = {
+      rules: { correct: 0, total: 0, recentAccuracy: [] },
+      model: { correct: 0, total: 0, recentAccuracy: [] },
+      llm: { correct: 0, total: 0, recentAccuracy: [] }
+    };
+    
+    // Reset accuracies to initial values
+    this.accuracy = {
+      rules: ML_CONFIG.trust.initialWeights.rules,
+      model: ML_CONFIG.trust.initialWeights.model,
+      llm: ML_CONFIG.trust.initialWeights.llm
+    };
+    
+    // Reset trust weights to initial values
+    this.trustWeights = { ...ML_CONFIG.trust.initialWeights };
+    
+    // Clear prediction history
+    this.predictionHistory = [];
+    
+    console.log('Performance tracker reset to initial state');
+  }
+
+  /**
    * Export metrics for analysis
    * @returns {Object} Exportable metrics
    */

@@ -248,6 +248,7 @@ async function onMaxTabsChange() {
   await StorageService.saveSettings(state.settings);
 }
 
+
 /**
  * LLM checkbox change handler
  */

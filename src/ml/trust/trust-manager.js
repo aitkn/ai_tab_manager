@@ -482,6 +482,23 @@ export class TrustManager {
   }
   
   /**
+   * Reset trust weights and performance data
+   */
+  async resetTrust() {
+    // Reset performance tracker
+    if (this.performanceTracker && typeof this.performanceTracker.reset === 'function') {
+      await this.performanceTracker.reset();
+    }
+    
+    // Reset strategy to default
+    this.currentStrategy = 'balanced';
+    this.strategyHistory = [];
+    this.decisionHistory = [];
+    
+    console.log('Trust weights and performance data reset');
+  }
+
+  /**
    * Get trust manager statistics
    */
   getStatistics() {

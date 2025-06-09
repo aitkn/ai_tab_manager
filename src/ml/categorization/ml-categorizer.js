@@ -29,8 +29,8 @@ export class MLCategorizer {
     if (this.isInitialized) return;
     
     try {
-      // Load components
-      this.classifier = await getTabClassifier();
+      // Load components with WebGL error handling
+      this.classifier = await this.loadClassifierWithFallback();
       this.voter = getEnsembleVoter();
       this.feedbackProcessor = getFeedbackProcessor();
       this.performanceTracker = getPerformanceTracker();
@@ -49,6 +49,67 @@ export class MLCategorizer {
       // Continue without ML - fallback to rules/LLM
       this.isInitialized = true;
     }
+  }
+  
+  /**
+   * Load classifier with WebGL error fallback
+   */
+  async loadClassifierWithFallback() {
+    try {
+      const classifier = await getTabClassifier();
+      
+      // Check if the model loaded properly (has weights)
+      if (classifier && classifier.metadata && classifier.metadata.accuracy) {
+        return classifier;
+      } else {
+        // Model structure loaded but weights may have failed - try CPU fallback
+        console.log('Model loaded but weights may be missing, attempting CPU fallback...');
+        return await this.attemptCPUFallback();
+      }
+      
+    } catch (error) {
+      console.error('Error loading classifier:', error);
+      
+      // Check if it's a WebGL-related error
+      if (error.message && (error.message.includes('Maximum call stack') || 
+                           error.message.includes('WebGL') ||
+                           error.name === 'RangeError')) {
+        console.log('WebGL error detected during classifier loading, attempting CPU fallback...');
+        return await this.attemptCPUFallback();
+      } else {
+        throw error; // Re-throw if it's not a WebGL error
+      }
+    }
+  }
+  
+  /**
+   * Attempt to load classifier on CPU backend
+   */
+  async attemptCPUFallback() {
+    // Switch to CPU backend
+    const { switchBackend } = await import('../tensorflow-loader.js');
+    await switchBackend('cpu');
+    
+    // Reset classifier cache and try loading again on CPU
+    const { resetTabClassifierCache } = await import('../models/tab-classifier.js');
+    resetTabClassifierCache();
+    
+    // Try loading classifier again on CPU
+    const classifier = await getTabClassifier(true); // Force reload
+    
+    // Switch back to GPU for inference if possible
+    const { getBackendInfo } = await import('../tensorflow-loader.js');
+    const backendInfo = getBackendInfo();
+    if (backendInfo.available.includes('webgl')) {
+      try {
+        await switchBackend('webgl');
+        console.log('Loaded model on CPU, switched back to GPU for inference');
+      } catch (switchError) {
+        console.warn('Could not switch back to GPU:', switchError);
+      }
+    }
+    
+    return classifier;
   }
   
   /**
@@ -353,12 +414,19 @@ export class MLCategorizer {
 // Export singleton
 let categorizerInstance = null;
 
-export async function getMLCategorizer() {
-  if (!categorizerInstance) {
+export async function getMLCategorizer(forceReload = false) {
+  if (!categorizerInstance || forceReload) {
     categorizerInstance = new MLCategorizer();
     await categorizerInstance.initialize();
   }
   return categorizerInstance;
+}
+
+/**
+ * Reset the ML categorizer instance to force reload
+ */
+export function resetMLCategorizerCache() {
+  categorizerInstance = null;
 }
 
 export default {

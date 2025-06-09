@@ -96,6 +96,12 @@ export async function initializeSettingsUI() {
     }
   }
   
+  // Set ML epochs input
+  const mlEpochsInput = $id('mlEpochsInput');
+  if (mlEpochsInput) {
+    mlEpochsInput.value = state.settings.mlEpochs || 10;
+  }
+  
   // Update prompt status
   updatePromptStatus();
   
@@ -621,6 +627,28 @@ export async function initializeSettings() {
   const maxTabsInput = $id(DOM_IDS.MAX_TABS_INPUT);
   if (maxTabsInput) {
     maxTabsInput.addEventListener('change', onMaxTabsChange);
+  }
+  
+  // ML epochs change
+  const mlEpochsInput = $id('mlEpochsInput');
+  if (mlEpochsInput) {
+    mlEpochsInput.addEventListener('change', async () => {
+      const epochs = parseInt(mlEpochsInput.value) || 10;
+      
+      // Validate range
+      if (epochs < 1) {
+        mlEpochsInput.value = 1;
+        state.settings.mlEpochs = 1;
+      } else if (epochs > 100) {
+        mlEpochsInput.value = 100;
+        state.settings.mlEpochs = 100;
+      } else {
+        state.settings.mlEpochs = epochs;
+      }
+      
+      await StorageService.saveSettings(state.settings);
+      showStatus('ML epochs updated', 'success', 2000);
+    });
   }
   
   // Rules are now handled by the grouped UI with textareas

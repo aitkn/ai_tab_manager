@@ -130,7 +130,6 @@ export function prepareEmbeddingInputs(tab, vocabulary) {
     ...numerical     // 10 numerical features
   ];
   
-  console.log(`Feature breakdown: patterns=${patterns.length}, tokens=${tokens.length}, numerical=${numerical.length}, total=${engineeredFeatures.length}`);
   
   // Should total exactly 35 features
   

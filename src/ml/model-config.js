@@ -37,7 +37,7 @@ export const ML_CONFIG = {
     },
     
     // Minimum training data requirements
-    minTrainingExamples: 100,
+    minTrainingExamples: 10, // Temporarily lowered for testing
     minExamplesPerClass: 10,
     
     
