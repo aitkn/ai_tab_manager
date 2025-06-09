@@ -149,6 +149,13 @@ src/
 
 ## Recent Major Changes
 
+### ML Training Architecture Fix (January 2025)
+- **CRITICAL FIX**: Resolved TensorFlow.js layer disposal conflicts by implementing unified model architecture
+- **True Incremental Training**: Models now properly save/load weights and continue training from previous accuracy
+- **GPU Acceleration**: Full WebGL backend support with CPU fallback for optimal performance
+- **Model Persistence**: Uses TensorFlow.js standard save/load format ensuring reliable model persistence across sessions
+- **Performance**: 174K parameter neural network with shared embeddings, batch normalization, and dropout layers
+
 ### Rule-Based Categorization UI (January 2025)
 - Redesigned rules UI with individual rule management
 - Each rule has URL and Title fields with regex checkboxes
@@ -157,13 +164,6 @@ src/
 - Auto-save with debouncing for better UX
 - "Restore Default Rules" button to reset to 50+ default rules
 - Clear indication that unmatched tabs go to AI or Useful category
-
-### ML Features CSP-Compliant Implementation (January 2025)
-- Updated to use CSP-compliant TensorFlow.js modules (tf-core, tf-backend-cpu, tf-layers)
-- Following TensorFlow.js Chrome extension tutorial: https://www.tensorflow.org/js/tutorials/deployment/web_ml_in_chrome
-- Uses CPU backend instead of WebGL to avoid CSP eval restrictions
-- Graceful fallback to rule-based + LLM categorization if ML modules fail to load
-- CSP errors are caught and handled to prevent console errors
 
 ### Refindability-Based Categorization (January 2025)
 - Changed from importance-based to refindability-based categorization

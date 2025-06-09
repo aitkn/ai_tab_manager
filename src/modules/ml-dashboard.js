@@ -417,7 +417,6 @@ async function handleTrainModel() {
         
         // Print detailed model architecture after incremental training
         console.log('\n🔄 INCREMENTAL TRAINING COMPLETED');
-        console.log('Note: Due to WebGL weight loading limitations, this was fresh training with all data');
         trainer.classifier.printModel();
       }
     } else {

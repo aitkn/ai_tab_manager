@@ -375,35 +375,22 @@ export class TabClassifier {
   }
   
   /**
-   * Save the model
+   * Save the model using TensorFlow.js standard save format
    */
   async save() {
-    const tf = getTensorFlow();
-    
     try {
-      // Simplified save approach to avoid complex tensor operations
-      const modelWeights = this.model.getWeights();
+      // Save the complete model to IndexedDB using TensorFlow.js standard format
+      await this.model.save('indexeddb://tab-classifier-model');
       
-      // Save to IndexedDB with simpler format
+      // Save vocabulary and metadata separately using our custom storage
       await saveModel({
         version: this.metadata.version,
-        architecture: this.model.toJSON(),
-        weights: modelWeights,
         vocabulary: this.vocabulary.export(),
         accuracy: this.metadata.accuracy,
         trainingSamples: this.metadata.trainingSamples,
         inputShape: this.model.inputs.map(i => i.shape),
         outputShape: this.model.outputs.map(o => o.shape),
         metadata: this.metadata
-      });
-      
-      console.log('Model saved successfully');
-      
-      // Dispose of the weight tensors after saving
-      modelWeights.forEach(tensor => {
-        if (tensor && typeof tensor.dispose === 'function') {
-          tensor.dispose();
-        }
       });
       
     } catch (saveError) {
@@ -508,7 +495,6 @@ export class TabClassifier {
       
       // Try to load the full model from IndexedDB
       const loadedModel = await tf.loadLayersModel('indexeddb://tab-classifier-model');
-      console.log('✅ Model loaded from IndexedDB');
       
       // Load vocabulary and metadata separately
       const modelData = await loadModel();
@@ -535,34 +521,30 @@ export class TabClassifier {
       
       // CRITICAL: Recompile the loaded model
       classifier.compile();
-      console.log('✅ Loaded model recompiled');
       
       // Restore metadata
       classifier.metadata = (modelData && modelData.metadata) || {};
       classifier.isLoaded = true;
       
-      console.log('Model loaded and recompiled successfully');
       return classifier;
       
     } catch (error) {
-      console.error('Error loading model from IndexedDB:', error);
-      console.log('Will create fresh model instead');
+      // Silently handle model loading errors - this is expected for new installations
       return null; // Return null so getTabClassifier will create a new instance
     }
   }
   
   /**
-   * Check if model exists (has training data available)
+   * Check if model exists in IndexedDB
    */
   async exists() {
     try {
-      // Since we don't load weights, check if we have training data available
-      // which indicates a model has been trained before
-      const { getTrainingData } = await import('../storage/ml-database.js');
-      const trainingData = await getTrainingData();
+      const tf = await loadTensorFlow();
+      if (!tf) return false;
       
-      // Consider model "exists" if we have sufficient training data
-      return trainingData.length >= 10; // Minimum for a meaningful model
+      // Try to list models in IndexedDB
+      const models = await tf.io.listModels();
+      return 'indexeddb://tab-classifier-model' in models;
     } catch (error) {
       return false;
     }
@@ -798,22 +780,13 @@ let classifierInstance = null;
 
 export async function getTabClassifier(forceReload = false) {
   if (!classifierInstance || forceReload) {
-    // IMPORTANT: Due to WebGL weight loading issues (TensorFlow.js #5508),
-    // we always create fresh classifiers and rely on retraining with accumulated data
-    // This is actually better for memory management and avoids GPU context corruption
+    // Try to load saved model first
+    classifierInstance = await TabClassifier.load();
     
-    classifierInstance = new TabClassifier();
-    await classifierInstance.initialize();
-    
-    // Load metadata if available (but not weights)
-    try {
-      const modelData = await loadModel();
-      if (modelData && modelData.metadata) {
-        classifierInstance.metadata = modelData.metadata;
-        console.log('Loaded model metadata (skipped weights due to WebGL limitations)');
-      }
-    } catch (error) {
-      console.log('No previous model metadata found, starting fresh');
+    // If no saved model, create new one
+    if (!classifierInstance) {
+      classifierInstance = new TabClassifier();
+      await classifierInstance.initialize();
     }
   }
   

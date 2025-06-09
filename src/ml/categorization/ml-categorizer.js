@@ -63,7 +63,6 @@ export class MLCategorizer {
         return classifier;
       } else {
         // Model structure loaded but weights may have failed - try CPU fallback
-        console.log('Model loaded but weights may be missing, attempting CPU fallback...');
         return await this.attemptCPUFallback();
       }
       
@@ -74,7 +73,6 @@ export class MLCategorizer {
       if (error.message && (error.message.includes('Maximum call stack') || 
                            error.message.includes('WebGL') ||
                            error.name === 'RangeError')) {
-        console.log('WebGL error detected during classifier loading, attempting CPU fallback...');
         return await this.attemptCPUFallback();
       } else {
         throw error; // Re-throw if it's not a WebGL error
@@ -103,7 +101,6 @@ export class MLCategorizer {
     if (backendInfo.available.includes('webgl')) {
       try {
         await switchBackend('webgl');
-        console.log('Loaded model on CPU, switched back to GPU for inference');
       } catch (switchError) {
         console.warn('Could not switch back to GPU:', switchError);
       }

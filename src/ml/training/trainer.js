@@ -399,9 +399,7 @@ export class ModelTrainer {
       // Update vocabulary with all data
       await updateVocabulary(trainingData);
       
-      // IMPORTANT: Due to TensorFlow.js WebGL weight loading issues (GitHub #5508),
-      // we train a fresh model with ALL data instead of loading existing weights
-      console.log('Starting incremental training with fresh model (due to WebGL weight loading limitations)');
+      // Continue training from existing model with accumulated data
       
       const incrementalOptions = {
         ...options,
