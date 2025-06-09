@@ -117,8 +117,8 @@ export async function updateToolbarVisibility(tabType) {
   
   if (tabType === 'categorize') {
     console.log('🔄 FLICKER DEBUG: Showing categorize controls');
-    show(currentTabControls, 'flex');
-    hide(savedTabControls);
+    currentTabControls?.classList.add('active');
+    savedTabControls?.classList.remove('active');
     searchInput.placeholder = 'Search tabs...';
     populateGroupingOptions(CURRENT_TAB_GROUPING_OPTIONS);
     
@@ -146,8 +146,8 @@ export async function updateToolbarVisibility(tabType) {
     
   } else if (tabType === 'saved') {
     console.log('🔄 FLICKER DEBUG: Showing saved controls');
-    hide(currentTabControls);
-    show(savedTabControls, 'flex');
+    currentTabControls?.classList.remove('active');
+    savedTabControls?.classList.add('active');
     searchInput.placeholder = 'Search tabs...';
     populateGroupingOptions(SAVED_TAB_GROUPING_OPTIONS);
     
@@ -177,11 +177,11 @@ export async function updateToolbarVisibility(tabType) {
     hideToolbar();
     
     if (currentTabControls) {
-      hide(currentTabControls);
+      currentTabControls.classList.remove('active');
     }
     
     if (savedTabControls) {
-      hide(savedTabControls);
+      savedTabControls.classList.remove('active');
     }
     
     // Also hide the close all button
@@ -196,7 +196,9 @@ export async function updateToolbarVisibility(tabType) {
       hide(groupingGroup);
     }
   } else {
-    // For any other tab type, hide the toolbar
+    // For any other tab type, hide all tab controls and toolbar
+    currentTabControls?.classList.remove('active');
+    savedTabControls?.classList.remove('active');
     hideToolbar();
   }
   

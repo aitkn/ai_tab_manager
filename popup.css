@@ -524,11 +524,16 @@ h1 {
   transform: translateY(-50%);
 }
 
-/* Tab specific controls */
+/* Tab specific controls - hidden by default to prevent flickering */
 .tab-specific-controls {
-  display: flex;
+  display: none;
   align-items: center;
   gap: var(--md-spacing-4);
+}
+
+/* Show tab controls when active */
+.tab-specific-controls.active {
+  display: flex;
 }
 
 /* Control groups for logical grouping */
