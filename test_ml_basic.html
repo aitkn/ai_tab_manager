@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ML Functionality Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .pass { background-color: #d4edda; border-color: #c3e6cb; }
+        .fail { background-color: #f8d7da; border-color: #f5c6cb; }
+        .pending { background-color: #fff3cd; border-color: #ffeaa7; }
+    </style>
+</head>
+<body>
+    <h1>AI Tab Manager - ML Functionality Test</h1>
+    
+    <div id="test-results">
+        <div class="test pending" id="test-tf">
+            <h3>Test 1: TensorFlow.js Loading</h3>
+            <div id="tf-result">Testing...</div>
+        </div>
+        
+        <div class="test pending" id="test-config">
+            <h3>Test 2: ML Config Loading</h3>
+            <div id="config-result">Testing...</div>
+        </div>
+        
+        <div class="test pending" id="test-database">
+            <h3>Test 3: ML Database</h3>
+            <div id="database-result">Testing...</div>
+        </div>
+        
+        <div class="test pending" id="test-categorizer">
+            <h3>Test 4: ML Categorizer</h3>
+            <div id="categorizer-result">Testing...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Test helper functions
+        function markTest(testId, status, message) {
+            const testEl = document.getElementById(testId);
+            const resultEl = document.getElementById(testId.replace('test-', '') + '-result');
+            
+            testEl.className = `test ${status}`;
+            resultEl.innerHTML = message;
+            
+            console.log(`${status.toUpperCase()}: ${testId} - ${message}`);
+        }
+        
+        // Test 1: TensorFlow.js Loading
+        async function testTensorFlowLoading() {
+            try {
+                const { loadTensorFlow } = await import('./src/ml/tensorflow-loader.js');
+                const tf = await loadTensorFlow();
+                
+                if (tf) {
+                    markTest('test-tf', 'pass', `✅ TensorFlow.js loaded successfully! Version: ${tf.version?.tfjs || 'unknown'}`);
+                    return true;
+                } else {
+                    markTest('test-tf', 'fail', '❌ TensorFlow.js loaded but tf object is null');
+                    return false;
+                }
+            } catch (error) {
+                markTest('test-tf', 'fail', `❌ Error loading TensorFlow.js: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Test 2: ML Config
+        async function testMLConfig() {
+            try {
+                const { ML_CONFIG } = await import('./src/ml/model-config.js');
+                
+                if (ML_CONFIG && ML_CONFIG.model && ML_CONFIG.training) {
+                    markTest('test-config', 'pass', `✅ ML Config loaded. Model classes: ${ML_CONFIG.model.output.numClasses}, Training epochs: ${ML_CONFIG.training.epochs}`);
+                    return true;
+                } else {
+                    markTest('test-config', 'fail', '❌ ML Config is missing required properties');
+                    return false;
+                }
+            } catch (error) {
+                markTest('test-config', 'fail', `❌ Error loading ML Config: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Test 3: ML Database
+        async function testMLDatabase() {
+            try {
+                const { initMLDatabase, addTrainingData } = await import('./src/ml/storage/ml-database.js');
+                
+                // Initialize database
+                await initMLDatabase();
+                
+                // Test adding training data
+                await addTrainingData({
+                    url: 'https://test.com',
+                    title: 'Test Page',
+                    category: 2,
+                    source: 'test'
+                });
+                
+                markTest('test-database', 'pass', '✅ ML Database initialized and test data added successfully');
+                return true;
+            } catch (error) {
+                markTest('test-database', 'fail', `❌ Error with ML Database: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Test 4: ML Categorizer
+        async function testMLCategorizer() {
+            try {
+                const { getMLCategorizer } = await import('./src/ml/categorization/ml-categorizer.js');
+                
+                const mlCategorizer = await getMLCategorizer();
+                const isAvailable = await mlCategorizer.isMLAvailable();
+                const status = await mlCategorizer.getStatus();
+                
+                markTest('test-categorizer', 'pass', `✅ ML Categorizer created. Available: ${isAvailable}, Status: ${JSON.stringify(status, null, 2)}`);
+                return true;
+            } catch (error) {
+                markTest('test-categorizer', 'fail', `❌ Error with ML Categorizer: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Run all tests
+        async function runTests() {
+            console.log('Starting ML functionality tests...');
+            
+            const tfOk = await testTensorFlowLoading();
+            const configOk = await testMLConfig();
+            
+            // Only test database and categorizer if TensorFlow loads
+            if (tfOk) {
+                await testMLDatabase();
+                await testMLCategorizer();
+            } else {
+                markTest('test-database', 'fail', '❌ Skipped - TensorFlow.js failed to load');
+                markTest('test-categorizer', 'fail', '❌ Skipped - TensorFlow.js failed to load');
+            }
+            
+            console.log('ML functionality tests completed');
+        }
+        
+        // Start tests when page loads
+        runTests();
+    </script>
+</body>
+</html>
