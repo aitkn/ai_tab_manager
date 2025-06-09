@@ -524,16 +524,21 @@ h1 {
   transform: translateY(-50%);
 }
 
-/* Tab specific controls - hidden by default to prevent flickering */
+/* Tab specific controls */
 .tab-specific-controls {
-  display: none;
+  display: flex;
   align-items: center;
   gap: var(--md-spacing-4);
 }
 
-/* Show tab controls when active */
-.tab-specific-controls.active {
-  display: flex;
+/* Hide entire toolbar until state is loaded to prevent flickering */
+.unified-toolbar {
+  display: none;
+}
+
+/* Show toolbar when state is loaded */
+.unified-toolbar.state-loaded {
+  display: block;
 }
 
 /* Control groups for logical grouping */
