@@ -64,11 +64,17 @@ setupAutoSave();
 
 // Load state and initialize DOM atomically - no async operations
 function initializeWithState() {
+  console.log('🔄 FLICKER DEBUG: initializeWithState called');
+  
   // Load both popup state and settings in a single call
   chrome.storage.local.get(['popupState', 'settings'], (result) => {
+    console.log('🔄 FLICKER DEBUG: Storage callback fired', result);
+    
     // Apply loaded state immediately
     const savedPopupState = result.popupState || null;
     const savedSettings = result.settings || null;
+    
+    console.log('🔄 FLICKER DEBUG: Saved popup state:', savedPopupState);
     
     if (savedPopupState) {
       Object.assign(state.popupState, savedPopupState);
@@ -86,15 +92,26 @@ function initializeWithState() {
       targetTab = savedPopupState.activeTab;
     }
     
+    console.log('🔄 FLICKER DEBUG: Target tab determined:', targetTab);
+    
     // Store globally and update state
     window._targetTab = targetTab;
     state.popupState.activeTab = targetTab;
+    
+    console.log('🔄 FLICKER DEBUG: Setting DOM classes for tab:', targetTab);
+    
+    // Check initial DOM state
+    console.log('🔄 FLICKER DEBUG: Initial active tab buttons:', 
+      Array.from(document.querySelectorAll('.tab-btn.active')).map(btn => btn.dataset.tab));
+    console.log('🔄 FLICKER DEBUG: Initial active tab panes:', 
+      Array.from(document.querySelectorAll('.tab-pane.active')).map(pane => pane.id));
     
     // Set correct DOM state immediately BEFORE any initialization
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.classList.remove('active');
       if (btn.dataset.tab === targetTab) {
         btn.classList.add('active');
+        console.log('🔄 FLICKER DEBUG: Set active class on tab btn:', btn.dataset.tab);
       }
     });
     
@@ -102,8 +119,17 @@ function initializeWithState() {
       pane.classList.remove('active');
       if (pane.id === `${targetTab}Tab`) {
         pane.classList.add('active');
+        console.log('🔄 FLICKER DEBUG: Set active class on tab pane:', pane.id);
       }
     });
+    
+    // Check final DOM state
+    console.log('🔄 FLICKER DEBUG: Final active tab buttons:', 
+      Array.from(document.querySelectorAll('.tab-btn.active')).map(btn => btn.dataset.tab));
+    console.log('🔄 FLICKER DEBUG: Final active tab panes:', 
+      Array.from(document.querySelectorAll('.tab-pane.active')).map(pane => pane.id));
+    
+    console.log('🔄 FLICKER DEBUG: About to call initializeApp');
     
     // NOW initialize the app with DOM already in correct state
     initializeApp();
@@ -112,9 +138,13 @@ function initializeWithState() {
 
 // Initialize when DOM is ready
 function preInitialize() {
+  console.log('🔄 FLICKER DEBUG: preInitialize called, readyState:', document.readyState);
+  
   if (document.readyState === 'loading') {
+    console.log('🔄 FLICKER DEBUG: Adding DOMContentLoaded listener');
     document.addEventListener('DOMContentLoaded', initializeWithState);
   } else {
+    console.log('🔄 FLICKER DEBUG: DOM already loaded, calling initializeWithState');
     // DOM is already loaded, initialize immediately
     initializeWithState();
   }

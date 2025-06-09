@@ -63,6 +63,7 @@ async function waitForDatabase() {
  * Main initialization function
  */
 export async function initializeApp() {
+  console.log('🔄 FLICKER DEBUG: initializeApp started');
   
   try {
     // Wait for database to be available
@@ -113,16 +114,26 @@ export async function initializeApp() {
     // Use the pre-determined target tab (DOM classes already set by preInitialize)
     let targetTab = window._targetTab || state.popupState?.activeTab || 'categorize';
     
+    console.log('🔄 FLICKER DEBUG: App initializer target tab:', targetTab);
+    console.log('🔄 FLICKER DEBUG: window._targetTab:', window._targetTab);
+    console.log('🔄 FLICKER DEBUG: state.popupState.activeTab:', state.popupState?.activeTab);
+    
     // Update state to match (DOM classes already set)
     state.popupState.activeTab = targetTab;
     updateState('activeTab', targetTab);
+    
+    console.log('🔄 FLICKER DEBUG: About to initialize unified toolbar');
     
     // Initialize unified toolbar with correct active tab
     const { initializeUnifiedToolbar, updateToolbarVisibility } = await import('./unified-toolbar.js');
     initializeUnifiedToolbar();
     
+    console.log('🔄 FLICKER DEBUG: About to update toolbar visibility for:', targetTab);
+    
     // Update toolbar visibility for the correct tab
     await updateToolbarVisibility(targetTab);
+    
+    console.log('🔄 FLICKER DEBUG: Toolbar visibility updated');
     
     // Now load content based on which tab is active
     if (targetTab === 'saved') {

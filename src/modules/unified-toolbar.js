@@ -94,6 +94,8 @@ export function initializeUnifiedToolbar() {
  * Update toolbar when switching tabs
  */
 export async function updateToolbarVisibility(tabType) {
+  console.log('🔄 FLICKER DEBUG: updateToolbarVisibility called with tabType:', tabType);
+  
   currentActiveTab = tabType;
   
   const currentTabControls = $id('currentTabControls');
@@ -101,10 +103,20 @@ export async function updateToolbarVisibility(tabType) {
   const searchInput = $id('unifiedSearchInput');
   const groupingSelect = $id('unifiedGroupingSelect');
   
+  console.log('🔄 FLICKER DEBUG: Elements found:', {
+    currentTabControls: !!currentTabControls,
+    savedTabControls: !!savedTabControls,
+    searchInput: !!searchInput,
+    groupingSelect: !!groupingSelect
+  });
+  
   // Check if elements exist (removed debug output)
   
   // Show/hide tab-specific controls
+  console.log('🔄 FLICKER DEBUG: About to show/hide controls for tabType:', tabType);
+  
   if (tabType === 'categorize') {
+    console.log('🔄 FLICKER DEBUG: Showing categorize controls');
     show(currentTabControls, 'flex');
     hide(savedTabControls);
     searchInput.placeholder = 'Search tabs...';
@@ -133,6 +145,7 @@ export async function updateToolbarVisibility(tabType) {
     }
     
   } else if (tabType === 'saved') {
+    console.log('🔄 FLICKER DEBUG: Showing saved controls');
     hide(currentTabControls);
     show(savedTabControls, 'flex');
     searchInput.placeholder = 'Search tabs...';
@@ -158,6 +171,8 @@ export async function updateToolbarVisibility(tabType) {
     showToolbar();
     
   } else if (tabType === 'settings') {
+    console.log('🔄 FLICKER DEBUG: Showing settings (hiding toolbar)');
+    
     // Hide toolbar and all controls for settings tab
     hideToolbar();
     
