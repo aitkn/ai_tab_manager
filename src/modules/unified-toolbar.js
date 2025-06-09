@@ -87,8 +87,7 @@ export function initializeUnifiedToolbar() {
     on(importBtn, 'click', () => $id('csvFileInput')?.click());
   }
   
-  // Initialize toolbar state
-  updateToolbarVisibility('categorize');
+  // Don't set default toolbar state - will be set by app initializer
 }
 
 /**

@@ -65,11 +65,11 @@ setupAutoSave();
 // Pre-initialize state synchronously before DOM is ready
 async function preInitialize() {
   try {
-    // Load saved state from storage synchronously
+    // Load saved state from storage COMPLETELY before any DOM operations
     const savedPopupState = await StorageService.loadPopupState();
     const savedSettings = await StorageService.loadSettings();
     
-    // Apply saved state
+    // Apply saved state to global state object
     if (savedPopupState) {
       Object.assign(state.popupState, savedPopupState);
       state.isViewingSaved = savedPopupState.isViewingSaved || false;
@@ -80,43 +80,29 @@ async function preInitialize() {
       Object.assign(state.settings, savedSettings);
     }
     
-    // Determine which tab should be active
-    let targetTab = 'categorize'; // Default to categorize
+    // Determine which tab should be active BEFORE any DOM operations
+    let targetTab = 'categorize'; // Default
     
-    // Only override if we have a valid saved activeTab
+    // Override with saved state if available
     if (savedPopupState && savedPopupState.activeTab) {
       targetTab = savedPopupState.activeTab;
     }
     
-    
-    // Quick check if we have any current tabs (just check chrome tabs, not database)
+    // Check if we have current tabs (fallback logic)
     const allTabs = await ChromeAPIService.queryTabs({});
     const hasTabs = allTabs && allTabs.length > 0;
-    
     
     if (!hasTabs && targetTab === 'categorize') {
       targetTab = 'saved';
     }
     
-    // Set initial DOM state before it's visible
+    // Store the determined tab globally for app initialization
+    window._targetTab = targetTab;
+    state.popupState.activeTab = targetTab;
+    
+    // Wait for DOM to be ready, then initialize with pre-loaded state
     const initializeDom = () => {
-      // Set the correct active classes immediately
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        if (btn.dataset.tab === targetTab) {
-          btn.classList.add('active');
-        }
-      });
-      
-      document.querySelectorAll('.tab-pane').forEach(pane => {
-        if (pane.id === `${targetTab}Tab`) {
-          pane.classList.add('active');
-        }
-      });
-      
-      // Store the target tab for initializeApp to use
-      window._targetTab = targetTab;
-      
-      // Now initialize the app
+      // Initialize the app with pre-loaded state
       initializeApp();
     };
     

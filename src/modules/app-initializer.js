@@ -85,8 +85,10 @@ export async function initializeApp() {
     // Initialize tab data source with database
     initializeTabDataSource(window.tabDatabase);
     
-    // Always load saved state for rules initialization (even if target tab was pre-determined)
-    await loadSavedState();
+    // Only load saved state if not already pre-loaded
+    if (!window._targetTab) {
+      await loadSavedState();
+    }
     
     // Check if default prompt needs updating
     if (!state.settings.isPromptCustomized && 
@@ -108,20 +110,33 @@ export async function initializeApp() {
     const { initializeSettings } = await import('./settings-manager.js');
     await initializeSettings();
     
-    // Initialize unified toolbar
-    const { initializeUnifiedToolbar } = await import('./unified-toolbar.js');
-    initializeUnifiedToolbar();
-    
     // Use the pre-determined target tab if available
     let targetTab = window._targetTab || state.popupState?.activeTab || 'categorize';
     
-    // The DOM should already have the correct active classes set by preInitialize
-    // Update the state to match
+    // Set the correct active classes immediately BEFORE initializing toolbar
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.dataset.tab === targetTab) {
+        btn.classList.add('active');
+      }
+    });
+    
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      pane.classList.remove('active');
+      if (pane.id === `${targetTab}Tab`) {
+        pane.classList.add('active');
+      }
+    });
+    
+    // Update state to match
     state.popupState.activeTab = targetTab;
     updateState('activeTab', targetTab);
     
-    // Update toolbar visibility without animations
-    const { updateToolbarVisibility } = await import('./unified-toolbar.js');
+    // NOW initialize unified toolbar with correct active tab
+    const { initializeUnifiedToolbar, updateToolbarVisibility } = await import('./unified-toolbar.js');
+    initializeUnifiedToolbar();
+    
+    // Update toolbar visibility for the correct tab (without animation since this is initial load)
     await updateToolbarVisibility(targetTab);
     
     // Now load content based on which tab is active
