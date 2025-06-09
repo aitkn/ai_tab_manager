@@ -291,16 +291,33 @@ async function handleTrainModel() {
   statusSpan.textContent = 'Starting training...';
   
   try {
+    console.log('DEBUG: Starting ML training process...');
+    
     // Get model trainer
     const { ModelTrainer } = await import('../ml/training/trainer.js');
     const trainer = new ModelTrainer();
     await trainer.initialize();
+    console.log('DEBUG: ModelTrainer initialized');
     
-    // Check if we have enough data
+    // Check saved tabs in main database first
+    const savedTabs = await window.tabDatabase.getAllSavedTabs();
+    const categorizedSavedTabs = savedTabs.filter(tab => tab.category && tab.category > 0);
+    console.log(`Found ${savedTabs.length} saved tabs, ${categorizedSavedTabs.length} categorized`);
+    
+    if (categorizedSavedTabs.length < 20) {
+      statusSpan.textContent = `Need more data (${categorizedSavedTabs.length}/20 categorized saved tabs)`;
+      showStatus(`Need at least 20 categorized saved tabs to train the model. You have ${categorizedSavedTabs.length}.`, 'error');
+      return;
+    }
+    
+    // Prepare training data (this will convert saved tabs if needed)
+    statusSpan.textContent = 'Converting saved tabs to training data...';
     const trainingData = await trainer.prepareTrainingData();
+    console.log(`Prepared ${trainingData.length} training examples`);
+    
     if (trainingData.length < 20) {
-      statusSpan.textContent = `Need more data (${trainingData.length}/20 examples)`;
-      showStatus('Need at least 20 categorized tabs to train the model', 'error');
+      statusSpan.textContent = `Training data preparation failed (${trainingData.length}/20 examples)`;
+      showStatus('Error preparing training data from saved tabs', 'error');
       return;
     }
     

@@ -37,8 +37,61 @@ export class ModelTrainer {
    * @returns {Promise<Array>} Prepared training data
    */
   async prepareTrainingData() {
-    const allData = await getTrainingData();
+    // First try to get existing ML training data
+    let allData = await getTrainingData();
+    console.log(`Found ${allData.length} existing ML training examples`);
+    
+    // If we have very little ML data, import from saved tabs
+    if (allData.length < 50) {
+      console.log('Converting saved tabs to training data...');
+      const convertedData = await this.convertSavedTabsToTrainingData();
+      console.log(`Converted ${convertedData.length} saved tabs to training data`);
+      
+      // Add converted data to ML database
+      for (const example of convertedData) {
+        await addTrainingData(example);
+      }
+      
+      // Reload all data
+      allData = await getTrainingData();
+      console.log(`Total training examples after conversion: ${allData.length}`);
+    }
+    
     return allData;
+  }
+  
+  /**
+   * Convert saved tabs from main database to ML training data
+   * @returns {Promise<Array>} Converted training examples
+   */
+  async convertSavedTabsToTrainingData() {
+    try {
+      // Get saved tabs from main database
+      const savedTabs = await window.tabDatabase.getAllSavedTabs();
+      console.log(`Found ${savedTabs.length} saved tabs to convert`);
+      
+      // Filter out uncategorized tabs (category 0) and convert to training format
+      const trainingData = savedTabs
+        .filter(tab => tab.category && tab.category > 0) // Only categorized tabs
+        .map(tab => ({
+          url: tab.url,
+          title: tab.title || '',
+          category: tab.category,
+          source: 'saved_tabs_import',
+          corrected: false,
+          metadata: {
+            importedFrom: 'main_database',
+            originalId: tab.id,
+            importTime: Date.now()
+          }
+        }));
+      
+      console.log(`Converted ${trainingData.length} saved tabs (filtered out uncategorized)`);
+      return trainingData;
+    } catch (error) {
+      console.error('Error converting saved tabs to training data:', error);
+      return [];
+    }
   }
   
   /**
