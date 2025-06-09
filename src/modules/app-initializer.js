@@ -133,7 +133,14 @@ export async function initializeApp() {
     // Update toolbar visibility for the correct tab
     await updateToolbarVisibility(targetTab);
     
-    console.log('🔄 FLICKER DEBUG: Toolbar visibility updated');\n    \n    // Show the toolbar now that state is loaded and controls are set correctly\n    const toolbar = $id('unifiedToolbar');\n    if (toolbar) {\n      toolbar.classList.add('state-loaded');\n      console.log('🔄 FLICKER DEBUG: Added state-loaded class to toolbar');\n    }
+    console.log('🔄 FLICKER DEBUG: Toolbar visibility updated');
+    
+    // Show the toolbar now that state is loaded and controls are set correctly
+    const toolbar = $id('unifiedToolbar');
+    if (toolbar) {
+      toolbar.classList.add('state-loaded');
+      console.log('🔄 FLICKER DEBUG: Added state-loaded class to toolbar');
+    }
     
     // Now load content based on which tab is active
     if (targetTab === 'saved') {
