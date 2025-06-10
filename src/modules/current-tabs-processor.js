@@ -4,6 +4,7 @@
  */
 
 import { TAB_CATEGORIES } from '../utils/constants.js';
+import { ChromeAPIService } from '../services/ChromeAPIService.js';
 
 export class CurrentTabsProcessor {
   constructor(database) {
@@ -49,8 +50,16 @@ export class CurrentTabsProcessor {
       
       // 4. Process each tab
       for (const tab of allTabs) {
-        // No special handling for any URLs per user request
         if (!tab.url) {
+          continue;
+        }
+        
+        // Exclude the extension's own tabs to prevent closing the extension itself
+        const extensionId = ChromeAPIService.getExtensionId();
+        const extensionPopupUrl = ChromeAPIService.getExtensionURL('popup.html');
+        
+        if (extensionId && extensionPopupUrl && tab.url === extensionPopupUrl) {
+          console.log('🚫 Excluding extension tab from tab list:', tab.url);
           continue;
         }
         

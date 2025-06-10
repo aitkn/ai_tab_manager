@@ -205,6 +205,14 @@ newElement.addEventListener('click', handler);
 - Updated default prompt (v3) and 40 default rules to align with new philosophy
 - LLM integration is now optional - users can opt-out and use only rules
 
+### Extension Self-Exclusion Safety Feature (January 2025)
+- **Problem**: When extension runs in a tab (via MCP debug or manual opening), it could accidentally close itself during "Close All" operations
+- **Solution**: Extension automatically excludes its own tabs from Current Tab list using precise URL matching
+- **Implementation**: Uses `chrome.runtime.id` and `chrome.runtime.getURL('popup.html')` for exact URL matching in `CurrentTabsProcessor.js:58-64`
+- **Precision**: Only excludes tabs with exact URL `chrome-extension://<extension-id>/popup.html` to avoid affecting other extensions
+- **Safety**: Prevents extension from closing itself while maintaining full functionality for managing all other browser tabs
+- **Testing**: Verified to work with bulk operations like "Close All" - extension tabs remain protected
+
 ## Critical Requirements (DO NOT FORGET)
 
 1. **ALL TABS FROM ALL WINDOWS**: The extension MUST display tabs from ALL browser windows, not just the current window. This is achieved by using `chrome.tabs.query({})` without any window filtering. This requirement has been missed multiple times - always verify this is working correctly.
@@ -212,3 +220,141 @@ newElement.addEventListener('click', handler);
 2. **Real-time Updates**: The extension must update the display in real-time when tabs are opened/closed/updated, including duplicate count changes in tab titles.
 
 3. **Morphdom for DOM Updates**: Use morphdom for all DOM updates to prevent flickering and ensure smooth transitions. Do not use manual DOM manipulation with opacity transitions.
+
+## MCP Chrome Extension Debug Server
+
+**ALWAYS USE THESE TOOLS FOR DEBUGGING AND TESTING**
+
+The chrome-extension-debug MCP server provides powerful capabilities for debugging, testing, and controlling the Chrome extension. These tools should be the PRIMARY method for testing and debugging extension functionality.
+
+### Extension Connection and Status
+
+```javascript
+// Connect to extension (required first step)
+mcp__chrome-extension-debug__connect_extension
+// Parameters: extensionId = "fnklipkenfpdakdficiofcdejbiajgeh"
+
+// List all available extensions
+mcp__chrome-extension-debug__list_extensions
+
+// Get console logs for debugging
+mcp__chrome-extension-debug__get_console_logs
+// Parameters: extensionId, context = "background" | "popup"
+```
+
+### Background Script Control
+
+**Execute any JavaScript code in the extension's background script:**
+
+```javascript
+mcp__chrome-extension-debug__execute_in_background
+// Parameters: extensionId, code = "JavaScript code to execute"
+
+// Examples:
+// - Tab operations: chrome.tabs.query({}, callback)
+// - Create/close tabs: chrome.tabs.create() / chrome.tabs.remove()
+// - Storage access: chrome.storage.local.get/set()
+// - Extension functions: any background script function
+```
+
+### Chrome API Access Through Extension
+
+**Full Chrome APIs available through the extension context:**
+
+- **Tabs API**: Query, create, close, move, update, duplicate tabs
+- **Windows API**: Manage browser windows
+- **Storage API**: Read/write extension data (local, sync, session)
+- **Management API**: Get extension information
+- **Runtime API**: Send messages, handle events
+
+### Extension UI Interaction
+
+**CRITICAL: Open extension in a tab for full UI access:**
+
+```javascript
+// Open extension popup as a tab (enables UI interaction)
+mcp__chrome-extension-debug__execute_in_background
+// Code: chrome.tabs.create({url: 'chrome-extension://fnklipkenfpdakdficiofcdejbiajgeh/popup.html', active: true})
+
+// Once opened in tab, full UI interaction is available:
+mcp__chrome-extension-debug__execute_in_popup
+mcp__chrome-extension-debug__query_selector  
+mcp__chrome-extension-debug__click_element
+```
+
+### Storage and Configuration Access
+
+```javascript
+mcp__chrome-extension-debug__get_storage
+// Parameters: extensionId, area = "local" | "sync" | "session"
+
+// Access all extension settings, rules, API keys, ML data, etc.
+```
+
+### Testing Workflows
+
+**Always use these MCP tools for:**
+
+1. **Feature Testing**:
+   - Create test tabs with specific URLs to test categorization rules
+   - Trigger categorization and verify results
+   - Test save/close operations
+   - Verify ML training and performance
+
+2. **Debugging Issues**:
+   - Check console logs for errors
+   - Inspect extension storage state
+   - Verify tab operations work correctly
+   - Test API integrations
+
+3. **UI Testing**:
+   - Open extension in tab
+   - Click buttons and fill forms programmatically
+   - Test navigation between tabs (Current/Saved/Settings)
+   - Verify state persistence
+
+4. **Advanced Testing**:
+   - Modify extension settings programmatically
+   - Simulate user workflows end-to-end
+   - Test with multiple browser windows
+   - Verify real-time updates
+
+### Extension Information
+
+- **Extension ID**: `fnklipkenfpdakdficiofcdejbiajgeh`
+- **Popup URL**: `chrome-extension://fnklipkenfpdakdficiofcdejbiajgeh/popup.html`
+- **Background Script**: Service worker with tab monitoring and API integration
+- **Storage Areas**: local (main data), sync (not used), session (not used)
+
+### Best Practices
+
+1. **Always connect to extension first** before running other commands
+2. **Open extension in tab** for UI interaction capabilities  
+3. **Check console logs** after operations to verify success
+4. **Use MCP tools instead of manual testing** for consistent results
+5. **Test with real extension state** rather than mock data
+6. **Verify ALL windows functionality** by creating tabs in different windows
+
+### Common MCP Testing Patterns
+
+```javascript
+// Pattern 1: Test categorization with specific URLs
+const testUrls = ['https://youtube.com/watch?v=test', 'https://google.com', 'https://github.com/user/repo'];
+testUrls.forEach(url => chrome.tabs.create({url, active: false}));
+
+// Pattern 2: Verify extension settings
+chrome.storage.local.get(['settings'], (result) => {
+  console.log('Current settings:', result.settings);
+});
+
+// Pattern 3: Test tab operations
+chrome.tabs.query({}, (tabs) => {
+  console.log(`Found ${tabs.length} tabs across all windows`);
+  tabs.forEach((tab, i) => console.log(`${i+1}. ${tab.title} - ${tab.url}`));
+});
+
+// Pattern 4: Trigger extension features
+// (Open extension in tab first, then use popup interaction commands)
+```
+
+**Remember**: These MCP tools provide the most reliable way to test and debug the extension. Use them proactively for all testing scenarios instead of manual browser interaction.

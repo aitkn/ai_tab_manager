@@ -247,6 +247,23 @@ export class ChromeAPIService {
   }
   
   /**
+   * Get the current extension ID
+   * @returns {string|null} Extension ID or null if not in extension context
+   */
+  static getExtensionId() {
+    return chrome.runtime && chrome.runtime.id ? chrome.runtime.id : null;
+  }
+  
+  /**
+   * Get full extension URL for a resource
+   * @param {string} path - Resource path (e.g., 'popup.html')
+   * @returns {string|null} Full extension URL or null if not in extension context
+   */
+  static getExtensionURL(path = '') {
+    return chrome.runtime && chrome.runtime.getURL ? chrome.runtime.getURL(path) : null;
+  }
+  
+  /**
    * Get last error message
    * @returns {string|null} Error message or null
    */
