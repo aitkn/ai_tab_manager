@@ -16,6 +16,16 @@ import { initializeTabDataSource, getCurrentTabs, setupTabEventListeners } from 
 import StorageService from '../services/StorageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
 import { getBackgroundMLService } from '../services/BackgroundMLService.js';
+import { initializeAllTabContent, markContentDirty } from './content-manager.js';
+
+// Import flicker-free UI for data change notifications
+let flickerFreeUI = null;
+async function getFlickerFreeUI() {
+  if (!flickerFreeUI) {
+    flickerFreeUI = (await import('../core/flicker-free-ui.js')).default;
+  }
+  return flickerFreeUI;
+}
 
 /**
  * Initialize category names from constants
@@ -43,6 +53,7 @@ function initializeCategoryNames() {
  * Wait for database to be loaded
  */
 async function waitForDatabase() {
+  console.log('🔄 APP INIT: Waiting for database to load...');
   const maxAttempts = 50; // 5 seconds max
   let attempts = 0;
   
@@ -50,12 +61,16 @@ async function waitForDatabase() {
     await new Promise(resolve => setTimeout(resolve, 100));
     attempts++;
     if (attempts % 10 === 0) {
+      console.log(`🔄 APP INIT: Still waiting for database... (${attempts * 100}ms)`);
     }
   }
   
   if (!window.tabDatabase) {
+    console.error('❌ APP INIT: Database failed to load after 5 seconds');
     throw new Error('Database failed to load after 5 seconds');
   }
+  
+  console.log('✅ APP INIT: Database loaded successfully');
   
 }
 
@@ -63,37 +78,50 @@ async function waitForDatabase() {
  * Main initialization function
  */
 export async function initializeApp() {
-  console.log('🔄 FLICKER DEBUG: initializeApp started');
+  console.log('🔄 APP INIT: initializeApp started');
   
   try {
     // Wait for database to be available
     if (!window.tabDatabase) {
+      console.log('🔄 APP INIT: Database not available, waiting...');
       await waitForDatabase();
+    } else {
+      console.log('🔄 APP INIT: Database already available');
     }
     
     // Check for unauthorized copies
+    console.log('🔄 APP INIT: Checking extension integrity...');
     checkExtensionIntegrity();
     
     // Initialize theme
+    console.log('🔄 APP INIT: Initializing theme...');
     initializeTheme();
     
     // Initialize category names from constants
+    console.log('🔄 APP INIT: Initializing category names...');
     initializeCategoryNames();
     
     // Initialize database
+    console.log('🔄 APP INIT: Initializing database...');
     await window.tabDatabase.init();
     
     // Initialize tab data source with database
+    console.log('🔄 APP INIT: Initializing tab data source...');
     initializeTabDataSource(window.tabDatabase);
     
     // Only load saved state if not already pre-loaded
     if (!window._targetTab) {
+      console.log('🔄 APP INIT: Loading saved state...');
       await loadSavedState();
+    } else {
+      console.log('🔄 APP INIT: Using pre-loaded state');
     }
     
     // Check if default prompt needs updating
+    console.log('🔄 APP INIT: Checking prompt version...');
     if (!state.settings.isPromptCustomized && 
         state.settings.promptVersion < CONFIG.PROMPT_VERSION) {
+      console.log('🔄 APP INIT: Updating default prompt...');
       state.settings.customPrompt = CONFIG.DEFAULT_PROMPT;
       state.settings.promptVersion = CONFIG.PROMPT_VERSION;
       await StorageService.saveSettings(state.settings);
@@ -102,87 +130,69 @@ export async function initializeApp() {
     // Don't show API key prompt on startup - only when user tries to categorize
     
     // Set up event listeners early
+    console.log('🔄 APP INIT: Setting up event listeners...');
     setupEventListeners();
     
     // Initialize tab navigation
+    console.log('🔄 APP INIT: Initializing tab navigation...');
     initializeTabNavigation();
     
     // Initialize settings UI
+    console.log('🔄 APP INIT: Initializing settings UI...');
     const { initializeSettings } = await import('./settings-manager.js');
     await initializeSettings();
     
     // Use the pre-determined target tab (DOM classes already set by preInitialize)
     let targetTab = window._targetTab || state.popupState?.activeTab || 'categorize';
     
-    console.log('🔄 FLICKER DEBUG: App initializer target tab:', targetTab);
-    console.log('🔄 FLICKER DEBUG: window._targetTab:', window._targetTab);
-    console.log('🔄 FLICKER DEBUG: state.popupState.activeTab:', state.popupState?.activeTab);
+    console.log('🔄 APP INIT: App initializer target tab:', targetTab);
+    console.log('🔄 APP INIT: window._targetTab:', window._targetTab);
+    console.log('🔄 APP INIT: state.popupState.activeTab:', state.popupState?.activeTab);
     
     // Update state to match (DOM classes already set)
     state.popupState.activeTab = targetTab;
     updateState('activeTab', targetTab);
     
-    console.log('🔄 FLICKER DEBUG: About to initialize unified toolbar');
+    console.log('🔄 APP INIT: About to initialize unified toolbar');
     
     // Initialize unified toolbar with correct active tab
     const { initializeUnifiedToolbar, updateToolbarVisibility } = await import('./unified-toolbar.js');
     initializeUnifiedToolbar();
     
-    console.log('🔄 FLICKER DEBUG: About to update toolbar visibility for:', targetTab);
+    console.log('🔄 APP INIT: About to update toolbar visibility for:', targetTab);
     
     // Update toolbar visibility for the correct tab
     await updateToolbarVisibility(targetTab);
     
-    console.log('🔄 FLICKER DEBUG: Toolbar visibility updated');
+    console.log('🔄 APP INIT: Toolbar visibility updated');
     
     // Show the toolbar now that state is loaded and controls are set correctly
+    console.log('🔄 APP INIT: Setting up toolbar state...');
     const toolbar = $id('unifiedToolbar');
     if (toolbar) {
       toolbar.classList.add('state-loaded');
-      console.log('🔄 FLICKER DEBUG: Added state-loaded class to toolbar');
+      console.log('🔄 APP INIT: Added state-loaded class to toolbar');
     }
     
-    // Now load content based on which tab is active
-    if (targetTab === 'saved') {
-      // Load saved tabs content
-      const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
-      const includeCanClose = state.popupState.showAllCategories || false;
-      await showSavedTabsContent(savedGroupingSelect?.value || 'category', includeCanClose);
-      
-      // Restore scroll position for saved tab
-      if (state.popupState?.scrollPositions?.saved) {
-        const savedContent = $id(DOM_IDS.SAVED_CONTENT);
-        if (savedContent) {
-          savedContent.scrollTop = state.popupState.scrollPositions.saved;
-        }
-      }
-    } else if (targetTab === 'categorize') {
-      console.log('DEBUG: Loading categorize tab content...');
-      
-      // Load categorized tabs from background FIRST
-      await loadCategorizedTabsFromBackground();
-      console.log('DEBUG: Categorized tabs loaded from background');
-      
-      // Then restore UI state (search, grouping, etc)
+    // Initialize all tab content at startup (this loads everything once)
+    console.log('🔄 APP INIT: Initializing all tab content...');
+    await initializeAllTabContent();
+    console.log('🔄 APP INIT: All tab content initialized');
+    
+    // Restore UI state (search, grouping, etc) for current tab
+    if (targetTab === 'categorize') {
+      console.log('🔄 APP INIT: Restoring UI state for categorize tab...');
       await restoreUIState();
       
-      // Always display tabs even if empty to show proper UI state
-      const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
-      if (tabsContainer) {
-        show(tabsContainer);
-      }
-      
-      // Force display update to ensure content is shown
-      await displayTabs();
-      
       // Restore scroll position for categorize tab
-      if (state.popupState?.scrollPositions?.categorize) {
-        if (tabsContainer) {
-          tabsContainer.scrollTop = state.popupState.scrollPositions.categorize;
-        }
+      const tabsContainer = $id(DOM_IDS.TABS_CONTAINER);
+      if (state.popupState?.scrollPositions?.categorize && tabsContainer) {
+        console.log('🔄 APP INIT: Restoring scroll position for categorize tab');
+        tabsContainer.scrollTop = state.popupState.scrollPositions.categorize;
       }
       
-      // Always show the unified toolbar on categorize tab, even if no tabs
+      // Always show the unified toolbar on categorize tab
+      console.log('🔄 APP INIT: Showing toolbar for categorize tab...');
       const { showToolbar } = await import('./unified-toolbar.js');
       showToolbar();
     }
@@ -481,8 +491,11 @@ async function processTabChange(changeType, tab) {
   }
   
   
-  // For all tab changes, refresh the data from browser
+  // For all tab changes, mark content as dirty and update current tabs
   try {
+    // Mark current tab content as needing update
+    markContentDirty('current');
+    
     const { categorizedTabs, urlToDuplicateIds } = await getCurrentTabs();
     
     // Update state
@@ -505,28 +518,47 @@ async function processTabChange(changeType, tab) {
     
     if (totalTabs === 0 && state.popupState.activeTab === 'categorize') {
       console.log('All tabs closed, switching to saved tab');
-      // Switch to saved tab
-      switchToTab('saved');
       
-      // Load saved tabs content
-      const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
-      const includeCanClose = state.popupState.showAllCategories || false;
-      await showSavedTabsContent(savedGroupingSelect?.value || 'category', includeCanClose);
+      // Use flicker-free UI for tab switching if available
+      const ffUI = await getFlickerFreeUI();
+      if (ffUI && ffUI.initialized) {
+        await ffUI.switchTab('saved');
+      } else {
+        // Fallback to legacy switching
+        switchToTab('saved');
+      }
+      
+      // Update saved tab content (happens instantly if cached)
+      const { updateSavedTabContent } = await import('./content-manager.js');
+      await updateSavedTabContent();
       
       return; // Exit early since we switched tabs
     }
     
-    // Update display
-    await displayTabs();
+    // Notify flicker-free UI of data changes
+    const ffUI = await getFlickerFreeUI();
+    if (ffUI && ffUI.initialized) {
+      // Determine change type based on the original changeType
+      let dataChangeType = 'tabs_opened';
+      if (changeType === 'removed') {
+        dataChangeType = 'tabs_closed';
+      } else if (changeType === 'updated') {
+        dataChangeType = 'tabs_opened'; // Title/URL changes
+      }
+      
+      await ffUI.handleDataChange(dataChangeType);
+    } else {
+      // Fallback to legacy content management
+      const { updateCurrentTabContent, syncHiddenTabContent } = await import('./content-manager.js');
+      await updateCurrentTabContent();
+      
+      // Update any hidden tabs in the background
+      await syncHiddenTabContent();
+    }
+    
     await updateCategorizeBadge();
     
-    // Update categorize button state
-    const hasUncategorized = categorizedTabs[0] && categorizedTabs[0].length > 0;
-    const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
-    if (categorizeBtn) {
-      categorizeBtn.disabled = !hasUncategorized;
-      categorizeBtn.title = hasUncategorized ? 'Categorize tabs using AI' : 'No uncategorized tabs';
-    }
+    // Note: Categorize button state is automatically updated by displayTabs/updateCurrentTabContent
     
     // Show appropriate status message
     if (changeType === 'removed') {

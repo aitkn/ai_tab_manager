@@ -139,6 +139,40 @@ src/
 6. **Duplicate count not updating**: Fixed by checking title changes in `tab-display.js` real-time updates
 7. **UI flickering during updates**: Solved by using morphdom instead of manual DOM manipulation
 
+### Critical Event Listener Issues (Debugging Pattern)
+
+**Symptoms**: Event handlers not working or behaving inconsistently
+- Click events fire but attributes don't change properly
+- Attributes toggle twice rapidly (e.g., `true → false → true` on single click)
+- Visual state doesn't match data state despite correct attribute changes
+
+**Root Cause**: Multiple Event Listeners
+When initialization functions (like `initializeRulesUI()`) are called multiple times without cleanup, each call adds NEW event listeners to the same elements. A single click then triggers ALL listeners in sequence, causing unexpected behavior.
+
+**Debugging Process**:
+1. **Check for proper state transitions**: Log before/after states to verify single vs multiple toggles
+2. **Add call stack traces**: Use `console.trace()` in initialization functions to track multiple calls
+3. **Verify computed styles match expected**: Use `window.getComputedStyle()` to confirm CSS is updating
+
+**Solution Pattern**:
+```javascript
+// WRONG: Adds new listeners on each call
+element.addEventListener('click', handler);
+
+// CORRECT: Remove old listeners before adding new ones
+const newElement = element.cloneNode(true);
+element.parentNode.replaceChild(newElement, element);
+newElement.addEventListener('click', handler);
+```
+
+**Prevention**:
+- Always check if initialization functions might be called multiple times
+- Use event delegation on parent containers when possible
+- Clone and replace elements to ensure clean event listeners
+- Add debugging logs to track initialization calls
+
+**Related Files**: `src/modules/settings-manager.js` (Rules UI), any module with `initialize*()` functions
+
 ## Development Practices
 
 - Commit and push after every code update

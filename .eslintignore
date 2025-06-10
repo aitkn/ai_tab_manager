@@ -1,0 +1,19 @@
+# Ignore minified files
+*.min.js
+morphdom.min.js
+tensorflow.min.js
+tf-*.min.js
+
+# Ignore third-party libraries
+node_modules/
+
+# Ignore test files that may have different patterns
+test*.js
+debug*.js
+generate*.js
+
+# Ignore build files
+build/
+
+# Ignore data files
+*.tab

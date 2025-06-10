@@ -664,11 +664,11 @@ body[data-theme="dark"] .status,
   flex: 1;
   overflow-y: auto;
   display: none;
+  flex-direction: column;
 }
 
 .tab-pane.active {
   display: flex;
-  flex-direction: column;
 }
 
 /* Controls section */
@@ -1227,6 +1227,16 @@ button svg {
   height: 20px;
   flex-shrink: 0;
   border-radius: var(--md-sys-shape-corner-extra-small);
+  transition: opacity 200ms ease;
+}
+
+.favicon.favicon-failed {
+  opacity: 0.5;
+  filter: grayscale(50%);
+}
+
+.favicon.favicon-loaded {
+  opacity: 1;
 }
 
 /* Tab info */
@@ -1971,25 +1981,50 @@ button svg {
 .rules-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
 
 /* Rule category sections */
 .rule-category-section {
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 12px;
-  padding: 16px;
+  padding: 8px 16px 4px 16px;
   background-color: var(--md-sys-color-surface-container-lowest);
 }
 
 .rule-category-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 12px 0;
+  justify-content: space-between;
+  margin: 0 0 8px 0;
+  padding: 8px 0;
   font-size: 16px;
   font-weight: 600;
   position: relative;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rule-category-header:hover {
+  opacity: 0.8;
+}
+
+.rule-category-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapse-arrow {
+  font-size: 12px;
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  width: 16px;
+  text-align: center;
+}
+
+.rule-category-header[data-collapsed="false"] .collapse-arrow {
+  transform: rotate(90deg);
 }
 
 /* Category-specific colors */
@@ -2025,25 +2060,31 @@ button svg {
 
 /* Add rule button */
 .add-rule-btn {
-  margin-left: auto;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background-color: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  cursor: pointer;
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  background-color: var(--md-sys-color-primary-container) !important;
+  color: var(--md-sys-color-on-primary-container) !important;
+  cursor: pointer !important;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 
 .add-rule-btn:hover {
-  background-color: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
-  transform: scale(1.1);
+  background-color: var(--md-sys-color-primary) !important;
+  color: var(--md-sys-color-on-primary) !important;
+  transform: scale(1.1) !important;
 }
 
 .add-rule-btn svg {
@@ -2058,6 +2099,22 @@ button svg {
   border-radius: 8px;
   background-color: var(--md-sys-color-surface);
   margin-top: 8px;
+  transition: all 200ms ease-in-out;
+}
+
+/* Collapsed state - higher specificity to override inline styles */
+.rule-category-header[data-collapsed="true"] + .rules-table-wrapper {
+  display: none !important;
+}
+
+/* Expanded state - higher specificity to override inline styles */
+.rule-category-header[data-collapsed="false"] + .rules-table-wrapper {
+  display: block !important;
+}
+
+/* Default collapsed state for rules table wrappers */
+.rules-table-wrapper {
+  display: none;
 }
 
 /* Rules table */

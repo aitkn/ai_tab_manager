@@ -156,7 +156,7 @@ class TabDatabase {
         }
       };
 
-      request.onerror = () => reject(request.error);
+      urlRequest.onerror = () => reject(urlRequest.error);
     });
   }
 

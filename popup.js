@@ -30,6 +30,9 @@ import { exportToCSV, handleCSVImport } from './src/modules/import-export.js';
 import { onProviderChange, onModelChange, saveApiKey, resetPrompt } from './src/modules/settings-manager.js';
 import { initializeApp, setupAutoSave } from './src/modules/app-initializer.js';
 
+// Import flicker-free UI system
+import flickerFreeUI from './src/core/flicker-free-ui.js';
+
 // Database is loaded as a global in popup.html
 
 // Debug utilities
@@ -64,26 +67,28 @@ setupAutoSave();
 
 // Load state and initialize DOM atomically - no async operations
 function initializeWithState() {
-  console.log('🔄 FLICKER DEBUG: initializeWithState called');
+  console.log('🔄 POPUP INIT: initializeWithState called');
   
   // Load both popup state and settings in a single call
   chrome.storage.local.get(['popupState', 'settings'], (result) => {
-    console.log('🔄 FLICKER DEBUG: Storage callback fired', result);
+    console.log('🔄 POPUP INIT: Storage callback fired', result);
     
     // Apply loaded state immediately
     const savedPopupState = result.popupState || null;
     const savedSettings = result.settings || null;
     
-    console.log('🔄 FLICKER DEBUG: Saved popup state:', savedPopupState);
+    console.log('🔄 POPUP INIT: Saved popup state:', savedPopupState);
     
     if (savedPopupState) {
       Object.assign(state.popupState, savedPopupState);
       state.isViewingSaved = savedPopupState.isViewingSaved || false;
       state.searchQuery = savedPopupState.searchQuery || '';
+      console.log('🔄 POPUP INIT: Applied saved popup state');
     }
     
     if (savedSettings) {
       Object.assign(state.settings, savedSettings);
+      console.log('🔄 POPUP INIT: Applied saved settings');
     }
     
     // Determine target tab
@@ -92,18 +97,18 @@ function initializeWithState() {
       targetTab = savedPopupState.activeTab;
     }
     
-    console.log('🔄 FLICKER DEBUG: Target tab determined:', targetTab);
+    console.log('🔄 POPUP INIT: Target tab determined:', targetTab);
     
     // Store globally and update state
     window._targetTab = targetTab;
     state.popupState.activeTab = targetTab;
     
-    console.log('🔄 FLICKER DEBUG: Setting DOM classes for tab:', targetTab);
+    console.log('🔄 POPUP INIT: Setting DOM classes for tab:', targetTab);
     
     // Check initial DOM state
-    console.log('🔄 FLICKER DEBUG: Initial active tab buttons:', 
+    console.log('🔄 POPUP INIT: Initial active tab buttons:', 
       Array.from(document.querySelectorAll('.tab-btn.active')).map(btn => btn.dataset.tab));
-    console.log('🔄 FLICKER DEBUG: Initial active tab panes:', 
+    console.log('🔄 POPUP INIT: Initial active tab panes:', 
       Array.from(document.querySelectorAll('.tab-pane.active')).map(pane => pane.id));
     
     // Set correct DOM state immediately BEFORE any initialization
@@ -111,7 +116,7 @@ function initializeWithState() {
       btn.classList.remove('active');
       if (btn.dataset.tab === targetTab) {
         btn.classList.add('active');
-        console.log('🔄 FLICKER DEBUG: Set active class on tab btn:', btn.dataset.tab);
+        console.log('🔄 POPUP INIT: Set active class on tab btn:', btn.dataset.tab);
       }
     });
     
@@ -119,20 +124,27 @@ function initializeWithState() {
       pane.classList.remove('active');
       if (pane.id === `${targetTab}Tab`) {
         pane.classList.add('active');
-        console.log('🔄 FLICKER DEBUG: Set active class on tab pane:', pane.id);
+        console.log('🔄 POPUP INIT: Set active class on tab pane:', pane.id);
       }
     });
     
     // Check final DOM state
-    console.log('🔄 FLICKER DEBUG: Final active tab buttons:', 
+    console.log('🔄 POPUP INIT: Final active tab buttons:', 
       Array.from(document.querySelectorAll('.tab-btn.active')).map(btn => btn.dataset.tab));
-    console.log('🔄 FLICKER DEBUG: Final active tab panes:', 
+    console.log('🔄 POPUP INIT: Final active tab panes:', 
       Array.from(document.querySelectorAll('.tab-pane.active')).map(pane => pane.id));
     
-    console.log('🔄 FLICKER DEBUG: About to call initializeApp');
+    console.log('🔄 POPUP INIT: About to call app initialization');
     
-    // NOW initialize the app with DOM already in correct state
-    initializeApp();
+    // Initialize the app
+    console.log('🔄 POPUP INIT: Starting app initialization');
+    
+    // Initialize only the legacy system
+    initializeApp().then(() => {
+      console.log('✅ POPUP INIT: App initialization completed successfully');
+    }).catch(error => {
+      console.error('❌ POPUP INIT: App initialization failed:', error);
+    });
   });
 }
 

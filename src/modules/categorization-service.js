@@ -3,7 +3,7 @@
  * Categorization Service - handles tab categorization using LLMs
  */
 
-import { TAB_CATEGORIES, STATUS_MESSAGES, CATEGORY_NAMES, RULE_TYPES, RULE_FIELDS } from '../utils/constants.js';
+import { TAB_CATEGORIES, STATUS_MESSAGES, CATEGORY_NAMES, RULE_TYPES, RULE_FIELDS, DOM_IDS } from '../utils/constants.js';
 import { extractDomain, fallbackCategorization } from '../utils/helpers.js';
 import MessageService from '../services/MessageService.js';
 import ChromeAPIService from '../services/ChromeAPIService.js';
@@ -11,6 +11,8 @@ import { getUnifiedDatabase } from '../services/UnifiedDatabaseService.js';
 import { state, updateState, clearCategorizedTabs, savePopupState } from './state-manager.js';
 import { showStatus, clearStatus, updateCategorizeBadge, hideApiKeyPrompt } from './ui-manager.js';
 import { getCurrentTabs } from './tab-data-source.js';
+import { markContentDirty, syncHiddenTabContent } from './content-manager.js';
+import { $id } from '../utils/dom-helpers.js';
 // Database is available as window.window.tabDatabase
 
 /**
@@ -18,6 +20,9 @@ import { getCurrentTabs } from './tab-data-source.js';
  */
 export async function handleCategorize() {
   console.log('Categorize clicked');
+  
+  // Disable categorize buttons immediately to prevent double-clicking
+  disableCategorizeButtons();
   
   // Check if this is first-time use
   console.log('DEBUG: handleCategorize - Checking hasConfiguredSettings:', state.settings.hasConfiguredSettings);
@@ -29,6 +34,7 @@ export async function handleCategorize() {
       const { switchToTab } = await import('./ui-manager.js');
       switchToTab('settings');
       showStatus('Please configure your categorization settings', 'info', 5000);
+      enableCategorizeButtons(); // Re-enable buttons on early exit
       return;
     } else {
       console.log('DEBUG: User chose not to redirect to settings');
@@ -50,6 +56,7 @@ export async function handleCategorize() {
   
   if (!apiKey || !provider || !model) {
     showStatus(STATUS_MESSAGES.ERROR_NO_API_KEY, 'error', 5000);
+    enableCategorizeButtons(); // Re-enable buttons on API key error
     return;
   }
   
@@ -222,9 +229,18 @@ async function categorizeWithML(tabs, mlCategorizer) {
     });
     
     // Update state with categorized tabs for immediate UI update
+    // Ensure uncategorized is cleared after categorization
+    mergedResult[TAB_CATEGORIES.UNCATEGORIZED] = [];
     updateState('categorizedTabs', mergedResult);
     updateState('urlToDuplicateIds', urlToDuplicateIds);
     updateState('mlMetadata', mlResults.metadata);
+    
+    console.log('🔍 CATEGORIZATION: Final ML categorized state after merge:', {
+      uncategorized: mergedResult[TAB_CATEGORIES.UNCATEGORIZED]?.length || 0,
+      canClose: mergedResult[TAB_CATEGORIES.CAN_CLOSE]?.length || 0,
+      saveLater: mergedResult[TAB_CATEGORIES.SAVE_LATER]?.length || 0,
+      important: mergedResult[TAB_CATEGORIES.IMPORTANT]?.length || 0
+    });
     
     // Collect predictions for accuracy assessment
     const predictions = await collectPredictions(tabs, mergedResult, mlResults);
@@ -254,8 +270,23 @@ async function categorizeWithML(tabs, mlCategorizer) {
     await savePopupState();
     
     // Trigger display update
-    const { displayTabs } = await import('./tab-display.js');
-    displayTabs();
+    // Use flicker-free UI if available, otherwise fallback to legacy
+    try {
+      const flickerFreeUI = (await import('../core/flicker-free-ui.js')).default;
+      if (flickerFreeUI && flickerFreeUI.initialized) {
+        console.log('🔄 Categorization: Using flicker-free UI for updates');
+        await flickerFreeUI.handleDataChange('tabs_categorized');
+      } else {
+        throw new Error('Flicker-free UI not available');
+      }
+    } catch (error) {
+      console.log('🔄 Categorization: Falling back to legacy content management', error.message);
+      // Fallback to legacy content management
+      markContentDirty('all');
+      const { updateCurrentTabContent } = await import('./content-manager.js');
+      await updateCurrentTabContent(true); // Force update after categorization
+      await syncHiddenTabContent();
+    }
     
     // Show the tabs container and toolbar
     const { show } = await import('../utils/dom-helpers.js');
@@ -270,11 +301,16 @@ async function categorizeWithML(tabs, mlCategorizer) {
     // Process user acceptance for ML learning
     await mlCategorizer.processAcceptance(tabs, mlResults);
     
+    // Re-enable categorize buttons after successful ML categorization
+    enableCategorizeButtons();
+    
     return mergedResult;
     
   } catch (error) {
     console.error('Error in ML categorization:', error);
     showStatus(`${STATUS_MESSAGES.ERROR_CATEGORIZATION} ${error.message}`, 'error');
+    // Re-enable categorize buttons after ML error
+    enableCategorizeButtons();
     return null;
   }
 }
@@ -296,6 +332,7 @@ export async function categorizeTabs() {
     // If no uncategorized tabs, nothing to categorize
     if (uncategorizedTabs.length === 0) {
       showStatus('No uncategorized tabs to process', 'info', 3000);
+      enableCategorizeButtons(); // Re-enable buttons when no tabs to categorize
       return;
     }
     
@@ -480,8 +517,17 @@ export async function categorizeTabs() {
     });
     
     // Update state with categorized tabs for immediate UI update
+    // Ensure uncategorized is cleared after categorization
+    mergedResult[TAB_CATEGORIES.UNCATEGORIZED] = [];
     updateState('categorizedTabs', mergedResult);
     updateState('urlToDuplicateIds', urlToDuplicateIds);
+    
+    console.log('🔍 CATEGORIZATION: Final traditional categorized state after merge:', {
+      uncategorized: mergedResult[TAB_CATEGORIES.UNCATEGORIZED]?.length || 0,
+      canClose: mergedResult[TAB_CATEGORIES.CAN_CLOSE]?.length || 0,
+      saveLater: mergedResult[TAB_CATEGORIES.SAVE_LATER]?.length || 0,
+      important: mergedResult[TAB_CATEGORIES.IMPORTANT]?.length || 0
+    });
     
     // Save categorized tabs to database with ML sync
     const unifiedDB = await getUnifiedDatabase();
@@ -498,9 +544,12 @@ export async function categorizeTabs() {
     // Save state
     await savePopupState();
     
-    // Trigger display update
-    const { displayTabs } = await import('./tab-display.js');
-    displayTabs();
+    // Trigger display update AFTER categorization is complete
+    // Mark content as dirty and update current tab
+    markContentDirty('all');
+    const { updateCurrentTabContent } = await import('./content-manager.js');
+    await updateCurrentTabContent(true); // Force refresh after categorization
+    await syncHiddenTabContent();
     
     // Show the tabs container and toolbar
     const { show } = await import('../utils/dom-helpers.js');
@@ -512,11 +561,16 @@ export async function categorizeTabs() {
     const { showToolbar } = await import('./unified-toolbar.js');
     showToolbar();
     
+    // Re-enable categorize buttons after successful categorization
+    enableCategorizeButtons();
+    
     return result;
     
   } catch (error) {
     console.error('Error in categorizeTabs:', error);
     showStatus(`${STATUS_MESSAGES.ERROR_CATEGORIZATION} ${error.message}`, 'error');
+    // Re-enable categorize buttons after error
+    enableCategorizeButtons();
     return null;
   }
 }
@@ -588,8 +642,11 @@ export async function moveTabToCategory(tab, fromCategory, toCategory) {
     updateCategorizeBadge();
     
     // Trigger UI update
-    const { displayTabs } = await import('./tab-display.js');
-    await displayTabs();
+    // Mark content as dirty and update current tab
+    markContentDirty('all');
+    const { updateCurrentTabContent } = await import('./content-manager.js');
+    await updateCurrentTabContent();
+    await syncHiddenTabContent();
     
     showStatus(`Moved to ${CATEGORY_NAMES[toCategory]}`, 'success');
     
@@ -731,6 +788,46 @@ async function collectPredictions(tabs, categorizedTabs, mlResults) {
   }
   
   return predictions;
+}
+
+/**
+ * Disable categorize buttons to prevent double-clicking
+ */
+function disableCategorizeButtons() {
+  const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
+  const categorizeBtn2 = $id(DOM_IDS.CATEGORIZE_BTN2);
+  
+  if (categorizeBtn) {
+    categorizeBtn.disabled = true;
+    categorizeBtn.classList.add('disabled');
+    console.log('🔒 CATEGORIZE: Legacy button disabled');
+  }
+  
+  if (categorizeBtn2) {
+    categorizeBtn2.disabled = true;
+    categorizeBtn2.classList.add('disabled');
+    console.log('🔒 CATEGORIZE: Unified toolbar button disabled');
+  }
+}
+
+/**
+ * Enable categorize buttons after categorization completes
+ */
+function enableCategorizeButtons() {
+  const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
+  const categorizeBtn2 = $id(DOM_IDS.CATEGORIZE_BTN2);
+  
+  if (categorizeBtn) {
+    categorizeBtn.disabled = false;
+    categorizeBtn.classList.remove('disabled');
+    console.log('🔓 CATEGORIZE: Legacy button enabled');
+  }
+  
+  if (categorizeBtn2) {
+    categorizeBtn2.disabled = false;
+    categorizeBtn2.classList.remove('disabled');
+    console.log('🔓 CATEGORIZE: Unified toolbar button enabled');
+  }
 }
 
 // Export default object

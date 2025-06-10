@@ -177,6 +177,7 @@ export const LIMITS = {
 // External URLs
 export const URLS = {
   FAVICON_API: 'https://www.google.com/s2/favicons?domain={domain}&sz=16',
+  DEFAULT_FAVICON: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiByeD0iMiIgZmlsbD0iIzllOWU5ZSIvPgo8L3N2Zz4K',
   GITHUB_REPO: 'https://github.com/aitkn/ai_tab_manager'
 };
 

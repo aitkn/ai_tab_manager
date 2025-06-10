@@ -79,8 +79,10 @@ export async function switchToTab(tabName) {
   
   // Save current scroll position before switching
   const savedContent = document.getElementById('savedContent');
-  if (savedContent && state.activeTab === 'saved') {
-    state.popupState.scrollPositions.saved = savedContent.scrollTop;
+  if (savedContent && state.popupState.activeTab === 'saved') {
+    const scrollPos = savedContent.scrollTop;
+    console.log(`💾 UI: Saving scroll position for saved tab: ${scrollPos}px`);
+    state.popupState.scrollPositions.saved = scrollPos;
     // Save immediately
     savePopupState();
   }
@@ -121,12 +123,21 @@ export async function switchToTab(tabName) {
   // Handle tab-specific actions
   if (tabName === TAB_TYPES.SAVED) {
     updateState('isViewingSaved', true);
-    // Saved tab loading is handled elsewhere
+    
+    // Trigger saved tab content loading/restoration
+    // This will handle scroll position restoration properly
+    const { updateSavedTabContent } = await import('./content-manager.js');
+    await updateSavedTabContent();
   } else {
     updateState('isViewingSaved', false);
     
     if (tabName === TAB_TYPES.SETTINGS) {
       hideApiKeyPrompt();
+    } else if (tabName === TAB_TYPES.CATEGORIZE) {
+      // When switching back to Current tab, refresh content to ensure accuracy
+      const { markContentDirty, updateCurrentTabContent } = await import('./content-manager.js');
+      markContentDirty('current');
+      await updateCurrentTabContent(true); // Force refresh when switching to Current tab
     }
   }
   
@@ -209,13 +220,13 @@ export async function updateCategorizeBadge() {
   }
   
   // Also update categorize button state
-  await updateCategorizeButtonState();
+  await updateLegacyCategorizeButtonState();
 }
 
 /**
- * Update categorize button enable/disable state
+ * Update old categorize button enable/disable state (legacy)
  */
-export async function updateCategorizeButtonState() {
+export async function updateLegacyCategorizeButtonState() {
   const categorizeBtn = $id(DOM_IDS.CATEGORIZE_BTN);
   if (!categorizeBtn) return;
   

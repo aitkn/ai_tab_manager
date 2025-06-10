@@ -1,0 +1,41 @@
+{
+  "name": "ai-tab-manager",
+  "version": "1.0.0",
+  "description": "AI-powered Chrome extension for intelligent tab management",
+  "scripts": {
+    "lint": "eslint src/**/*.js *.js --fix",
+    "lint:check": "eslint src/**/*.js *.js",
+    "build": "./build_for_store.sh"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es6": true,
+      "webextensions": true,
+      "node": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+      "ecmaVersion": 2022,
+      "sourceType": "module"
+    },
+    "rules": {
+      "no-unused-vars": "warn",
+      "no-console": "off",
+      "semi": ["error", "always"],
+      "quotes": ["error", "single", { "allowTemplateLiterals": true }],
+      "no-async-promise-executor": "warn",
+      "no-unsafe-finally": "off"
+    },
+    "globals": {
+      "chrome": "readonly",
+      "CONFIG": "readonly",
+      "morphdom": "readonly",
+      "importScripts": "readonly",
+      "globalThis": "readonly"
+    }
+  }
+}

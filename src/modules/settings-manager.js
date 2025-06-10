@@ -380,11 +380,16 @@ export function onMaxTabsChange(e) {
  * Initialize rules UI
  */
 export function initializeRulesUI() {
+  console.log('🔄 RULES UI: Initializing rules UI...');
   const rulesContainer = $id(DOM_IDS.RULES_CONTAINER);
   if (!rulesContainer) {
+    console.error('❌ RULES UI: Rules container not found!');
+    console.error('❌ RULES UI: Available elements with "rules" in ID:', 
+      Array.from(document.querySelectorAll('[id*="rules"]')).map(el => el.id));
     return;
   }
   
+  console.log('🔄 RULES UI: Rules container found, clearing existing rules...');
   // Clear existing rules
   rulesContainer.querySelectorAll('.rules-list').forEach(list => {
     list.innerHTML = '';
@@ -392,20 +397,101 @@ export function initializeRulesUI() {
   });
   
   // Add existing rules
+  console.log('🔄 RULES UI: Current rules:', state.settings.rules?.length || 0);
+  console.log('🔄 RULES UI: Sample rules:', state.settings.rules?.slice(0, 3));
+  
   if (state.settings.rules && state.settings.rules.length > 0) {
+    console.log('🔄 RULES UI: Adding existing rules to UI...');
+    let addedCount = 0;
     state.settings.rules.forEach((rule, index) => {
+      console.log(`🔄 RULES UI: Processing rule ${index + 1}:`, rule);
       if (rule.enabled !== false) {
-        addRuleToUI(rule.category, rule);
+        try {
+          addRuleToUI(rule.category, rule);
+          addedCount++;
+          console.log(`✓ RULES UI: Successfully added rule ${index + 1}`);
+        } catch (error) {
+          console.error(`❌ RULES UI: Error adding rule ${index + 1}:`, error);
+        }
+      } else {
+        console.log(`⏭️ RULES UI: Skipping disabled rule ${index + 1}`);
       }
     });
+    console.log(`✓ RULES UI: Added ${addedCount} rules to UI`);
+  } else {
+    console.log('🔄 RULES UI: No rules found in settings');
   }
   
-  rulesContainer.querySelectorAll('.add-rule-btn').forEach(btn => {
+  // Set up collapsible headers
+  console.log('🔄 RULES UI: Setting up collapsible headers...');
+  const headers = rulesContainer.querySelectorAll('.rule-category-header');
+  console.log('🔄 RULES UI: Found headers:', headers.length);
+  
+  if (headers.length === 0) {
+    console.error('❌ RULES UI: No headers found! Available elements:', 
+      Array.from(rulesContainer.children).map(el => el.className));
+  }
+  
+  // Remove any existing click listeners to prevent duplicates
+  const newContainer = rulesContainer.cloneNode(true);
+  rulesContainer.parentNode.replaceChild(newContainer, rulesContainer);
+  
+  // Simple click handler for collapsible headers
+  newContainer.addEventListener('click', (e) => {
+    const header = e.target.closest('.rule-category-header');
+    if (!header) {
+      console.log('🔄 RULES UI: Click did not hit a header element');
+      return;
+    }
+    
+    // Don't trigger collapse when clicking the add button
+    if (e.target.closest('.add-rule-btn')) {
+      console.log('🔄 RULES UI: Add button clicked, not expanding/collapsing');
+      return;
+    }
+    
+    const category = header.closest('.rule-category-section')?.dataset.category;
+    
+    // Simple toggle: if it's "true", make it "false", and vice versa
+    const currentState = header.dataset.collapsed;
+    const newState = currentState === 'true' ? 'false' : 'true';
+    
+    header.dataset.collapsed = newState;
+  });
+  
+  // Set up add rule buttons on the new container
+  const addButtons = newContainer.querySelectorAll('.add-rule-btn');
+  console.log('🔄 RULES UI: Setting up add buttons, found:', addButtons.length);
+  
+  addButtons.forEach((btn, index) => {
+    const category = btn.dataset.category;
+    console.log(`🔄 RULES UI: Setting up add button ${index + 1} for category ${category}`);
+    
     btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent triggering the header click
       const category = parseInt(e.currentTarget.dataset.category);
-      addRuleToUI(category);
+      console.log('🔄 RULES UI: Add button clicked for category', category);
+      
+      // Expand the section if it's collapsed
+      const header = e.currentTarget.closest('.rule-category-header');
+      const wrapper = header?.nextElementSibling;
+      if (header?.dataset.collapsed === 'true') {
+        console.log('🔄 RULES UI: Expanding section before adding rule...');
+        header.dataset.collapsed = 'false';
+        // Remove inline style to let CSS take over
+        if (wrapper) wrapper.style.display = '';
+      }
+      
+      try {
+        addRuleToUI(category);
+        console.log('✓ RULES UI: Successfully added new rule to category', category);
+      } catch (error) {
+        console.error('❌ RULES UI: Error adding new rule:', error);
+      }
     });
   });
+  
+  console.log('✅ RULES UI: Initialization complete');
 }
 
 /**
@@ -430,17 +516,25 @@ function updateEmptyState(tbody) {
  * Add a rule to the UI
  */
 function addRuleToUI(category, rule = null) {
+  console.log(`🔄 RULES UI: Adding rule to category ${category}:`, rule);
   const tbody = document.querySelector(`.rules-list[data-category="${category}"]`);
-  if (!tbody) return;
+  if (!tbody) {
+    console.error(`❌ RULES UI: Rules list not found for category ${category}`);
+    return;
+  }
   
   const ruleId = Date.now() + Math.random();
   const tr = document.createElement('tr');
   tr.dataset.ruleId = ruleId;
   
-  const urlValue = rule?.field !== 'title' ? (rule?.value || '') : '';
-  const titleValue = rule?.field === 'title' ? (rule?.value || '') : '';
-  const urlIsRegex = rule?.field !== 'title' && rule?.type === 'regex';
-  const titleIsRegex = rule?.field === 'title' && rule?.type === 'regex';
+  // Determine if this is a URL or title rule based on type or field
+  const isTitle = rule?.field === 'title' || rule?.type === 'titleContains';
+  const isRegex = rule?.type === 'regex';
+  
+  const urlValue = !isTitle ? (rule?.value || '') : '';
+  const titleValue = isTitle ? (rule?.value || '') : '';
+  const urlIsRegex = !isTitle && isRegex;
+  const titleIsRegex = isTitle && isRegex;
   
   // Escape HTML to prevent XSS
   const escapeHtml = (str) => {
@@ -520,7 +614,7 @@ function saveRulesFromUI() {
     // Add URL rule if present
     if (urlInput.value.trim()) {
       rules.push({
-        type: urlIsRegex ? 'regex' : 'url_contains',
+        type: urlIsRegex ? 'regex' : 'urlContains',
         value: urlInput.value.trim(),
         field: 'url',
         category: category,
@@ -531,7 +625,7 @@ function saveRulesFromUI() {
     // Add title rule if present
     if (titleInput.value.trim()) {
       rules.push({
-        type: titleIsRegex ? 'regex' : 'title_contains',
+        type: titleIsRegex ? 'regex' : 'titleContains',
         value: titleInput.value.trim(),
         field: 'title',
         category: category,
@@ -550,22 +644,37 @@ function saveRulesFromUI() {
  * Restore default rules
  */
 async function onRestoreDefaultRules() {
-  const confirmed = confirm('This will replace all your current rules with the default rules. Are you sure?');
-  if (!confirmed) return;
-  
-  // Import the getDefaultRules function from state-manager
-  const { getDefaultRules } = await import('./state-manager.js');
-  
-  const defaultRules = getDefaultRules();
-  
-  // Replace current rules with default rules
-  state.settings.rules = defaultRules;
-  await StorageService.saveSettings(state.settings);
-  
-  // Refresh the UI
-  initializeRulesUI();
-  
-  showStatus('Default rules restored successfully', 'success', 3000);
+  try {
+    console.log('🔄 RESTORE: onRestoreDefaultRules called');
+    const confirmed = confirm('This will replace all your current rules with the default rules. Are you sure?');
+    if (!confirmed) {
+      console.log('🔄 RESTORE: User cancelled restore');
+      return;
+    }
+    
+    console.log('🔄 RESTORE: Importing getDefaultRules...');
+    // Import the getDefaultRules function from state-manager
+    const { getDefaultRules } = await import('./state-manager.js');
+    
+    console.log('🔄 RESTORE: Getting default rules...');
+    const defaultRules = getDefaultRules();
+    console.log(`🔄 RESTORE: Got ${defaultRules.length} default rules`);
+    
+    // Replace current rules with default rules
+    state.settings.rules = defaultRules;
+    console.log('🔄 RESTORE: Saving settings...');
+    await StorageService.saveSettings(state.settings);
+    
+    // Refresh the UI
+    console.log('🔄 RESTORE: Refreshing rules UI...');
+    initializeRulesUI();
+    
+    console.log('🔄 RESTORE: Default rules restored successfully');
+    showStatus('Default rules restored successfully', 'success', 3000);
+  } catch (error) {
+    console.error('❌ RESTORE: Error restoring default rules:', error);
+    showStatus('Error restoring default rules', 'error', 3000);
+  }
 }
 
 /**
@@ -633,8 +742,13 @@ export async function initializeSettings() {
   
   // Restore default rules button
   const restoreBtn = $id('restoreDefaultRulesBtn');
+  console.log('🔄 SETTINGS INIT: Restore button found:', !!restoreBtn);
   if (restoreBtn) {
+    console.log('🔄 SETTINGS INIT: Adding click listener to restore button');
     restoreBtn.addEventListener('click', onRestoreDefaultRules);
+    console.log('🔄 SETTINGS INIT: Restore button event listener added');
+  } else {
+    console.error('❌ SETTINGS INIT: Restore default rules button not found!');
   }
   
   // Initialize UI with current settings

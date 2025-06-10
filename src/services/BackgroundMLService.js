@@ -119,6 +119,14 @@ class BackgroundMLService {
       this.retrainingInProgress = true;
 
       const unifiedDB = await getUnifiedDatabase();
+      
+      // Check if we have enough data before attempting training
+      const trainingDataCount = await unifiedDB.getTrainingDataCount();
+      if (trainingDataCount < 100) {
+        console.log(`Background training skipped: Only ${trainingDataCount} examples (minimum: 100)`);
+        return;
+      }
+      
       await unifiedDB.triggerRetraining(false);
 
     } catch (error) {

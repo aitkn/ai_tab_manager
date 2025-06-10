@@ -6,6 +6,7 @@
 import { DOM_IDS, CSS_CLASSES, TAB_CATEGORIES, CATEGORY_NAMES, GROUPING_OPTIONS, URLS, STATUS_MESSAGES } from '../utils/constants.js';
 import { $, $id, show, hide, classes, createElement } from '../utils/dom-helpers.js';
 import { getRootDomain, getSubdomain, sortTabsInGroup, getWeekNumber, getWeekStartDate, formatDate, extractDateFromGroupName } from '../utils/helpers.js';
+import { createOptimizedFavicon, preloadFavicons } from '../utils/favicon-loader.js';
 import { state } from './state-manager.js';
 import { showStatus } from './ui-manager.js';
 import { getCurrentTabs } from './tab-data-source.js';
@@ -17,26 +18,37 @@ import { moveTab } from './tab-operations.js';
  */
 export async function displayTabs(isFromSaved = false) {
   try {
+    console.log(`🔄 TAB DISPLAY: displayTabs called (isFromSaved: ${isFromSaved})`);
     state.isViewingSaved = isFromSaved;
     
     // Note: Grouping controls are now in the fixed controls area, not in the scrollable container
     
     if (!isFromSaved) {
       const groupingType = state.popupState.groupingSelections.categorize || 'category';
-      console.log('Displaying tabs with grouping:', groupingType);
+      console.log(`🔄 TAB DISPLAY: Displaying tabs with grouping: ${groupingType}`);
       
       if (groupingType === 'category') {
+        console.log('🔄 TAB DISPLAY: Using category view');
         await displayCategoryView();
       } else {
+        console.log('🔄 TAB DISPLAY: Using grouped view');
         await displayGroupedView(groupingType, false);
       }
       
+      console.log('🔄 TAB DISPLAY: Updating Close All button color...');
       // Update Close All button color
       const { updateCloseAllButtonColor } = await import('./ui-utilities.js');
       await updateCloseAllButtonColor();
+      
+      console.log('🔄 TAB DISPLAY: Updating categorize button state...');
+      // Update categorize button state based on current tabs
+      const { updateCategorizeButtonState } = await import('./unified-toolbar.js');
+      await updateCategorizeButtonState();
+      
+      console.log('✅ TAB DISPLAY: displayTabs completed successfully');
     }
   } catch (error) {
-    console.error('Error displaying tabs:', error);
+    console.error('❌ TAB DISPLAY: Error displaying tabs:', error);
     showStatus('Error displaying tabs', 'error');
   }
 }
@@ -45,43 +57,72 @@ export async function displayTabs(isFromSaved = false) {
  * Display tabs grouped by category with smooth transitions
  */
 export async function displayCategoryView() {
+  console.log('🔄 CATEGORY VIEW: displayCategoryView called');
+  
   const container = $id(DOM_IDS.TABS_CONTAINER);
   if (!container) {
-    console.error('Tabs container not found');
+    console.error('❌ CATEGORY VIEW: Tabs container not found');
     return;
   }
+  
+  console.log('🔄 CATEGORY VIEW: Container found, setting up views...');
+  
+  // Ensure the main tabs container is visible
+  show(container);
+  console.log('🔄 CATEGORY VIEW: Tabs container made visible');
   
   // Show category view, hide grouped view
   const categoryView = $id(DOM_IDS.CATEGORY_VIEW);
   show(categoryView);
   hide($id(DOM_IDS.GROUPED_VIEW));
   
+  console.log('🔄 CATEGORY VIEW: Views configured, fetching tabs...');
+  
   // Fetch current tabs from background
   const { categorizedTabs } = await getCurrentTabs();
+  
+  console.log('🔄 CATEGORY VIEW: Retrieved categorized tabs:', {
+    categories: Object.keys(categorizedTabs),
+    counts: Object.entries(categorizedTabs).map(([cat, tabs]) => `${cat}: ${tabs.length}`).join(', ')
+  });
+  
+  // Preload favicons for better performance
+  const allTabs = Object.values(categorizedTabs).flat();
+  if (allTabs.length > 0) {
+    console.log('🔄 CATEGORY VIEW: Preloading favicons for', allTabs.length, 'tabs');
+    preloadFavicons(allTabs);
+  }
   
   // Store current scroll position
   const scrollTop = container.scrollTop;
   
   // Update each category in place without cloning
+  console.log('🔄 CATEGORY VIEW: Updating categories in place...');
   await updateCategoriesInPlace(categorizedTabs);
   
   // Restore scroll position
   container.scrollTop = scrollTop;
+  
+  console.log('✅ CATEGORY VIEW: displayCategoryView completed');
 }
 
 /**
  * Update categories in place without replacing the entire view
  */
 async function updateCategoriesInPlace(categorizedTabs) {
+  console.log('🔄 UPDATE CATEGORIES: Starting in-place update...');
+  
   // Process each category directly in the DOM
   [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
     const categorySection = $id(`category${category}`);
     if (!categorySection) {
-      console.error(`Category section not found for category ${category}`);
+      console.error(`❌ UPDATE CATEGORIES: Category section not found for category ${category}`);
       return;
     }
     
     const tabs = categorizedTabs[category] || [];
+    console.log(`🔄 UPDATE CATEGORIES: Processing category ${category} with ${tabs.length} tabs`);
+    
     let tabsList = categorySection.querySelector('.tabs-list');
     const countElement = categorySection.querySelector('.count');
     
@@ -89,11 +130,19 @@ async function updateCategoriesInPlace(categorizedTabs) {
     if (category === TAB_CATEGORIES.UNCATEGORIZED) {
       const hasUncategorized = tabs.length > 0;
       categorySection.style.display = hasUncategorized ? 'block' : 'none';
+      console.log(`🔄 UPDATE CATEGORIES: Uncategorized section visibility: ${hasUncategorized ? 'visible' : 'hidden'}`);
     }
     
     // Update count
     if (countElement) {
       countElement.textContent = tabs.length;
+      console.log(`🔄 UPDATE CATEGORIES: Updated count for category ${category}: ${tabs.length}`);
+      
+      // Debug: Log tab details for uncategorized
+      if (category === TAB_CATEGORIES.UNCATEGORIZED && tabs.length > 0) {
+        console.log(`🔍 DEBUG UNCATEGORIZED: Found ${tabs.length} uncategorized tabs:`, 
+          tabs.map(t => ({ id: t.id, title: t.title?.slice(0, 50), url: t.url?.slice(0, 80) })));
+      }
     }
     
     // If tabs list doesn't exist, create it
@@ -561,7 +610,7 @@ export function createGroupSection(groupName, tabs, groupingType) {
 /**
  * Create a tab element
  */
-export function createTabElement(tab, category) {
+export function createTabElement(tab, category, isFromSaved = false) {
   // Log duplicate info for debugging
   if (tab.duplicateIds || tab.duplicateCount) {
     console.log('Creating tab element with duplicates:', tab.url, 'duplicateIds:', tab.duplicateIds, 'count:', tab.duplicateCount);
@@ -588,12 +637,8 @@ export function createTabElement(tab, category) {
     classes.add(tabElement, 'already-categorized');
   }
   
-  // Favicon
-  const favicon = createElement('img', {
-    className: 'favicon',
-    src: tab.favIconUrl || URLS.FAVICON_API.replace('{domain}', tab.domain),
-    onerror: function() { this.src = URLS.FAVICON_API.replace('{domain}', 'default'); }
-  });
+  // Optimized favicon with timeout and caching
+  const favicon = createOptimizedFavicon(tab);
   tabElement.appendChild(favicon);
   
   // Tab info
@@ -693,7 +738,7 @@ export function createTabElement(tab, category) {
   tabElement.appendChild(tabInfo);
   
   // Action buttons
-  if (!state.isViewingSaved) {
+  if (!isFromSaved) {
     // Category selection buttons
     const categoryButtons = createElement('div', { className: 'category-buttons' });
     
@@ -935,6 +980,176 @@ function groupByCloseTime(tabs) {
 
 // Note: extractDateFromGroupName is already imported from helpers.js at the top of the file
 
+/**
+ * Render tabs to a specific container (for background renderer)
+ * @param {HTMLElement} container - Container to render tabs into
+ * @param {Object} categorizedTabs - Categorized tabs data
+ */
+export async function renderTabsToContainer(container, categorizedTabs) {
+  if (!container || !categorizedTabs) return;
+  
+  console.log('🔄 TabDisplay: Rendering tabs to custom container');
+  
+  // Clear container
+  container.innerHTML = '';
+  
+  // Save current state
+  const originalCategorizedTabs = state.categorizedTabs;
+  const originalIsViewingSaved = state.isViewingSaved;
+  
+  try {
+    // Temporarily set state for rendering
+    state.categorizedTabs = categorizedTabs;
+    state.isViewingSaved = false;
+    
+    const groupingType = state.popupState.groupingSelections.categorize || 'category';
+    console.log('Rendering with grouping:', groupingType);
+    
+    if (groupingType === 'category') {
+      await renderCategoryViewToContainer(container);
+    } else {
+      await renderGroupedViewToContainer(container, groupingType);
+    }
+    
+  } finally {
+    // Restore original state
+    state.categorizedTabs = originalCategorizedTabs;
+    state.isViewingSaved = originalIsViewingSaved;
+  }
+}
+
+/**
+ * Render category view to a specific container
+ * @param {HTMLElement} container - Container to render into
+ */
+async function renderCategoryViewToContainer(container) {
+  const categorizedTabs = state.categorizedTabs;
+  
+  // Create category sections
+  for (const category of [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.UNCATEGORIZED]) {
+    const tabs = categorizedTabs[category] || [];
+    if (tabs.length > 0) {
+      const categorySection = await createCategorySection(category, tabs);
+      if (categorySection) {
+        container.appendChild(categorySection);
+      }
+    }
+  }
+}
+
+/**
+ * Render grouped view to a specific container
+ * @param {HTMLElement} container - Container to render into
+ * @param {string} groupingType - Type of grouping
+ */
+async function renderGroupedViewToContainer(container, groupingType) {
+  const categorizedTabs = state.categorizedTabs;
+  
+  // Get all tabs
+  const allTabs = Object.values(categorizedTabs).flat();
+  
+  if (allTabs.length === 0) {
+    container.innerHTML = '<div class="no-tabs">No tabs to display</div>';
+    return;
+  }
+  
+  // Group tabs by the specified type
+  const groups = groupTabsBy(allTabs, groupingType);
+  
+  // Create sections for each group
+  for (const [groupName, tabs] of Object.entries(groups)) {
+    if (tabs.length > 0) {
+      const groupSection = createGroupSection(groupName, tabs, groupingType);
+      if (groupSection) {
+        container.appendChild(groupSection);
+      }
+    }
+  }
+}
+
+/**
+ * Create a category section for a specific container
+ * @param {number} category - Category number
+ * @param {Array} tabs - Tabs in this category
+ * @returns {HTMLElement} Category section element
+ */
+async function createCategorySection(category, tabs) {
+  if (tabs.length === 0) return null;
+  
+  const section = createElement('div', {
+    className: CSS_CLASSES.CATEGORY_SECTION,
+    id: `category${category}`,
+    dataset: { category: category }
+  });
+  
+  // Create header
+  const header = createElement('div', { className: CSS_CLASSES.CATEGORY_HEADER });
+  
+  // Category info
+  const categoryInfo = createElement('div', { className: CSS_CLASSES.CATEGORY_INFO });
+  
+  const categoryIcon = createElement('div', { 
+    className: CSS_CLASSES.CATEGORY_ICON,
+    innerHTML: getCategoryIcon(category)
+  });
+  
+  const categoryName = createElement('div', { 
+    className: CSS_CLASSES.CATEGORY_NAME,
+    textContent: CATEGORY_NAMES[category] || `Category ${category}`
+  });
+  
+  const categoryCount = createElement('div', { 
+    className: CSS_CLASSES.CATEGORY_COUNT,
+    textContent: `${tabs.length} tab${tabs.length === 1 ? '' : 's'}`
+  });
+  
+  categoryInfo.appendChild(categoryIcon);
+  categoryInfo.appendChild(categoryName);
+  categoryInfo.appendChild(categoryCount);
+  
+  header.appendChild(categoryInfo);
+  section.appendChild(header);
+  
+  // Create tabs list
+  const tabsList = createElement('div', { className: CSS_CLASSES.TABS_LIST });
+  
+  // Add tabs
+  tabs.forEach(tab => {
+    const shouldShow = !state.searchQuery || 
+      tab.title.toLowerCase().includes(state.searchQuery) || 
+      tab.url.toLowerCase().includes(state.searchQuery);
+    
+    if (shouldShow) {
+      const tabElement = createTabElement(tab, category);
+      tabsList.appendChild(tabElement);
+    }
+  });
+  
+  section.appendChild(tabsList);
+  
+  return section;
+}
+
+/**
+ * Get category icon HTML
+ * @param {number} category - Category number
+ * @returns {string} Icon HTML
+ */
+function getCategoryIcon(category) {
+  switch (category) {
+    case TAB_CATEGORIES.IMPORTANT:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>';
+    case TAB_CATEGORIES.SAVE_LATER:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>';
+    case TAB_CATEGORIES.CAN_CLOSE:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    case TAB_CATEGORIES.UNCATEGORIZED:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6m11-5h-6m-6 0H1"></path></svg>';
+    default:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>';
+  }
+}
+
 // Import tab operations
 import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, closeTabsInGroup, saveAndCloseTabsInGroup, deleteTabsInGroup, closeTab, deleteSavedTab } from './tab-operations.js';
 
@@ -944,5 +1159,6 @@ export default {
   displayCategoryView,
   displayGroupedView,
   createGroupSection,
-  createTabElement
+  createTabElement,
+  renderTabsToContainer
 };

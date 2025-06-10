@@ -9,6 +9,7 @@ import ChromeAPIService from '../services/ChromeAPIService.js';
 import { state, updateState, savePopupState } from './state-manager.js';
 import { showStatus, updateCategorizeBadge, updateSavedBadge } from './ui-manager.js';
 import { moveTabToCategory } from './categorization-service.js';
+import { markContentDirty, syncHiddenTabContent } from './content-manager.js';
 // Import database - using window.window.tabDatabase since it's a global
 
 // ========== Helper Functions ==========
@@ -210,8 +211,23 @@ export async function closeTab(tab, category) {
     updateCategorizeBadge();
     
     // Trigger display update
-    const { displayTabs } = await import('./tab-display.js');
-    await displayTabs();
+    // Use flicker-free UI if available, otherwise fallback to legacy
+    try {
+      const flickerFreeUI = (await import('../core/flicker-free-ui.js')).default;
+      if (flickerFreeUI && flickerFreeUI.initialized) {
+        console.log('🔄 TabOps: Using flicker-free UI for tab close updates');
+        await flickerFreeUI.handleDataChange('tabs_closed');
+      } else {
+        throw new Error('Flicker-free UI not available');
+      }
+    } catch (error) {
+      console.log('🔄 TabOps: Falling back to legacy content management', error.message);
+      // Fallback to legacy content management
+      markContentDirty('all');
+      const { updateCurrentTabContent } = await import('./content-manager.js');
+      await updateCurrentTabContent();
+      await syncHiddenTabContent();
+    }
     
   } catch (error) {
     console.error('Error closing tab:', error);
@@ -279,8 +295,21 @@ export async function saveAndCloseCategory(category) {
     showStatus(`Saved ${savedCount} tabs, closed ${closedCount} tabs`, 'success');
     
     // Trigger display update
-    const { displayTabs } = await import('./tab-display.js');
-    await displayTabs();
+    // Use flicker-free UI if available, otherwise fallback to legacy
+    try {
+      const flickerFreeUI = (await import('../core/flicker-free-ui.js')).default;
+      if (flickerFreeUI && flickerFreeUI.initialized) {
+        console.log('🔄 TabOps: Using flicker-free UI for save/close updates');
+        await flickerFreeUI.handleDataChange('tabs_saved');
+      } else {
+        throw new Error('Flicker-free UI not available');
+      }
+    } catch (error) {
+      console.log('🔄 TabOps: Falling back to legacy display update', error.message);
+      // Fallback to legacy display update
+      const { displayTabs } = await import('./tab-display.js');
+      await displayTabs();
+    }
   } catch (error) {
     console.error('Error saving and closing category:', error);
     showStatus('Error saving tabs', 'error');
@@ -358,8 +387,21 @@ export async function saveAndCloseAll() {
     showStatus(`Closed ${totalClosed} tabs`, 'success');
     
     // Trigger display update
-    const { displayTabs } = await import('./tab-display.js');
-    await displayTabs();
+    // Use flicker-free UI if available, otherwise fallback to legacy
+    try {
+      const flickerFreeUI = (await import('../core/flicker-free-ui.js')).default;
+      if (flickerFreeUI && flickerFreeUI.initialized) {
+        console.log('🔄 TabOps: Using flicker-free UI for close all updates');
+        await flickerFreeUI.handleDataChange('tabs_saved');
+      } else {
+        throw new Error('Flicker-free UI not available');
+      }
+    } catch (error) {
+      console.log('🔄 TabOps: Falling back to legacy display update', error.message);
+      // Fallback to legacy display update
+      const { displayTabs } = await import('./tab-display.js');
+      await displayTabs();
+    }
   } catch (error) {
     console.error('Error saving and closing all tabs:', error);
     showStatus('Error saving tabs', 'error');

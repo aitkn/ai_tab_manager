@@ -46,6 +46,8 @@ export function getRootDomain(domain) {
  * @returns {string} Subdomain or empty string
  */
 export function getSubdomain(fullDomain, rootDomain) {
+  // Handle undefined or null domains
+  if (!fullDomain || !rootDomain) return '';
   if (fullDomain === rootDomain) return '';
   const subdomain = fullDomain.replace(`.${rootDomain}`, '');
   return subdomain === fullDomain ? '' : subdomain;
@@ -125,15 +127,17 @@ export function sortTabsInGroup(tabs, groupingType) {
         
       case 'domain':
         // Sort by subdomain, then by title
-        const rootDomainA = getRootDomain(a.domain);
-        const rootDomainB = getRootDomain(b.domain);
-        const subdomainA = getSubdomain(a.domain, rootDomainA);
-        const subdomainB = getSubdomain(b.domain, rootDomainB);
+        const domainA = a.domain || '';
+        const domainB = b.domain || '';
+        const rootDomainA = getRootDomain(domainA);
+        const rootDomainB = getRootDomain(domainB);
+        const subdomainA = getSubdomain(domainA, rootDomainA);
+        const subdomainB = getSubdomain(domainB, rootDomainB);
         
         if (subdomainA !== subdomainB) {
           return subdomainA.localeCompare(subdomainB);
         }
-        return a.title.localeCompare(b.title);
+        return (a.title || '').localeCompare(b.title || '');
         
       case 'savedDate':
       case 'savedWeek':

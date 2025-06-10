@@ -13,7 +13,10 @@ import { onGroupingChange as handleGroupingChange, onSavedGroupingChange as hand
 import { saveAndCloseAll } from './tab-operations.js';
 import { exportToCSV, handleCSVImport } from './import-export.js';
 import { updateModelDropdown } from './settings-manager.js';
-import { showSavedTabsContent } from './saved-tabs-manager.js';
+import { updateCurrentTabContent, updateSavedTabContent } from './content-manager.js';
+
+// Import flicker-free UI system
+import flickerFreeUI from '../core/flicker-free-ui.js';
 
 /**
  * Set up all event listeners
@@ -81,20 +84,26 @@ export function setupEventListeners() {
     on(btn, EVENTS.CLICK, () => setTheme(btn.dataset.theme));
   });
   
-  // Tab navigation
+  // Tab navigation - use flicker-free UI system
   document.querySelectorAll('.tab-btn').forEach(btn => {
     on(btn, EVENTS.CLICK, async () => {
       const tabName = btn.dataset.tab;
-      switchToTab(tabName);
       
-      if (tabName === 'saved') {
-        const savedGroupingSelect = $id(DOM_IDS.SAVED_GROUPING_SELECT);
-        const includeCanClose = $id('showAllCheckbox')?.checked || state.popupState.showAllCategories || false;
-        await showSavedTabsContent(savedGroupingSelect?.value, includeCanClose);
-      } else if (tabName === 'categorize') {
-        // Always refresh current tabs from background when switching to categorize
-        const { loadCategorizedTabsFromBackground } = await import('./app-initializer.js');
-        await loadCategorizedTabsFromBackground();
+      // Use the new flicker-free UI system for tab switching
+      if (flickerFreeUI.initialized) {
+        console.log('🔄 EventHandlers: Using flicker-free UI for tab switch to:', tabName);
+        await flickerFreeUI.switchTab(tabName);
+      } else {
+        console.log('🔄 EventHandlers: Fallback to legacy tab switch to:', tabName);
+        // Fallback to legacy system if flicker-free UI not initialized
+        switchToTab(tabName);
+        
+        // Content is already loaded and cached - just ensure it's fresh
+        if (tabName === 'saved') {
+          await updateSavedTabContent();
+        } else if (tabName === 'categorize') {
+          await updateCurrentTabContent();
+        }
       }
     });
   });

@@ -44,8 +44,17 @@ class UnifiedDatabaseService {
    */
   async saveCategorizedTabs(categorizedTabs, metadata = {}, predictions = null) {
     try {
-      // Save to main database first
-      const saveResults = await this.mainDatabase.saveTabs(categorizedTabs, metadata);
+      // Save to main database first - check which method is available
+      let saveResults;
+      if (this.mainDatabase.saveTabs) {
+        // New database_v2.js API
+        saveResults = await this.mainDatabase.saveTabs(categorizedTabs, metadata);
+      } else if (this.mainDatabase.saveCategorizedTabs) {
+        // Old database.js API
+        saveResults = await this.mainDatabase.saveCategorizedTabs(categorizedTabs);
+      } else {
+        throw new Error('No compatible save method found in database');
+      }
       
       if (this.mlEnabled) {
         // Add to ML training data
@@ -243,6 +252,24 @@ class UnifiedDatabaseService {
     }
     
     return { category: null, confidence: 0, source: 'ml_error' };
+  }
+
+  /**
+   * Get count of available training data
+   * @returns {Promise<number>}
+   */
+  async getTrainingDataCount() {
+    try {
+      // Count all categorized tabs that can be used for training
+      const allSavedTabs = await this.mainDatabase.getAllSavedTabs();
+      const validTrainingData = allSavedTabs.filter(tab => 
+        tab.category && tab.category > 0 && tab.url && tab.title
+      );
+      return validTrainingData.length;
+    } catch (error) {
+      console.error('Error getting training data count:', error);
+      return 0;
+    }
   }
 
   /**

@@ -131,7 +131,7 @@ export class CurrentTabsProcessor {
   getDefaultFavicon(url) {
     try {
       const domain = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
     } catch {
       return '';
     }

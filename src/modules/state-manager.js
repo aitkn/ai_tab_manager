@@ -232,289 +232,143 @@ export function restoreScrollPosition(containerId, scrollTop, retryCount = 0) {
  */
 export function getDefaultRules() {
   return [
-    // IMPORTANT: Rules are evaluated in order - first match wins!
-    // Rules are designed to be independent - each rule should work correctly
-    // regardless of order by being specific about what it matches
+    // Essential rules covering most common patterns - let ML learn user preferences over time
     
-    // Category 3: Hard to Refind (> 2min) - Most specific rules first
+    // Category 3: Important - Specific content that's hard to find again
     {
       id: 'default-1',
-      type: 'urlContains',
-      value: 'claude.ai/chat/',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    {
-      id: 'default-2',
-      type: 'urlContains',
-      value: 'chatgpt.com/c/',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    {
-      id: 'default-3',
-      type: 'urlContains',
-      value: 'gemini.google.com/app/',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    {
-      id: 'default-4',
-      type: 'urlContains',
-      value: 'localhost',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    {
-      id: 'default-5',
-      type: 'urlContains',
-      value: '127.0.0.1',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    {
-      id: 'default-6',
-      type: 'urlContains',
-      value: '/order/',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    {
-      id: 'default-7',
       type: 'urlContains',
       value: '/checkout',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
     {
-      id: 'default-8',
+      id: 'default-2',
       type: 'urlContains',
       value: '/payment',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
     {
-      id: 'default-9',
-      type: 'urlContains',
-      value: '/transaction/',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    {
-      id: 'default-10',
-      type: 'urlContains',
-      value: 'session=',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    {
-      id: 'default-11',
-      type: 'urlContains',
-      value: 'token=',
-      category: TAB_CATEGORIES.IMPORTANT,
-      enabled: true
-    },
-    {
-      id: 'default-12',
+      id: 'default-3',
       type: 'titleContains',
       value: 'Unsaved',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
     {
-      id: 'default-13',
+      id: 'default-4',
       type: 'titleContains',
       value: 'Draft',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
+    // Specific articles and posts
     {
-      id: 'default-14',
-      type: 'regex',
-      value: '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
-      field: 'url',
+      id: 'default-5',
+      type: 'urlContains',
+      value: 'youtube.com/watch',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-6',
+      type: 'urlContains',
+      value: 'x.com/status/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-7',
+      type: 'urlContains',
+      value: 'twitter.com/status/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-8',
+      type: 'urlContains',
+      value: 'reddit.com/r/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-9',
+      type: 'urlContains',
+      value: '/article',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-10',
+      type: 'urlContains',
+      value: '/news/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-11',
+      type: 'urlContains',
+      value: 'techcrunch.com/',
+      category: TAB_CATEGORIES.IMPORTANT,
+      enabled: true
+    },
+    {
+      id: 'default-12',
+      type: 'urlContains',
+      value: 'arstechnica.com/',
       category: TAB_CATEGORIES.IMPORTANT,
       enabled: true
     },
     
-    // Category 2: Moderate Effort (10s-2min) - Less specific, searchable content
-    // Specific content on general sites (must come before domain rules)
+    // Category 2: Useful - LLM conversations and useful content
+    {
+      id: 'default-13',
+      type: 'urlContains',
+      value: 'claude.ai/chat/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
+    {
+      id: 'default-14',
+      type: 'urlContains',
+      value: 'chatgpt.com/c/',
+      category: TAB_CATEGORIES.SAVE_LATER,
+      enabled: true
+    },
     {
       id: 'default-15',
       type: 'urlContains',
-      value: 'youtube.com/watch?v=',
+      value: 'gemini.google.com/app/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     {
       id: 'default-16',
       type: 'urlContains',
-      value: 'youtube.com/playlist',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-17',
-      type: 'urlContains',
-      value: 'reddit.com/r/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-18',
-      type: 'urlContains',
-      value: 'twitter.com/status/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-19',
-      type: 'urlContains',
-      value: 'x.com/status/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-20',
-      type: 'urlContains',
-      value: 'linkedin.com/posts/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-21',
-      type: 'urlContains',
-      value: 'facebook.com/posts/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-22',
-      type: 'urlContains',
-      value: 'instagram.com/p/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-23',
-      type: 'urlContains',
-      value: 'amazon.com/dp/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-24',
-      type: 'urlContains',
-      value: 'amazon.com/gp/product/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-25',
-      type: 'urlContains',
-      value: 'github.com/pull/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-26',
-      type: 'urlContains',
-      value: 'github.com/issues/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-27',
-      type: 'urlContains',
-      value: 'stackoverflow.com/questions/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-28',
-      type: 'urlContains',
-      value: 'medium.com/@',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-29',
-      type: 'urlContains',
-      value: 'dev.to/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-51',
-      type: 'regex',
-      value: '^https?://(www\.)?stackoverflow\.com/?$',
-      field: 'url',
-      category: TAB_CATEGORIES.CAN_CLOSE,
-      enabled: true
-    },
-    {
-      id: 'default-52',
-      type: 'regex',
-      value: '^https?://(www\.)?medium\.com/?$',
-      field: 'url',
-      category: TAB_CATEGORIES.CAN_CLOSE,
-      enabled: true
-    },
-    {
-      id: 'default-53',
-      type: 'regex',
-      value: '^https?://(www\.)?dev\.to/?$',
-      field: 'url',
-      category: TAB_CATEGORIES.CAN_CLOSE,
-      enabled: true
-    },
-    {
-      id: 'default-30',
-      type: 'urlContains',
-      value: '/docs/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-31',
-      type: 'urlContains',
-      value: '/documentation/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-32',
-      type: 'urlContains',
-      value: '/guide/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-33',
-      type: 'urlContains',
-      value: '/tutorial/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-34',
-      type: 'urlContains',
-      value: '/article/',
-      category: TAB_CATEGORIES.SAVE_LATER,
-      enabled: true
-    },
-    {
-      id: 'default-35',
-      type: 'urlContains',
-      value: '/blog/',
+      value: 'poe.com/chat/',
       category: TAB_CATEGORIES.SAVE_LATER,
       enabled: true
     },
     
-    // Category 1: Easy to Refind (< 10 seconds) - Homepages only
-    // Using regex to match ONLY homepages, not all content on these domains
+    // Category 1: Ignore (Can Close) - Homepages that are easy to find again
     {
-      id: 'default-36',
+      id: 'default-17',
+      type: 'titleContains',
+      value: 'New Tab',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-18',
+      type: 'titleContains',
+      value: 'Google Search',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    // Top 10 sites homepages
+    {
+      id: 'default-19',
       type: 'regex',
       value: '^https?://(www\\.)?google\\.com/?$',
       field: 'url',
@@ -522,7 +376,7 @@ export function getDefaultRules() {
       enabled: true
     },
     {
-      id: 'default-37',
+      id: 'default-20',
       type: 'regex',
       value: '^https?://(www\\.)?youtube\\.com/?$',
       field: 'url',
@@ -530,23 +384,7 @@ export function getDefaultRules() {
       enabled: true
     },
     {
-      id: 'default-38',
-      type: 'regex',
-      value: '^https?://(mail\\.)?google\\.com/(mail/)?$',
-      field: 'url',
-      category: TAB_CATEGORIES.CAN_CLOSE,
-      enabled: true
-    },
-    {
-      id: 'default-39',
-      type: 'regex',
-      value: '^https?://(www\\.)?amazon\\.com/?$',
-      field: 'url',
-      category: TAB_CATEGORIES.CAN_CLOSE,
-      enabled: true
-    },
-    {
-      id: 'default-40',
+      id: 'default-21',
       type: 'regex',
       value: '^https?://(www\\.)?facebook\\.com/?$',
       field: 'url',
@@ -554,7 +392,23 @@ export function getDefaultRules() {
       enabled: true
     },
     {
-      id: 'default-41',
+      id: 'default-22',
+      type: 'regex',
+      value: '^https?://(www\\.)?amazon\\.com/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-23',
+      type: 'regex',
+      value: '^https?://(www\\.)?wikipedia\\.org/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-24',
       type: 'regex',
       value: '^https?://(www\\.)?twitter\\.com/?$',
       field: 'url',
@@ -562,7 +416,7 @@ export function getDefaultRules() {
       enabled: true
     },
     {
-      id: 'default-42',
+      id: 'default-25',
       type: 'regex',
       value: '^https?://(www\\.)?x\\.com/?$',
       field: 'url',
@@ -570,7 +424,7 @@ export function getDefaultRules() {
       enabled: true
     },
     {
-      id: 'default-43',
+      id: 'default-26',
       type: 'regex',
       value: '^https?://(www\\.)?instagram\\.com/?$',
       field: 'url',
@@ -578,54 +432,101 @@ export function getDefaultRules() {
       enabled: true
     },
     {
-      id: 'default-44',
+      id: 'default-27',
       type: 'regex',
-      value: '^https?://(www\\.)?linkedin\\.com/(feed/)?$',
+      value: '^https?://(www\\.)?linkedin\\.com/?$',
       field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-45',
+      id: 'default-28',
       type: 'regex',
       value: '^https?://(www\\.)?reddit\\.com/?$',
       field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
+    // Email homepages
     {
-      id: 'default-46',
+      id: 'default-29',
       type: 'regex',
-      value: '^https?://(www\\.)?netflix\\.com/(browse)?/?$',
+      value: '^https?://(mail\\.)?google\\.com/(mail/?)?$',
       field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-47',
-      type: 'urlContains',
-      value: '/login',
+      id: 'default-30',
+      type: 'regex',
+      value: '^https?://(www\\.)?outlook\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-48',
-      type: 'urlContains',
-      value: '/signin',
+      id: 'default-31',
+      type: 'regex',
+      value: '^https?://(www\\.)?yahoo\\.com/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    // Bank homepages
+    {
+      id: 'default-32',
+      type: 'regex',
+      value: '^https?://(www\\.)?bankofamerica\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-49',
-      type: 'titleContains',
-      value: 'New Tab',
+      id: 'default-33',
+      type: 'regex',
+      value: '^https?://(www\\.)?chase\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     },
     {
-      id: 'default-50',
-      type: 'titleContains',
-      value: 'Google Search',
+      id: 'default-34',
+      type: 'regex',
+      value: '^https?://(www\\.)?wellsfargo\\.com/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    // News homepages
+    {
+      id: 'default-35',
+      type: 'regex',
+      value: '^https?://(www\\.)?cnn\\.com/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-36',
+      type: 'regex',
+      value: '^https?://(www\\.)?bbc\\.com/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-37',
+      type: 'regex',
+      value: '^https?://(www\\.)?nytimes\\.com/?$',
+      field: 'url',
+      category: TAB_CATEGORIES.CAN_CLOSE,
+      enabled: true
+    },
+    {
+      id: 'default-38',
+      type: 'regex',
+      value: '^https?://(www\\.)?washingtonpost\\.com/?$',
+      field: 'url',
       category: TAB_CATEGORIES.CAN_CLOSE,
       enabled: true
     }

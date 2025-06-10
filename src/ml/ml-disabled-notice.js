@@ -21,5 +21,5 @@ export function isMLAvailable() {
 }
 
 export function getMLDisabledMessage() {
-  return "ML features unavailable (Chrome security restrictions)";
+  return 'ML features unavailable (Chrome security restrictions)';
 }
