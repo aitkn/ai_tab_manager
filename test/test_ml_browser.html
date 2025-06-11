@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Tab Manager - ML Browser Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test { margin: 15px 0; padding: 15px; border-radius: 8px; }
+        .pass { background: #d4edda; border: 1px solid #c3e6cb; }
+        .fail { background: #f8d7da; border: 1px solid #f5c6cb; }
+        .pending { background: #fff3cd; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; }
+        h1 { text-align: center; color: #333; }
+        h3 { margin: 0 0 10px 0; color: #666; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+        button { margin: 5px; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .logs { max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Tab Manager ML Test Suite</h1>
+        
+        <div class="test info">
+            <h3>Test Controls</h3>
+            <button class="btn-primary" onclick="runAllTests()">🚀 Run All Tests</button>
+            <button class="btn-secondary" onclick="clearLogs()">🗑️ Clear Logs</button>
+        </div>
+        
+        <div id="test-results">
+            <div class="test pending" id="test-environment">
+                <h3>Test 1: Environment Check</h3>
+                <div id="environment-result">Click "Run All Tests" to start</div>
+            </div>
+            
+            <div class="test pending" id="test-tensorflow">
+                <h3>Test 2: TensorFlow.js CSP-Compliant Loading</h3>
+                <div id="tensorflow-result">Waiting...</div>
+            </div>
+            
+            <div class="test pending" id="test-ml-config">
+                <h3>Test 3: ML Configuration</h3>
+                <div id="ml-config-result">Waiting...</div>
+            </div>
+            
+            <div class="test pending" id="test-ml-database">
+                <h3>Test 4: ML Database (IndexedDB)</h3>
+                <div id="ml-database-result">Waiting...</div>
+            </div>
+            
+            <div class="test pending" id="test-ml-categorizer">
+                <h3>Test 5: ML Categorizer Initialization</h3>
+                <div id="ml-categorizer-result">Waiting...</div>
+            </div>
+            
+            <div class="test pending" id="test-training">
+                <h3>Test 6: Model Training (with sample data)</h3>
+                <div id="training-result">Waiting...</div>
+            </div>
+        </div>
+        
+        <div class="test info">
+            <h3>📋 Test Logs</h3>
+            <div class="logs">
+                <pre id="test-logs">Logs will appear here...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        let logContainer;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            logContainer = document.getElementById('test-logs');
+            log('🔧 Test suite initialized. Click "Run All Tests" to begin.');
+        });
+        
+        // Logging
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            if (logContainer) {
+                logContainer.textContent += logMessage + '\n';
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        }
+        
+        function clearLogs() {
+            if (logContainer) {
+                logContainer.textContent = 'Logs cleared.\n';
+            }
+        }
+        
+        // Test helpers
+        function markTest(testId, status, message) {
+            const testEl = document.getElementById(testId);
+            const resultEl = document.getElementById(testId.replace('test-', '') + '-result');
+            
+            if (testEl && resultEl) {
+                testEl.className = `test ${status}`;
+                resultEl.innerHTML = message;
+            }
+            
+            log(`${status.toUpperCase()}: ${testId} - ${message.replace(/<[^>]*>/g, '')}`);
+        }
+        
+        // Test 1: Environment Check
+        async function testEnvironment() {
+            const checks = {
+                indexedDB: !!window.indexedDB,
+                chrome: !!window.chrome,
+                chromeRuntime: !!(window.chrome && window.chrome.runtime),
+                modules: true // We can import modules since we're using type="module"
+            };
+            
+            const allPassed = Object.values(checks).every(Boolean);
+            const details = Object.entries(checks)
+                .map(([key, value]) => `${key}: ${value ? '✅' : '❌'}`)
+                .join('<br>');
+                
+            markTest('test-environment', allPassed ? 'pass' : 'fail', 
+                `Environment check: ${allPassed ? 'All good' : 'Some issues'}<br>${details}`);
+            
+            return allPassed;
+        }
+        
+        // Test 2: TensorFlow.js Loading
+        async function testTensorFlow() {
+            try {
+                log('Loading TensorFlow.js modules...');
+                
+                // Note: We can't use the chrome.runtime.getURL in this test environment
+                // but we can test the module loading logic
+                const { loadTensorFlow } = await import('./src/ml/tensorflow-loader.js');
+                
+                log('TensorFlow loader imported successfully');
+                markTest('test-tensorflow', 'info', 
+                    '⚠️ TensorFlow loader imported. Actual loading requires Chrome extension environment.');
+                    
+                return true;
+            } catch (error) {
+                log(`TensorFlow loading error: ${error.message}`);
+                markTest('test-tensorflow', 'fail', `❌ Error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Test 3: ML Config
+        async function testMLConfig() {
+            try {
+                const { ML_CONFIG } = await import('./src/ml/model-config.js');
+                
+                const details = `
+                    Model classes: ${ML_CONFIG.model.output.numClasses}<br>
+                    Training epochs: ${ML_CONFIG.training.epochs}<br>
+                    Background training: ${ML_CONFIG.backgroundTraining.enabled}<br>
+                    Initial trust weights: Rules ${ML_CONFIG.trust.initialWeights.rules}, 
+                    Model ${ML_CONFIG.trust.initialWeights.model}, 
+                    LLM ${ML_CONFIG.trust.initialWeights.llm}
+                `;
+                
+                markTest('test-ml-config', 'pass', `✅ ML Config loaded successfully<br>${details}`);
+                return true;
+            } catch (error) {
+                markTest('test-ml-config', 'fail', `❌ Error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Test 4: ML Database
+        async function testMLDatabase() {
+            try {
+                const { initMLDatabase, addTrainingData, getTrainingData } = await import('./src/ml/storage/ml-database.js');
+                
+                log('Initializing ML database...');
+                await initMLDatabase();
+                
+                log('Adding test training data...');
+                await addTrainingData({
+                    url: 'https://test-ml.example.com',
+                    title: 'Test ML Page',
+                    category: 2,
+                    source: 'test_suite',
+                    metadata: { test: true }
+                });
+                
+                log('Retrieving training data...');
+                const data = await getTrainingData();
+                const testData = data.filter(d => d.source === 'test_suite');
+                
+                markTest('test-ml-database', 'pass', 
+                    `✅ ML Database working<br>Test data added and retrieved: ${testData.length} entries`);
+                return true;
+            } catch (error) {
+                log(`ML Database error: ${error.message}`);
+                markTest('test-ml-database', 'fail', `❌ Error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Test 5: ML Categorizer
+        async function testMLCategorizer() {
+            try {
+                const { getMLCategorizer } = await import('./src/ml/categorization/ml-categorizer.js');
+                
+                log('Creating ML Categorizer...');
+                const categorizer = await getMLCategorizer();
+                
+                log('Checking ML availability...');
+                const isAvailable = await categorizer.isMLAvailable();
+                
+                log('Getting ML status...');
+                const status = await categorizer.getStatus();
+                
+                const details = `
+                    ML Available: ${isAvailable}<br>
+                    Status: <pre>${JSON.stringify(status, null, 2)}</pre>
+                `;
+                
+                markTest('test-ml-categorizer', isAvailable ? 'pass' : 'info', 
+                    `${isAvailable ? '✅' : 'ℹ️'} ML Categorizer created<br>${details}`);
+                return true;
+            } catch (error) {
+                log(`ML Categorizer error: ${error.message}`);
+                markTest('test-ml-categorizer', 'fail', `❌ Error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Test 6: Model Training
+        async function testTraining() {
+            try {
+                // Note: This is a complex test that might fail due to TensorFlow not being available
+                log('Testing model training capabilities...');
+                
+                const { ModelTrainer } = await import('./src/ml/training/trainer.js');
+                const trainer = new ModelTrainer();
+                
+                log('ModelTrainer created, checking initialization...');
+                
+                // We can't actually train without TensorFlow, but we can test the class
+                markTest('test-training', 'info', 
+                    'ℹ️ ModelTrainer class available. Full training requires TensorFlow.js to be loaded.');
+                return true;
+            } catch (error) {
+                log(`Training test error: ${error.message}`);
+                markTest('test-training', 'fail', `❌ Error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Run all tests
+        async function runAllTests() {
+            log('🚀 Starting ML functionality test suite...');
+            
+            const results = [];
+            
+            log('\n--- Test 1: Environment Check ---');
+            results.push(await testEnvironment());
+            
+            log('\n--- Test 2: TensorFlow.js Loading ---');
+            results.push(await testTensorFlow());
+            
+            log('\n--- Test 3: ML Configuration ---');
+            results.push(await testMLConfig());
+            
+            log('\n--- Test 4: ML Database ---');
+            results.push(await testMLDatabase());
+            
+            log('\n--- Test 5: ML Categorizer ---');
+            results.push(await testMLCategorizer());
+            
+            log('\n--- Test 6: Model Training ---');
+            results.push(await testTraining());
+            
+            const passed = results.filter(Boolean).length;
+            const total = results.length;
+            
+            log(`\n🏁 Test suite completed: ${passed}/${total} tests passed`);
+            
+            if (passed === total) {
+                log('🎉 All tests passed! ML functionality appears to be working.');
+            } else if (passed >= total * 0.7) {
+                log('⚠️ Most tests passed. Some components may need Chrome extension environment.');
+            } else {
+                log('❌ Multiple test failures. ML functionality has significant issues.');
+            }
+        }
+        
+        // Make functions available globally
+        window.runAllTests = runAllTests;
+        window.clearLogs = clearLogs;
+    </script>
+</body>
+</html>

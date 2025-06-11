@@ -1,0 +1,19 @@
+# Test Environment Files
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+test_results_*.txt
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
