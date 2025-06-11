@@ -531,22 +531,8 @@ async function processTabChange(changeType, tab) {
     const totalTabs = Object.values(categorizedTabs).reduce((sum, tabs) => sum + tabs.length, 0);
     
     if (totalTabs === 0 && state.popupState.activeTab === 'categorize') {
-      console.log('All tabs closed, switching to saved tab');
-      
-      // Use flicker-free UI for tab switching if available
-      const ffUI = await getFlickerFreeUI();
-      if (ffUI && ffUI.initialized) {
-        await ffUI.switchTab('saved');
-      } else {
-        // Fallback to legacy switching
-        switchToTab('saved');
-      }
-      
-      // Update saved tab content (happens instantly if cached)
-      const { updateSavedTabContent } = await import('./content-manager.js');
-      await updateSavedTabContent();
-      
-      return; // Exit early since we switched tabs
+      console.log('🔥 POPUP: All tabs closed, staying on Current tab to show empty state');
+      // Continue processing to show empty state instead of auto-switching to Saved tab
     }
     
     // Notify flicker-free UI of data changes
