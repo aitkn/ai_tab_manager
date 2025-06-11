@@ -188,6 +188,39 @@ newElement.addEventListener('click', handler);
 - Monitor console for API errors or rate limits
 - **CRITICAL**: For simple UI issues (like counters not updating), check change detection logic first before investigating complex message passing or event systems. Often the issue is in hash/comparison functions not detecting the specific change type.
 
+## Testing Architecture
+
+### Modular Test System (June 2025)
+The extension now uses a modular test system for better development workflow:
+
+**Test Structure:**
+- `test_base.py` - Base class with shared browser setup and utilities
+- `test_search.py` - Search functionality tests (filtering, group counters, empty groups)
+- `test_groupby.py` - GROUP BY functionality tests (category/domain grouping)
+- `test_simple.py` - Original comprehensive test suite
+- `run_modular_tests.sh` - Script to run specific test modules
+
+**Usage:**
+```bash
+./run_modular_tests.sh search    # Search tests only
+./run_modular_tests.sh groupby   # GROUP BY tests only  
+./run_modular_tests.sh all       # Complete test suite
+```
+
+**Benefits:**
+- Faster development cycle (test specific features independently)
+- Better debugging (isolate issues to feature areas)
+- Easier maintenance (focused test modules)
+- CI/CD friendly (different test suites for different triggers)
+
+**Future Consideration - pytest:**
+For functional testing, pytest would provide additional benefits:
+- Better test discovery and organization with markers (`@pytest.mark.search`)
+- Fixtures for browser setup/teardown
+- Parameterized tests for different scenarios  
+- HTML reports and parallel execution plugins
+- Standard testing framework conventions
+
 ## Recent Major Changes
 
 ### ML Training Architecture Fix (January 2025)
@@ -227,6 +260,8 @@ newElement.addEventListener('click', handler);
 - **Git Recovery**: Successfully recovered lost `database.js` functionality (updateTabCategory method) from git reset incident using git reflog
 - **Enhanced Testing**: Added GROUP BY functionality tests to Current Tab test suite with TDD detection of domain grouping issues
 - **Database Restoration**: Restored complete database functionality including 50 lines of lost updateTabCategory implementation
+- **Modular Test System**: Refactored tests into modular system with `test_base.py`, `test_search.py`, `test_groupby.py` for independent testing of specific functionality
+- **Search Functionality Tests**: Added comprehensive search tests covering filtering, group counter updates, empty group handling, and case sensitivity
 
 ## Critical Requirements (DO NOT FORGET)
 
