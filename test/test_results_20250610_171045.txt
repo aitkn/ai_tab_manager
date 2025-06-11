@@ -1,0 +1,69 @@
+SIMPLE CURRENT TAB TEST REPORT
+========================================
+Test Name: Current Tab Basic Functionality
+Overall Result: FAILED
+Timestamp: 2025-06-10 17:10:45.753877
+Passed: 35
+Failed: 4
+
+DETAILED RESULTS:
+========================================
+[17:10:33] PASSED: Successfully launched Chrome with extension
+[17:10:34] PASSED: Successfully opened extension
+[17:10:34] PASSED: Clicked Current tab button (fast path)
+[17:10:34] PASSED: DEBUGGING: Extension shows 0 tab items, 4 URL links
+[17:10:35] PASSED: Found 0 refresh buttons, 0 categorize buttons
+[17:10:35] PASSED: Continuing test to check real-time detection: 0 tab items, 4 URLs
+[17:10:35] PASSED: 🔥 TEST 1: Testing real-time updates (our fix)
+[17:10:36] PASSED: Before real-time test: 0 tab items
+[17:10:36] PASSED: Switched back to extension tab
+[17:10:36] PASSED: Console logs sample: 9 recent messages
+[17:10:36] FAILED: ❌ No 🔥 debug messages found - our changes may not be loaded
+[17:10:36] PASSED: ✅ REAL-TIME UPDATE WORKS: Found 1 tab items (was 0)
+[17:10:36] PASSED: ✅ REAL-TIME UPDATE: About:blank tab detected in content
+[17:10:36] PASSED: 🔥 TEST 2: Testing real-time tab closing
+[17:10:36] PASSED: Initial tab count: 1
+[17:10:37] PASSED: Switched back to extension tab
+[17:10:38] PASSED: After opening tab: 1 tabs (no increase)
+[17:10:39] PASSED: ✅ REAL-TIME TAB CLOSING: Count returned to initial (1)
+[17:10:39] PASSED: 🔥 TEST 3: Testing URL grouping and duplicate counter in title
+[17:10:39] PASSED: Initial tab count: 1
+[17:10:40] PASSED: Switched back to extension tab
+[17:10:41] PASSED: Page content sample: AI Tab Manager
+Support
+Current
+1
+Saved
+Settings
+Categorize & Save
+GROUP BY:
+Category
+Domain
+×
+Uncategorized (
+1
+)
+about:blank
+about:blank
+×
+
+
+
+New uncategorized tab detected...
+[17:10:41] PASSED: Found 1 .tab-title elements
+[17:10:41] PASSED: DEBUG: Potential match: text='about:blank' attr='about:blank'
+[17:10:41] PASSED: ✅ URL GROUPING: Tabs grouped - 1 items (less than 4 expected)
+[17:10:41] PASSED: 🔥 TEST 4: Testing grouped tab counter increment/decrement
+[17:10:42] PASSED: Switched back to extension tab
+[17:10:43] PASSED: ❌ No initial counter found - creating baseline
+[17:10:43] PASSED: Testing counter INCREMENT...
+[17:10:43] PASSED: Switched back to extension tab
+[17:10:44] FAILED: ❌ Counter increment failed: expected > 1, got None
+[17:10:44] PASSED: Testing counter DECREMENT...
+[17:10:44] PASSED: Looking through 8 browser tabs...
+[17:10:44] PASSED:   Tab 1: chrome-extension://ecclllmfjfifjdfnbdlmiooacgnjkac...
+[17:10:44] PASSED:   Tab 2: about:blank...
+[17:10:44] PASSED: ✅ Closed one duplicate tab
+[17:10:44] PASSED: Switched back to extension tab
+[17:10:45] FAILED: ❌ Counter did not decrease: still None
+[17:10:45] FAILED: Overall test result: FAILED

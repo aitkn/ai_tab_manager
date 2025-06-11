@@ -482,12 +482,26 @@ async function handleTabChange(data) {
  * Process tab change after debounce
  */
 async function processTabChange(changeType, tab) {
+  console.log('🔥 POPUP: Processing tab change:', {
+    changeType,
+    tabId: tab?.id,
+    tabUrl: tab?.url?.substring(0, 50) + '...',
+    activeTab: state.popupState.activeTab
+  });
+  
   // Check if we have categorized tabs
   const { hasCurrentTabs } = await import('./tab-data-source.js');
   const hasCategorizedTabs = await hasCurrentTabs();
   
-  if (!hasCategorizedTabs && changeType !== 'created') {
+  // Only skip if we have no tabs AND we're not viewing the Current tab (where users expect real-time updates)
+  if (!hasCategorizedTabs && changeType !== 'created' && state.popupState.activeTab !== 'categorize') {
+    console.log('🔥 POPUP: Skipping - no categorized tabs, not creation, and not on Current tab');
     return;
+  }
+  
+  // If we're on Current tab and all tabs were removed, we should still update to show empty state
+  if (!hasCategorizedTabs && state.popupState.activeTab === 'categorize') {
+    console.log('🔥 POPUP: Updating Current tab to show empty state after all tabs removed');
   }
   
   

@@ -1,0 +1,29 @@
+SIMPLE CURRENT TAB TEST REPORT
+========================================
+Test Name: Current Tab Basic Functionality
+Overall Result: FAILED
+Timestamp: 2025-06-10 16:23:52.562100
+Passed: 17
+Failed: 2
+
+DETAILED RESULTS:
+========================================
+[16:23:48] PASSED: Successfully launched Chrome with extension
+[16:23:48] PASSED: Successfully opened extension
+[16:23:48] PASSED: Clicked Current tab button (fast path)
+[16:23:49] PASSED: DEBUGGING: Extension shows 0 tab items, 4 URL links
+[16:23:50] PASSED: Found 0 refresh buttons, 0 categorize buttons
+[16:23:50] PASSED: Continuing test to check real-time detection: 0 tab items, 4 URLs
+[16:23:50] PASSED: 🔥 TEST 1: Testing real-time updates (our fix)
+[16:23:50] PASSED: Before real-time test: 0 tab items
+[16:23:51] PASSED: Switched back to extension tab
+[16:23:51] PASSED: Console logs sample: 10 recent messages
+[16:23:51] PASSED: Found 1 🔥 debug messages in console
+[16:23:51] PASSED: ✅ REAL-TIME UPDATE WORKS: Found 1 tab items (was 0)
+[16:23:51] PASSED: ✅ REAL-TIME UPDATE: About:blank tab detected in content
+[16:23:51] PASSED: 🔥 TEST 2: Testing real-time tab closing
+[16:23:51] PASSED: Initial tab count: 1
+[16:23:51] PASSED: Switched back to extension tab
+[16:23:51] PASSED: After opening tab: 1 tabs
+[16:23:52] FAILED: ❌ REAL-TIME TAB CLOSING FAILED: Count still 1
+[16:23:52] FAILED: Overall test result: FAILED
