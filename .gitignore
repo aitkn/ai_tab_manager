@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+venv/
+
+# Test logs and cache
+test/logs/
+test/.pytest_cache/
+test/functional/.pytest_cache/
+test/__pycache__/
+test/functional/__pycache__/
+test/legacy/__pycache__/
+test/utils/__pycache__/
+*.pyc
+__pycache__/
+
+# Test reports
+test/logs/*.html
+test/logs/*.xml
+test/logs/*.json
+
+# Chrome debug screenshots
+test/utils/*.png
+test/windows_chrome_test_*.png
+
+# Build artifacts
+build/
+dist/
+*.zip
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

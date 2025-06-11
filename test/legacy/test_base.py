@@ -259,19 +259,50 @@ class ExtensionTestBase:
         """Clean up resources"""
         try:
             if self.driver:
-                # Try graceful quit first
-                self.driver.quit()
-                time.sleep(1)
+                # Close any extension popup tabs we opened during testing
+                try:
+                    all_handles = self.driver.window_handles
+                    popup_tabs_closed = 0
+                    
+                    for handle in all_handles:
+                        try:
+                            self.driver.switch_to.window(handle)
+                            current_url = self.driver.current_url
+                            
+                            # Close extension popup tabs
+                            if "chrome-extension:" in current_url and "popup.html" in current_url:
+                                self.log_result("Closing extension popup tab", "INFO")
+                                self.driver.close()
+                                popup_tabs_closed += 1
+                        except:
+                            # Tab might already be closed
+                            continue
+                    
+                    if popup_tabs_closed > 0:
+                        self.log_result(f"Closed {popup_tabs_closed} extension popup tabs", "PASSED")
+                
+                except Exception as e:
+                    self.log_result(f"Error during popup cleanup: {e}", "FAILED")
+                
+                # Don't quit the driver for Windows Chrome connection tests
+                # Just disconnect to keep the browser open
+                if hasattr(self, 'extension_id') and self.extension_id:
+                    # This is likely a Windows Chrome connection test
+                    pass
+                else:
+                    # This is a local Chrome test, safe to quit
+                    self.driver.quit()
+                    time.sleep(1)
         except:
             pass
         
-        # Force kill any remaining Chrome processes
-        try:
-            import subprocess
-            subprocess.run(["pkill", "-f", "chromedriver"], capture_output=True)
-            subprocess.run(["pkill", "-f", "chrome"], capture_output=True)
-        except:
-            pass
+        # Force kill any remaining Chrome processes (only for local tests)
+        if not hasattr(self, 'extension_id') or not self.extension_id:
+            try:
+                import subprocess
+                subprocess.run(["pkill", "-f", "chromedriver"], capture_output=True)
+            except:
+                pass
     
     def run_basic_setup(self):
         """Run basic setup steps common to all tests"""

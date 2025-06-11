@@ -61,17 +61,25 @@ show_tests() {
     echo "========================="
     echo "1. search      - Search functionality tests"
     echo "2. groupby     - GROUP BY functionality tests"
-    echo "3. all         - Run complete test suite (original)"
-    echo "4. manual      - Open browser for manual testing (avoids blocking)"
-    echo "5. wsl         - WSL-safe headless testing (no Windows display issues)"
-    echo "6. help        - Show this help message"
+    echo "3. tdd-issues  - TDD test for GROUP BY + search issues"
+    echo "4. all         - Run complete test suite (original)"
+    echo "5. manual      - Open browser for manual testing (avoids blocking)"
+    echo "6. wsl         - WSL-safe headless testing (no Windows display issues)"
+    echo "7. known       - Test known Windows extension (fnklipkenfpdakdficiofcdejbiajgeh)"
+    echo "8. auto        - Automated testing with Windows Chrome extension"
+    echo "9. mcp         - MCP-based automated testing (recommended)"
+    echo "10. help       - Show this help message"
     echo ""
     echo "Usage examples:"
     echo "  ./run_modular_tests.sh search"
     echo "  ./run_modular_tests.sh groupby"
+    echo "  ./run_modular_tests.sh tdd-issues"
     echo "  ./run_modular_tests.sh all"
     echo "  ./run_modular_tests.sh manual"
     echo "  ./run_modular_tests.sh wsl"
+    echo "  ./run_modular_tests.sh known"
+    echo "  ./run_modular_tests.sh auto"
+    echo "  ./run_modular_tests.sh mcp"
     echo ""
 }
 
@@ -88,6 +96,13 @@ case "${1:-help}" in
         echo "📂 Running GROUP BY Functionality Tests Only"
         echo "==========================================="
         run_test "GROUP BY Tests" "test_groupby.py"
+        exit $?
+        ;;
+    
+    "tdd-issues")
+        echo "🔍 Running TDD Test for GROUP BY + Search Issues"
+        echo "==============================================="
+        run_test "GROUP BY + Search Issues TDD" "test_groupby_search_issues.py"
         exit $?
         ;;
     
@@ -109,6 +124,27 @@ case "${1:-help}" in
         echo "🐧 Running WSL-Safe Headless Testing"
         echo "===================================="
         python test_wsl_safe.py
+        exit $?
+        ;;
+    
+    "known")
+        echo "🔧 Testing Known Windows Extension"
+        echo "=================================="
+        python test_known_extension.py
+        exit $?
+        ;;
+    
+    "auto")
+        echo "🤖 Running Automated Windows Chrome Testing"
+        echo "==========================================="
+        python test_automated_windows.py
+        exit $?
+        ;;
+    
+    "mcp")
+        echo "🔧 Running MCP-Based Automated Testing"
+        echo "======================================"
+        python test_mcp_automated.py
         exit $?
         ;;
     

@@ -5,6 +5,7 @@
 
 import { TAB_CATEGORIES } from '../utils/constants.js';
 import { ChromeAPIService } from '../services/ChromeAPIService.js';
+import { extractDomain } from '../utils/helpers.js';
 
 export class CurrentTabsProcessor {
   constructor(database) {
@@ -78,7 +79,8 @@ export class CurrentTabsProcessor {
           pinned: tab.pinned,
           audible: tab.audible,
           mutedInfo: tab.mutedInfo,
-          lastAccessed: Date.now()
+          lastAccessed: Date.now(),
+          domain: extractDomain(tab.url)
         };
         
         // Mark as saved if found in database
