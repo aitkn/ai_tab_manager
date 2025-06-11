@@ -141,6 +141,8 @@ src/
 
 8. **Popup not updating when last tab is closed**: Issue was in `app-initializer.js` - `processTabChange()` function skipped updates when no categorized tabs existed, even when on Current tab view. Users expect to see empty state updates. Fixed by modifying condition in `app-initializer.js:497` to only skip updates when NOT on Current tab view: `if (!hasCategorizedTabs && changeType !== 'created' && state.popupState.activeTab !== 'categorize')`
 
+9. **Extension auto-switches to Saved tab when last tab is closed**: Issue was in `app-initializer.js:533-550` - logic automatically switched from Current to Saved tab when all tabs were closed. Users should stay on Current tab and see empty state. Fixed by removing the auto-switch logic and allowing normal empty state display to proceed.
+
 ### Critical Event Listener Issues (Debugging Pattern)
 
 **Symptoms**: Event handlers not working or behaving inconsistently
