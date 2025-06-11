@@ -44,11 +44,23 @@ class ExtensionTestBase:
             chrome_options.add_argument("--disable-web-security")
             chrome_options.add_argument("--allow-running-insecure-content")
             chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+            # Fix extension blocking issues
+            chrome_options.add_argument("--disable-extensions-file-access-check")
+            chrome_options.add_argument("--enable-experimental-extension-apis")
+            chrome_options.add_argument("--disable-default-apps")
+            chrome_options.add_argument("--no-first-run")
+            chrome_options.add_argument("--disable-background-mode")
+            # Allow unpacked extensions
+            chrome_options.add_experimental_option("useAutomationExtension", False)
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
             
             # Initialize driver
             service = Service(ChromeDriverManager().install())
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
             self.driver.set_window_size(1200, 800)
+            # Set timeouts to prevent hanging
+            self.driver.implicitly_wait(10)
+            self.driver.set_page_load_timeout(30)
             
             # Wait a moment for extension to load
             time.sleep(2)
@@ -85,12 +97,58 @@ class ExtensionTestBase:
     def open_extension(self):
         """Open extension in a new tab"""
         try:
+            # Wait a bit for extension to load
+            time.sleep(3)
+            
             # First try to find existing extension tab
             if self.find_extension_tab():
                 self.log_result("Found existing extension tab", "PASSED")
                 return True
             
-            # Get all tabs to find extension
+            # Try to open extension popup directly by creating a tab
+            try:
+                # Go to chrome://extensions to find our extension ID
+                self.driver.get("chrome://extensions/")
+                time.sleep(2)
+                
+                # Enable developer mode if needed
+                try:
+                    dev_mode_toggle = self.driver.find_element(By.CSS_SELECTOR, "#devMode")
+                    if not dev_mode_toggle.is_selected():
+                        dev_mode_toggle.click()
+                        time.sleep(1)
+                except:
+                    pass
+                
+                # Look for our extension in the page
+                try:
+                    extension_cards = self.driver.find_elements(By.CSS_SELECTOR, "extensions-item")
+                    for card in extension_cards:
+                        # Check if this is our AI Tab Manager extension
+                        if "AI Tab Manager" in card.text or "Tab Manager" in card.text:
+                            # Try to get extension ID from the card
+                            extension_id_element = card.find_element(By.CSS_SELECTOR, "#extension-id")
+                            if extension_id_element:
+                                self.extension_id = extension_id_element.text.strip()
+                                break
+                except:
+                    pass
+                
+                # If we found extension ID, try to open popup
+                if self.extension_id:
+                    popup_url = f"chrome-extension://{self.extension_id}/popup.html"
+                    self.driver.execute_script(f"window.open('{popup_url}', '_blank');")
+                    time.sleep(2)
+                    self.driver.switch_to.window(self.driver.window_handles[-1])
+                    
+                    if "chrome-extension://" in self.driver.current_url:
+                        self.log_result(f"Successfully opened extension: {self.extension_id}", "PASSED")
+                        return True
+                
+            except Exception as e:
+                self.log_result(f"Error accessing chrome://extensions: {e}", "FAILED")
+            
+            # Final fallback - check all tabs again
             all_handles = self.driver.window_handles
             for handle in all_handles:
                 self.driver.switch_to.window(handle)
@@ -100,20 +158,8 @@ class ExtensionTestBase:
                     self.log_result(f"Found extension tab: {self.extension_id}", "PASSED")
                     return True
             
-            # If not found, try to open extension via chrome://extensions page
-            self.driver.execute_script("window.open('chrome://extensions/', '_blank');")
-            time.sleep(2)
-            self.driver.switch_to.window(self.driver.window_handles[-1])
-            
-            # Enable developer mode and look for extension
-            try:
-                # This is a fallback - in real scenarios the extension should auto-load
-                self.log_result("Extension not found in tabs, manual intervention may be needed", "FAILED")
-                return False
-            except:
-                pass
-            
-            self.log_result("Failed to open extension", "FAILED")
+            self.log_result("❌ Extension not loaded. Please manually load the extension in chrome://extensions", "FAILED")
+            self.log_result("💡 TIP: Enable Developer mode and click 'Load unpacked' to load the extension", "FAILED")
             return False
             
         except Exception as e:
@@ -213,7 +259,17 @@ class ExtensionTestBase:
         """Clean up resources"""
         try:
             if self.driver:
+                # Try graceful quit first
                 self.driver.quit()
+                time.sleep(1)
+        except:
+            pass
+        
+        # Force kill any remaining Chrome processes
+        try:
+            import subprocess
+            subprocess.run(["pkill", "-f", "chromedriver"], capture_output=True)
+            subprocess.run(["pkill", "-f", "chrome"], capture_output=True)
         except:
             pass
     
