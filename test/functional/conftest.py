@@ -77,14 +77,17 @@ def _open_extension_smart(state):
         except:
             continue
     
-    # Find a suitable tab to replace or create new one
+    # No existing extension tab found, use smart replacement method
+    # Find the current tab to replace
     current_handle = state.driver.current_window_handle
     remembered_url = state.driver.current_url
     remembered_title = state.driver.title
     
-    # Navigate current tab to extension
+    print(f"DEBUG: Replacing tab {remembered_url} with extension")
+    
+    # Navigate current tab to extension (this always works)
     state.driver.get(state.popup_url)
-    time.sleep(2)
+    time.sleep(1)
     
     if state.extension_id in state.driver.current_url:
         state.extension_handle = state.driver.current_window_handle
@@ -92,36 +95,42 @@ def _open_extension_smart(state):
         # Restore the replaced tab if it wasn't blank/extension
         should_restore = (remembered_url and 
                          remembered_url != "about:blank" and 
-                         state.extension_id not in remembered_url)
+                         state.extension_id not in remembered_url and
+                         "chrome-extension://" not in remembered_url)
         
         if should_restore:
+            print(f"DEBUG: Attempting to restore {remembered_url}")
             try:
-                if remembered_url.startswith('chrome://'):
-                    # Chrome internal pages need special handling
-                    state.driver.execute_script("window.open('about:blank', '_blank');")
-                    time.sleep(0.5)
-                    new_handles = set(state.driver.window_handles) - state.initial_handles
-                    if new_handles:
-                        new_handle = list(new_handles)[0]
-                        state.driver.switch_to.window(new_handle)
-                        state.driver.get(remembered_url)
-                        state.created_handles.add(new_handle)
-                else:
-                    # Regular web pages
-                    state.driver.execute_script(f"window.open('{remembered_url}', '_blank');")
-                    time.sleep(0.5)
-                    new_handles = set(state.driver.window_handles) - state.initial_handles
-                    if new_handles:
-                        state.created_handles.update(new_handles)
+                # Try the more reliable method - always use about:blank first
+                state.driver.execute_script("window.open('about:blank', '_blank');")
+                time.sleep(0.5)
                 
-                # Switch back to extension
-                state.driver.switch_to.window(state.extension_handle)
+                # Find the new blank tab
+                current_handles = set(state.driver.window_handles)
+                new_handles = current_handles - state.initial_handles - {state.extension_handle}
+                
+                if new_handles:
+                    new_handle = list(new_handles)[0]
+                    state.driver.switch_to.window(new_handle)
+                    
+                    # Now navigate to the remembered URL
+                    state.driver.get(remembered_url)
+                    time.sleep(0.5)
+                    
+                    state.created_handles.add(new_handle)
+                    print(f"DEBUG: Successfully restored {remembered_url}")
+                    
+                    # Switch back to extension
+                    state.driver.switch_to.window(state.extension_handle)
+                else:
+                    print("DEBUG: Could not create new tab for restoration")
                 
             except Exception as e:
-                print(f"Warning: Could not restore tab {remembered_url}: {e}")
+                print(f"DEBUG: Could not restore tab {remembered_url}: {e}")
         
         return True
     
+    print(f"DEBUG: Failed to load extension at {state.popup_url}")
     return False
 
 
@@ -131,39 +140,47 @@ def _cleanup_test_state(state):
         return
         
     try:
-        # Close any test tabs we created
-        current_handles = set(state.driver.window_handles)
-        test_handles = current_handles - state.initial_handles
-        
-        for handle in test_handles:
+        # Close any test tabs we explicitly created
+        for handle in state.created_handles.copy():
             try:
                 state.driver.switch_to.window(handle)
                 current_url = state.driver.current_url
                 
-                # Close test tabs (but be careful about extension tab)
+                # Close test tabs 
                 should_close = any(pattern in current_url.lower() for pattern in [
                     "github.com", "stackoverflow.com", "docs.python.org",
-                    "youtube.com", "google.com", "example.com"
+                    "example.com"
                 ])
                 
                 if should_close:
                     state.driver.close()
+                    state.created_handles.remove(handle)
             except:
-                pass
+                # If tab is already closed, remove from tracking
+                state.created_handles.discard(handle)
         
-        # If extension tab was opened, close it to restore initial state
-        if state.extension_handle and state.extension_handle not in state.initial_handles:
+        # Always close extension tab to prevent accumulation
+        if state.extension_handle:
             try:
                 state.driver.switch_to.window(state.extension_handle)
                 if state.extension_id in state.driver.current_url:
                     state.driver.close()
-            except:
-                pass
+                    print("DEBUG: Closed extension tab")
+            except Exception as e:
+                print(f"DEBUG: Error closing extension tab: {e}")
         
         # Switch to any remaining initial tab
-        remaining_handles = [h for h in state.driver.window_handles if h in state.initial_handles]
-        if remaining_handles:
-            state.driver.switch_to.window(remaining_handles[0])
+        try:
+            remaining_handles = [h for h in state.driver.window_handles if h in state.initial_handles]
+            if remaining_handles:
+                state.driver.switch_to.window(remaining_handles[0])
+            else:
+                # If no initial tabs remain, switch to any available tab
+                available_handles = state.driver.window_handles
+                if available_handles:
+                    state.driver.switch_to.window(available_handles[0])
+        except:
+            pass
             
     except Exception as e:
         print(f"Cleanup warning: {e}")
@@ -198,7 +215,7 @@ def extension_id(request):
 
 
 # Helper functions for tests
-def wait_for_element(driver, selector, timeout=10):
+def wait_for_element(driver, selector, timeout=5):
     """Wait for element to be present"""
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
@@ -212,19 +229,32 @@ def create_test_tabs(state, urls):
     created_handles = []
     initial_handles = set(state.driver.window_handles)
     
+    # Use the same approach as in extension opening - create blank tabs first
     for url in urls:
-        state.driver.execute_script(f"window.open('{url}', '_blank');")
-        time.sleep(0.3)
-    
-    # Track new handles
-    new_handles = set(state.driver.window_handles) - initial_handles
-    state.created_handles.update(new_handles)
+        try:
+            state.driver.execute_script("window.open('about:blank', '_blank');")
+            time.sleep(0.5)
+            
+            # Find the new tab and navigate to URL
+            current_handles = set(state.driver.window_handles)
+            new_handles = current_handles - initial_handles - state.created_handles
+            
+            if new_handles:
+                new_handle = list(new_handles)[0]
+                state.driver.switch_to.window(new_handle)
+                state.driver.get(url)
+                time.sleep(0.5)
+                state.created_handles.add(new_handle)
+                created_handles.append(new_handle)
+                initial_handles.add(new_handle)  # Update for next iteration
+        except Exception as e:
+            print(f"Warning: Could not create test tab for {url}: {e}")
     
     # Switch back to extension
-    if state.extension_handle:
+    if state.extension_handle and state.extension_handle in state.driver.window_handles:
         state.driver.switch_to.window(state.extension_handle)
     
-    return list(new_handles)
+    return created_handles
 
 
 def show_demo_balloon(state, message, status="INFO", duration=2.5, demo_mode=False):
