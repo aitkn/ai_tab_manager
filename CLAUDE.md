@@ -139,6 +139,8 @@ src/
 6. **UI flickering during updates**: Solved by using morphdom instead of manual DOM manipulation
 7. **Duplicate counter not updating in real-time**: Issue was in `content-manager.js` - `generateTabHash()` function didn't include `duplicateCount` in change detection, so UI wasn't refreshing when counters changed. Fixed by adding `:${tab.duplicateCount || 1}` to hash calculation in `content-manager.js:284`
 
+8. **Popup not updating when last tab is closed**: Issue was in `app-initializer.js` - `processTabChange()` function skipped updates when no categorized tabs existed, even when on Current tab view. Users expect to see empty state updates. Fixed by modifying condition in `app-initializer.js:497` to only skip updates when NOT on Current tab view: `if (!hasCategorizedTabs && changeType !== 'created' && state.popupState.activeTab !== 'categorize')`
+
 ### Critical Event Listener Issues (Debugging Pattern)
 
 **Symptoms**: Event handlers not working or behaving inconsistently
