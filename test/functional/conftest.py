@@ -122,9 +122,9 @@ def _open_extension_smart(state):
     if state.extension_id in state.driver.current_url:
         state.extension_handle = state.driver.current_window_handle
         
-        # Restore the replaced tab if it wasn't blank/extension
+        # Restore the replaced tab if it wasn't an extension tab
+        # NOTE: We DO restore about:blank tabs if they were originally present
         should_restore = (remembered_url and 
-                         remembered_url != "about:blank" and 
                          state.extension_id not in remembered_url and
                          "chrome-extension://" not in remembered_url)
         
