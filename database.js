@@ -911,8 +911,58 @@ class TabDatabase {
     // Implementation for importing data
     // This would clear existing data and import the new data
   }
+
+  /**
+   * Update the category of a saved tab by URL
+   * @param {string} url - The URL of the tab to update
+   * @param {number} newCategory - The new category (1, 2, or 3)
+   * @returns {Promise<Object>} Updated tab record
+   */
+  async updateTabCategory(url, newCategory) {
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['urls'], 'readwrite');
+      const store = transaction.objectStore('urls');
+      const index = store.index('url');
+
+      // Find the tab by URL
+      const getRequest = index.get(url);
+      
+      getRequest.onsuccess = () => {
+        const urlRecord = getRequest.result;
+        
+        if (!urlRecord) {
+          reject(new Error(`Tab not found with URL: ${url}`));
+          return;
+        }
+        
+        // Update the record with new category
+        const updatedRecord = {
+          ...urlRecord,
+          category: newCategory,
+          lastCategorized: Date.now()
+        };
+        
+        // Save the updated record
+        const putRequest = store.put(updatedRecord);
+        
+        putRequest.onsuccess = () => {
+          console.log(`Updated tab category: ${url} -> category ${newCategory}`);
+          resolve(updatedRecord);
+        };
+        
+        putRequest.onerror = () => {
+          reject(new Error(`Failed to update tab category: ${putRequest.error}`));
+        };
+      };
+      
+      getRequest.onerror = () => {
+        reject(new Error(`Failed to find tab: ${getRequest.error}`));
+      };
+    });
+  }
 }
 
 // Create and expose the database instance
 // Use globalThis to work in both service workers and regular scripts
-globalThis.tabDatabase = new TabDatabase();
+const tabDatabase = new TabDatabase();
+globalThis.tabDatabase = tabDatabase;
