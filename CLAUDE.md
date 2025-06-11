@@ -143,6 +143,8 @@ src/
 
 9. **Extension auto-switches to Saved tab when last tab is closed**: Issue was in `app-initializer.js:533-550` - logic automatically switched from Current to Saved tab when all tabs were closed. Users should stay on Current tab and see empty state. Fixed by removing the auto-switch logic and allowing normal empty state display to proceed.
 
+10. **Domain grouping shows "unknown" headers**: Issue was in `src/utils/helpers.js` - `extractDomain()` function returned 'unknown' for special URL schemes (about:, chrome://, file://, etc.) because URL constructor threw exceptions. Fixed by adding special case handling before URL parsing: `about:` → `about`, `chrome://` → `chrome`, `file://` → `local-file`, `chrome-extension://` → `extension`. Used TDD approach to detect and verify fix.
+
 ### Critical Event Listener Issues (Debugging Pattern)
 
 **Symptoms**: Event handlers not working or behaving inconsistently
@@ -217,6 +219,14 @@ newElement.addEventListener('click', handler);
 - **Precision**: Only excludes tabs with exact URL `chrome-extension://<extension-id>/popup.html` to avoid affecting other extensions
 - **Safety**: Prevents extension from closing itself while maintaining full functionality for managing all other browser tabs
 - **Testing**: Verified to work with bulk operations like "Close All" - extension tabs remain protected
+
+### Real-time Updates & Domain Grouping Fixes (June 2025)
+- **Popup Empty State Fix**: Fixed `app-initializer.js` to show proper empty state when last tab is closed, instead of skipping updates on Current tab view
+- **Auto-switch Removal**: Removed unwanted auto-switching from Current to Saved tab when all tabs are closed - users now stay on Current tab as expected
+- **Domain Grouping Fix**: Fixed "unknown" domain headers in GROUP BY Domain mode using TDD approach
+- **Git Recovery**: Successfully recovered lost `database.js` functionality (updateTabCategory method) from git reset incident using git reflog
+- **Enhanced Testing**: Added GROUP BY functionality tests to Current Tab test suite with TDD detection of domain grouping issues
+- **Database Restoration**: Restored complete database functionality including 50 lines of lost updateTabCategory implementation
 
 ## Critical Requirements (DO NOT FORGET)
 
