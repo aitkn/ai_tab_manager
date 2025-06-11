@@ -109,10 +109,13 @@ class TestSearchFunctionality:
         ]
         create_test_tabs(state, test_urls)
         
+        # Give extension time to detect new tabs
+        time.sleep(2)
+        
         # Load current tabs with domain grouping
         current_btn = wait_for_element(state.driver, "[data-tab='categorize']")
         current_btn.click()
-        time.sleep(1)
+        time.sleep(3)  # More time for extension to load and process tabs
         
         # Ensure domain grouping
         state.driver.execute_script("""
@@ -139,6 +142,28 @@ class TestSearchFunctionality:
         
         assert len(visible_groups) < initial_count, "Some groups should be hidden"
         assert len(hidden_groups) > 0, "Should have hidden groups"
+        
+        # DEBUG: Print all visible groups for debugging
+        print(f"\n🔍 DEBUG: Found {len(visible_groups)} visible groups after search:")
+        for i, group in enumerate(visible_groups):
+            try:
+                header = group.find_element(By.CSS_SELECTOR, ".group-header, h3")
+                header_text = header.text
+                group_tabs = group.find_elements(By.CSS_SELECTOR, ".tab-item")
+                group_visible_tabs = group.find_elements(By.CSS_SELECTOR, ".tab-item:not(.hidden)")
+                print(f"   Group {i+1}: {header_text} (total: {len(group_tabs)}, visible: {len(group_visible_tabs)})")
+                
+                # Print individual tabs in this group
+                for j, tab in enumerate(group_tabs):
+                    try:
+                        url_elem = tab.find_element(By.CSS_SELECTOR, ".tab-url, .url")
+                        url = url_elem.text if url_elem else "No URL"
+                        is_hidden = "hidden" in tab.get_attribute("class")
+                        print(f"     Tab {j+1}: {url[:50]} {'(HIDDEN)' if is_hidden else '(VISIBLE)'}")
+                    except:
+                        print(f"     Tab {j+1}: Could not read URL")
+            except Exception as e:
+                print(f"   Group {i+1}: Could not read - {e}")
         
         # Verify github group shows correct count (2 tabs)
         github_group = None

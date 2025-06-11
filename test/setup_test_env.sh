@@ -86,3 +86,73 @@ echo "2. Run test: ./run_test.sh"
 echo ""
 echo "📋 Or run in one command:"
 echo "source venv/bin/activate && python test_simple.py"
+
+# Auto-detect Chrome remote debugging address
+echo ""
+echo "🔧 Detecting Chrome Remote Debugging Address..."
+
+get_current_ip() {
+    # Method 1: Check if we're in WSL and get Windows host IP
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+        # WSL environment - get Windows host IP
+        local wsl_ip=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}')
+        if [ ! -z "$wsl_ip" ]; then
+            echo "$wsl_ip"
+            return 0
+        fi
+    fi
+    
+    # Method 2: Try common local IPs
+    for ip in "127.0.0.1" "172.25.48.1" "192.168.1.1"; do
+        if timeout 2 bash -c "echo >/dev/tcp/$ip/9223" 2>/dev/null; then
+            echo "$ip"
+            return 0
+        fi
+    done
+    
+    # Method 3: Default fallback
+    echo "127.0.0.1"
+}
+
+# Auto-detect Chrome debug port
+detect_chrome_port() {
+    local ip=$(get_current_ip)
+    for port in 9223 9222 9224; do
+        if timeout 2 bash -c "echo >/dev/tcp/$ip/$port" 2>/dev/null; then
+            echo "$port"
+            return 0
+        fi
+    done
+    echo "9222"  # Default
+}
+
+# Set environment variables
+CHROME_IP=$(get_current_ip)
+CHROME_PORT=$(detect_chrome_port)
+export CHROME_DEBUG_ADDRESS="${CHROME_IP}:${CHROME_PORT}"
+
+echo "🔧 Chrome Debug Address: $CHROME_DEBUG_ADDRESS"
+
+# Verify connection
+if timeout 5 bash -c "echo >/dev/tcp/$CHROME_IP/$CHROME_PORT" 2>/dev/null; then
+    echo "✅ Chrome remote debugging is accessible"
+else
+    echo "❌ Warning: Chrome remote debugging not accessible at $CHROME_DEBUG_ADDRESS"
+    echo "   Make sure Chrome is running with: --remote-debugging-port=$CHROME_PORT"
+fi
+
+# Update activation script with Chrome address
+cat > activate_test_env.sh << EOF
+#!/bin/bash
+# Activate test environment
+echo "🐍 Activating Python 3.13 test environment..."
+source venv/bin/activate
+
+# Set Chrome debug address
+export CHROME_DEBUG_ADDRESS="$CHROME_DEBUG_ADDRESS"
+echo "🔧 Chrome Debug Address: \$CHROME_DEBUG_ADDRESS"
+
+echo "✅ Test environment activated!"
+echo "Python version: \$(python --version)"
+echo "To run tests: ./run_test.sh"
+EOF

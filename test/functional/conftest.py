@@ -5,11 +5,23 @@ Pytest configuration and fixtures for Chrome Extension functional tests
 
 import pytest
 import time
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
+
+
+def get_chrome_debug_address():
+    """Get Chrome remote debugging address from environment or default"""
+    return os.environ.get('CHROME_DEBUG_ADDRESS', '127.0.0.1:9222')
+
+
+def get_chrome_debug_url():
+    """Get Chrome DevTools Protocol URL"""
+    address = get_chrome_debug_address()
+    return f'http://{address}'
 
 
 class ExtensionTestState:
@@ -39,8 +51,16 @@ def extension_driver(request):
     try:
         # Connect to Chrome
         chrome_options = Options()
-        chrome_options.add_experimental_option("debuggerAddress", "172.25.48.1:9223")
-        service = Service(ChromeDriverManager().install())
+        debug_address = get_chrome_debug_address()
+        chrome_options.add_experimental_option("debuggerAddress", debug_address)
+        
+        # Fix chromedriver path issue - ensure we use the actual chromedriver executable
+        chromedriver_path = ChromeDriverManager().install()
+        if chromedriver_path.endswith('THIRD_PARTY_NOTICES.chromedriver'):
+            # WebDriverManager bug - fix the path
+            chromedriver_path = chromedriver_path.replace('THIRD_PARTY_NOTICES.chromedriver', 'chromedriver')
+        
+        service = Service(chromedriver_path)
         state.driver = webdriver.Chrome(service=service, options=chrome_options)
         
         # Record EXACT initial browser state
@@ -256,18 +276,47 @@ def _handle_special_test_cleanup(state):
     test_name = state.test_name.lower()
     
     if any(keyword in test_name for keyword in ['close_all', 'closeall', 'close all']):
-        print(f"🔄 [{state.test_name}] Detected Close All test - will restore closed tabs")
+        print(f"🔄 [{state.test_name}] Detected Close All test - managing tab restoration")
         
-        # For Close All tests, we need to restore tabs that were closed by the test
+        # For Close All tests, we need to be careful about what to restore
         current_handles = set(state.driver.window_handles)
-        missing_handles = state.initial_handles - current_handles
         
-        if missing_handles:
-            print(f"   Restoring {len(missing_handles)} tabs closed by Close All")
-            for handle, url, title in state.initial_tab_states:
-                if handle in missing_handles and url != "about:blank":
-                    try:
-                        # Recreate the closed tab
+        # Find which initial tabs were closed (but exclude test tabs we created)
+        missing_initial_tabs = []
+        for handle, url, title in state.initial_tab_states:
+            if handle not in current_handles and handle not in state.created_handles:
+                # This is an initial tab that was closed by Close All (not a test tab)
+                missing_initial_tabs.append((handle, url, title))
+        
+        # Check if any initial tabs were already restored by the test itself
+        already_restored_urls = set()
+        for handle in current_handles:
+            try:
+                state.driver.switch_to.window(handle)
+                url = state.driver.current_url
+                already_restored_urls.add(url)
+            except:
+                pass
+        
+        # Only restore tabs that haven't been restored yet
+        tabs_to_restore = []
+        for handle, url, title in missing_initial_tabs:
+            if url not in already_restored_urls and url != "about:blank" and state.extension_id not in url:
+                tabs_to_restore.append((handle, url, title))
+        
+        if tabs_to_restore:
+            print(f"   Restoring {len(tabs_to_restore)} initial tabs closed by Close All")
+            for handle, url, title in tabs_to_restore:
+                try:
+                    # Use CDP for more reliable tab creation
+                    import requests
+                    debug_url = get_chrome_debug_url()
+                    response = requests.put(f'{debug_url}/json/new?url={url}', timeout=5)
+                    if response.status_code == 200:
+                        time.sleep(0.5)  # Wait for tab to be created and load
+                        print(f"   Restored: {title[:30]}")
+                    else:
+                        # Fallback to window.open
                         state.driver.execute_script("window.open('about:blank', '_blank');")
                         time.sleep(0.3)
                         
@@ -277,9 +326,19 @@ def _handle_special_test_cleanup(state):
                             state.driver.switch_to.window(new_handle)
                             state.driver.get(url)
                             current_handles.add(new_handle)
-                            print(f"   Restored: {title[:30]}")
-                    except Exception as e:
-                        print(f"   Failed to restore {title[:30]}: {e}")
+                            print(f"   Restored (fallback): {title[:30]}")
+                except Exception as e:
+                    print(f"   Failed to restore {title[:30]}: {e}")
+        else:
+            print(f"   All initial tabs already restored or not needed")
+        
+        # For Close All tests, don't try to close test tabs in the regular cleanup
+        # since they were already closed by the Close All functionality
+        # Clear the created_handles so regular cleanup doesn't try to close them again
+        closed_by_close_all = state.created_handles.intersection(current_handles)
+        if len(closed_by_close_all) < len(state.created_handles):
+            print(f"   Test tabs were already closed by Close All - skipping regular test tab cleanup")
+            state.created_handles.clear()  # Prevent double-cleanup
 
 
 def _close_created_test_tabs(state):
@@ -331,7 +390,12 @@ def _restore_exact_initial_state(state):
                 state.driver.switch_to.window(handle)
                 current_url = state.driver.current_url
                 
-                # Only restore if URL changed during test
+                # Skip if this is now the extension tab (don't modify extension tab)
+                if state.extension_id in current_url:
+                    print(f"🔄 [{state.test_name}] Skipping extension tab restoration")
+                    continue
+                
+                # Only restore if URL changed during test and it's not an extension URL
                 if current_url != original_url and state.extension_id not in original_url:
                     state.driver.get(original_url)
                     print(f"🔄 [{state.test_name}] Restored tab to: {original_url[:50]}")
@@ -344,21 +408,106 @@ def _verify_final_state_matches_initial(state):
     """Verify that final browser state exactly matches initial state"""
     try:
         final_handles = set(state.driver.window_handles)
+        test_name = state.test_name.lower()
+        is_close_all_test = any(keyword in test_name for keyword in ['close_all', 'closeall', 'close all'])
         
-        # Check handle count
-        if len(final_handles) != len(state.initial_handles):
-            print(f"⚠️  [{state.test_name}] Tab count mismatch: initial={len(state.initial_handles)}, final={len(final_handles)}")
+        if is_close_all_test:
+            # For Close All tests, verify URLs match rather than exact handles
+            # since restoration may create new tabs with different handles
+            expected_urls = {url for handle, url, title in state.initial_tab_states}
+            actual_urls = set()
             
-            # Show which tabs are missing/extra
-            missing = state.initial_handles - final_handles
-            extra = final_handles - state.initial_handles
+            for handle in final_handles:
+                try:
+                    state.driver.switch_to.window(handle)
+                    url = state.driver.current_url
+                    actual_urls.add(url)
+                except:
+                    pass
             
-            if missing:
-                print(f"   Missing {len(missing)} tabs from initial state")
-            if extra:
-                print(f"   Extra {len(extra)} tabs not in initial state")
+            missing_urls = expected_urls - actual_urls
+            extra_urls = actual_urls - expected_urls
+            
+            # Remove extension URLs from comparison (they're expected to vary)
+            missing_urls = {url for url in missing_urls if state.extension_id not in url}
+            extra_urls = {url for url in extra_urls if state.extension_id not in url}
+            
+            url_issues = missing_urls or extra_urls
+            count_mismatch = len(final_handles) != len(state.initial_handles)
+            
+            if url_issues or count_mismatch:
+                print(f"❌ [{state.test_name}] Close All state verification FAILED:")
+                if count_mismatch:
+                    print(f"   Tab count: initial={len(state.initial_handles)}, final={len(final_handles)}")
+                if missing_urls:
+                    print(f"   Missing URLs: {list(missing_urls)}")
+                if extra_urls:
+                    print(f"   Extra URLs: {list(extra_urls)}")
+                
+                # Don't fail for minor URL differences in Close All tests
+                if len(missing_urls) == 0 and len(extra_urls) == 0:
+                    print(f"✅ [{state.test_name}] URLs match despite handle differences (acceptable for Close All)")
+                else:
+                    import pytest
+                    pytest.fail(f"Close All state verification failed: {len(missing_urls)} missing URLs, {len(extra_urls)} extra URLs")
+            else:
+                print(f"✅ [{state.test_name}] Close All state verification PASSED: {len(final_handles)} tabs, all URLs match")
         else:
-            print(f"✅ [{state.test_name}] Tab count matches: {len(final_handles)} tabs")
+            # For regular tests, check exact handle match (more strict)
+            missing_handles = state.initial_handles - final_handles
+            extra_handles = final_handles - state.initial_handles
+            
+            # Check URLs of remaining tabs
+            url_mismatches = []
+            for handle, expected_url, expected_title in state.initial_tab_states:
+                if handle in final_handles:
+                    try:
+                        state.driver.switch_to.window(handle)
+                        actual_url = state.driver.current_url
+                        if actual_url != expected_url:
+                            url_mismatches.append(f"Tab {handle[:8]}: expected {expected_url[:50]}, got {actual_url[:50]}")
+                    except:
+                        url_mismatches.append(f"Tab {handle[:8]}: could not read URL")
+            
+            # Check count mismatch
+            count_mismatch = len(final_handles) != len(state.initial_handles)
+            
+            # Report all issues
+            has_issues = count_mismatch or missing_handles or extra_handles or url_mismatches
+            
+            if has_issues:
+                print(f"❌ [{state.test_name}] State verification FAILED:")
+                
+                if count_mismatch:
+                    print(f"   Tab count: initial={len(state.initial_handles)}, final={len(final_handles)}")
+                
+                if missing_handles:
+                    print(f"   Missing {len(missing_handles)} tabs from initial state")
+                    for i, (handle, url, title) in enumerate(state.initial_tab_states):
+                        if handle in missing_handles:
+                            print(f"     Missing: {title[:30]} - {url[:50]}")
+                
+                if extra_handles:
+                    print(f"   Extra {len(extra_handles)} tabs not in initial state")
+                    for handle in extra_handles:
+                        try:
+                            state.driver.switch_to.window(handle)
+                            url = state.driver.current_url
+                            title = state.driver.title
+                            print(f"     Extra: {title[:30]} - {url[:50]}")
+                        except:
+                            print(f"     Extra: {handle[:8]} - could not read")
+                
+                if url_mismatches:
+                    print(f"   URL mismatches in {len(url_mismatches)} tabs:")
+                    for mismatch in url_mismatches:
+                        print(f"     {mismatch}")
+                
+                # Only fail the test if there are significant issues
+                import pytest
+                pytest.fail(f"Browser state verification failed: {len(missing_handles)} missing, {len(extra_handles)} extra, {len(url_mismatches)} URL mismatches")
+            else:
+                print(f"✅ [{state.test_name}] State verification PASSED: {len(final_handles)} tabs, all URLs match")
         
         # Switch to first available tab for next test
         if final_handles:
@@ -367,6 +516,8 @@ def _verify_final_state_matches_initial(state):
             
     except Exception as e:
         print(f"⚠️  [{state.test_name}] Could not verify final state: {e}")
+        import pytest
+        pytest.fail(f"State verification error: {e}")
 
 
 @pytest.fixture(scope="function")
@@ -415,21 +566,80 @@ def create_test_tabs(state, urls):
     # Use the same approach as in extension opening - create blank tabs first
     for url in urls:
         try:
-            state.driver.execute_script("window.open('about:blank', '_blank');")
-            time.sleep(0.5)
+            # Use Chrome DevTools Protocol to create tab (more reliable than window.open)
+            import requests
+            import json
             
-            # Find the new tab and navigate to URL
-            current_handles = set(state.driver.window_handles)
-            new_handles = current_handles - initial_handles - state.created_handles
+            before_handles = set(state.driver.window_handles)
+            print(f"   Before creating {url}: {len(before_handles)} tabs")
             
-            if new_handles:
-                new_handle = list(new_handles)[0]
-                state.driver.switch_to.window(new_handle)
-                state.driver.get(url)
-                time.sleep(0.5)
-                state.created_handles.add(new_handle)
-                created_handles.append(new_handle)
-                initial_handles.add(new_handle)  # Update for next iteration
+            try:
+                # Create new tab via Chrome DevTools Protocol (use PUT with URL as query param)
+                debug_url = get_chrome_debug_url()
+                response = requests.put(f'{debug_url}/json/new?url={url}',
+                                       timeout=5)
+                
+                if response.status_code == 200:
+                    time.sleep(0.5)  # Wait for tab to appear in WebDriver
+                    
+                    after_handles = set(state.driver.window_handles)
+                    new_handles = after_handles - before_handles
+                    print(f"   After CDP create: {len(after_handles)} tabs, new: {len(new_handles)}")
+                    
+                    if new_handles:
+                        new_handle = list(new_handles)[0]
+                        state.driver.switch_to.window(new_handle)
+                        
+                        # Check current URL and navigate if needed
+                        current_url = state.driver.current_url
+                        print(f"   Current URL after CDP: {current_url}")
+                        
+                        if current_url != url and current_url == "about:blank":
+                            print(f"   Navigating to: {url}")
+                            state.driver.get(url)
+                            
+                            # Wait for navigation to complete
+                            from selenium.webdriver.support.ui import WebDriverWait
+                            
+                            try:
+                                WebDriverWait(state.driver, 5).until(
+                                    lambda driver: driver.current_url != "about:blank"
+                                )
+                                time.sleep(0.3)  # Small additional delay as suggested
+                                final_url = state.driver.current_url
+                                print(f"   ✅ Created and loaded tab: {final_url}")
+                            except Exception as load_error:
+                                print(f"   ⚠️  Tab created but load timeout for {url}: {load_error}")
+                        else:
+                            print(f"   ✅ Tab already at correct URL: {current_url}")
+                        
+                        state.created_handles.add(new_handle)
+                        created_handles.append(new_handle)
+                    else:
+                        print(f"   ❌ CDP created tab but not detected in WebDriver for: {url}")
+                else:
+                    print(f"   ❌ CDP request failed for {url}: HTTP {response.status_code}")
+                    
+            except Exception as cdp_error:
+                print(f"   ❌ CDP error for {url}: {cdp_error}")
+                # Fallback to window.open approach
+                try:
+                    state.driver.execute_script("window.open('about:blank', '_blank');")
+                    time.sleep(0.5)
+                    after_handles = set(state.driver.window_handles)
+                    new_handles = after_handles - before_handles
+                    if new_handles:
+                        new_handle = list(new_handles)[0]
+                        state.driver.switch_to.window(new_handle)
+                        state.driver.get(url)
+                        time.sleep(1)
+                        state.created_handles.add(new_handle)
+                        created_handles.append(new_handle)
+                        print(f"   ✅ Fallback created tab: {url}")
+                    else:
+                        print(f"   ❌ Both CDP and fallback failed for: {url}")
+                except Exception as fallback_error:
+                    print(f"   ❌ Fallback also failed for {url}: {fallback_error}")
         except Exception as e:
             print(f"Warning: Could not create test tab for {url}: {e}")
     
