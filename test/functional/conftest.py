@@ -147,7 +147,15 @@ def _open_extension_smart(state):
                     state.driver.get(remembered_url)
                     time.sleep(0.5)
                     
-                    state.created_handles.add(new_handle)
+                    # CRITICAL: Update initial state to reflect the handle swap
+                    # The original tab handle is now the extension, new handle has original URL
+                    for i, (handle, url, title) in enumerate(state.initial_tab_states):
+                        if handle == current_handle:  # This handle is now the extension
+                            # Update to point to the new handle with original URL
+                            state.initial_tab_states[i] = (new_handle, url, title)
+                            print(f"DEBUG: Updated initial state: {handle} -> {new_handle} for {url}")
+                            break
+                    
                     print(f"DEBUG: Successfully restored {remembered_url}")
                     
                     # Switch back to extension
@@ -202,13 +210,21 @@ def _cleanup_and_verify_state(state):
         # Step 3: Close any test tabs we explicitly created
         _close_created_test_tabs(state)
         
-        # Step 4: Restore initial state BEFORE closing extension tab
-        _restore_exact_initial_state(state)
+        # Step 4: Check if we need to restore initial tabs before closing extension
+        current_handles = set(state.driver.window_handles)
+        if len(current_handles) <= 1 and state.extension_handle in current_handles:
+            # Extension is the only tab - restore initial tabs first
+            print(f"🔄 [{test_name}] Extension is only tab - restoring initial tabs before cleanup")
+            _restore_exact_initial_state(state)
         
         # Step 5: Close extension tab (this may invalidate session)
         _close_extension_tab(state)
         
-        # Step 6: Only verify if we still have a valid session
+        # Step 6: Restore remaining initial state if needed
+        if _session_still_valid(state):
+            _restore_exact_initial_state(state)
+        
+        # Step 7: Only verify if we still have a valid session
         if _session_still_valid(state):
             _verify_final_state_matches_initial(state)
         else:
@@ -362,7 +378,13 @@ def _close_extension_tab(state):
     """Close extension tab - ALWAYS close it since we open it fresh for each test"""
     if state.extension_handle:
         try:
-            if state.extension_handle in state.driver.window_handles:
+            current_handles = state.driver.window_handles
+            if state.extension_handle in current_handles:
+                # CRITICAL: Never close the browser by closing the last tab
+                if len(current_handles) <= 1:
+                    print(f"⚠️  [{state.test_name}] Not closing extension tab - it's the only tab (would close browser)")
+                    return
+                
                 state.driver.switch_to.window(state.extension_handle)
                 current_url = state.driver.current_url
                 print(f"DEBUG: Extension tab URL: {current_url}")
