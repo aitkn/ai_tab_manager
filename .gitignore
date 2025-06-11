@@ -1,26 +1,43 @@
 # Dependencies
 node_modules/
 venv/
+test/venv/
+*/venv/
+env/
+*/env/
 
 # Test logs and cache
 test/logs/
 test/.pytest_cache/
 test/functional/.pytest_cache/
+test/legacy/.pytest_cache/
 test/__pycache__/
 test/functional/__pycache__/
 test/legacy/__pycache__/
 test/utils/__pycache__/
 *.pyc
 __pycache__/
+*/__pycache__/
+.pytest_cache/
 
-# Test reports
+# Test reports and results
 test/logs/*.html
 test/logs/*.xml
 test/logs/*.json
+test/logs/*.txt
+test_results_*.txt
+mcp_automated_test_results_*.txt
 
-# Chrome debug screenshots
+# Chrome debug files
 test/utils/*.png
 test/windows_chrome_test_*.png
+debug_extension_*.html
+debug_extension_*.png
+
+# Selenium/WebDriver files
+chromedriver*
+geckodriver*
+webdriver-manager/
 
 # Build artifacts
 build/
@@ -40,3 +57,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Claude/AI files
+.claude/
