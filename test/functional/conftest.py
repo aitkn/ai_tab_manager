@@ -154,6 +154,11 @@ def _open_extension_smart(state):
                             # Update to point to the new handle with original URL
                             state.initial_tab_states[i] = (new_handle, url, title)
                             print(f"DEBUG: Updated initial state: {handle} -> {new_handle} for {url}")
+                            
+                            # CRITICAL: Also update the initial_handles set to reflect the swap
+                            state.initial_handles.remove(current_handle)
+                            state.initial_handles.add(new_handle)
+                            print(f"DEBUG: Updated initial handles: removed {current_handle[:8]}, added {new_handle[:8]}")
                             break
                     
                     print(f"DEBUG: Successfully restored {remembered_url}")
