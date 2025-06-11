@@ -136,8 +136,8 @@ src/
 3. **Tabs not updating**: Verify background script connection and message passing
 4. **"0 tabs closed"**: Check that `duplicateIds` or `urlToDuplicateIds` is properly populated
 5. **Database version mismatch**: Ensure `database.js` version matches existing database (currently version 2)
-6. **Duplicate count not updating**: Fixed by checking title changes in `tab-display.js` real-time updates
-7. **UI flickering during updates**: Solved by using morphdom instead of manual DOM manipulation
+6. **UI flickering during updates**: Solved by using morphdom instead of manual DOM manipulation
+7. **Duplicate counter not updating in real-time**: Issue was in `content-manager.js` - `generateTabHash()` function didn't include `duplicateCount` in change detection, so UI wasn't refreshing when counters changed. Fixed by adding `:${tab.duplicateCount || 1}` to hash calculation in `content-manager.js:284`
 
 ### Critical Event Listener Issues (Debugging Pattern)
 
@@ -180,6 +180,7 @@ newElement.addEventListener('click', handler);
 - Verify all grouping modes after changes
 - Check that state persists across popup close/open
 - Monitor console for API errors or rate limits
+- **CRITICAL**: For simple UI issues (like counters not updating), check change detection logic first before investigating complex message passing or event systems. Often the issue is in hash/comparison functions not detecting the specific change type.
 
 ## Recent Major Changes
 

@@ -279,9 +279,9 @@ export function getContentStatus() {
  * @returns {string} Hash string
  */
 function generateTabHash(tabs) {
-  // Create a simple hash based on tab URLs and titles
+  // Create a simple hash based on tab URLs, titles, and duplicate counts
   const hashString = tabs
-    .map(tab => `${tab.url}:${tab.title}:${tab.category || 0}`)
+    .map(tab => `${tab.url}:${tab.title}:${tab.category || 0}:${tab.duplicateCount || 1}`)
     .sort()
     .join('|');
   
