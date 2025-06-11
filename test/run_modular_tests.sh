@@ -63,13 +63,15 @@ show_tests() {
     echo "2. groupby     - GROUP BY functionality tests"
     echo "3. all         - Run complete test suite (original)"
     echo "4. manual      - Open browser for manual testing (avoids blocking)"
-    echo "5. help        - Show this help message"
+    echo "5. wsl         - WSL-safe headless testing (no Windows display issues)"
+    echo "6. help        - Show this help message"
     echo ""
     echo "Usage examples:"
     echo "  ./run_modular_tests.sh search"
     echo "  ./run_modular_tests.sh groupby"
     echo "  ./run_modular_tests.sh all"
     echo "  ./run_modular_tests.sh manual"
+    echo "  ./run_modular_tests.sh wsl"
     echo ""
 }
 
@@ -100,6 +102,13 @@ case "${1:-help}" in
         echo "🔧 Opening Browser for Manual Testing"
         echo "====================================="
         python manual_test_helper.py
+        exit $?
+        ;;
+    
+    "wsl")
+        echo "🐧 Running WSL-Safe Headless Testing"
+        echo "===================================="
+        python test_wsl_safe.py
         exit $?
         ;;
     
