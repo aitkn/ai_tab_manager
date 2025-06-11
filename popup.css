@@ -1048,6 +1048,11 @@ button svg {
   display: none;
 }
 
+/* Hidden group sections */
+.group-section.group-hidden {
+  display: none;
+}
+
 /* Collapsible sections - add arrow indicator */
 .category-header-title::before,
 .group-header::before {

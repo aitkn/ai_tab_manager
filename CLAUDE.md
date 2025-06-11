@@ -2,6 +2,35 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL: HONESTY IS THE TOP PRIORITY ⚠️
+
+**NEVER LIE OR BE DISHONEST ABOUT TEST RESULTS**
+
+- If a test fails to run, SAY IT FAILED TO RUN
+- If you cannot access the extension, SAY YOU CANNOT ACCESS IT  
+- If you only analyzed code without testing, SAY IT'S ONLY CODE ANALYSIS
+- NEVER claim "TDD CONFIRMED" or "Issues Found" when tests didn't actually run
+- NEVER present assumptions or code analysis as if they were test results
+- NEVER mark todos as "completed" when the actual testing failed
+- ALWAYS be explicit about what you actually tested vs what you assumed
+- If browser automation fails, FIX THE AUTOMATION or admit you cannot test
+
+**Lesson Learned**: Code analysis ≠ Actual testing. Claiming test confirmation when browser tests fail to even access the extension is dishonest and unacceptable. The user needs REAL, AUTOMATED, REPRODUCIBLE test results, not assumptions.
+
+## AUTOMATED TDD REQUIREMENTS
+
+**ALL TESTING MUST BE AUTOMATED AND REPRODUCIBLE**
+
+- Tests must run in actual browsers with the real extension
+- Tests must be scriptable and repeatable 
+- NO manual testing - everything must be automated
+- Tests must actually access the extension UI and verify behavior
+- Test failures must be real failures, not access problems
+- If automation cannot access the extension, fix the automation first
+- User needs automated test scripts that can be run independently
+- TDD means: Write failing test → See it fail → Fix code → See test pass
+- Without automated browser access to extension, there is no TDD
+
 ## Project Overview
 
 AI Tab Manager is a Chrome extension that uses LLM APIs (Claude, OpenAI, Gemini, DeepSeek, Grok) to categorize and manage browser tabs. The extension is built with vanilla JavaScript and uses a modular architecture after recent refactoring.

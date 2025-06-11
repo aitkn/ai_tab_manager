@@ -111,6 +111,7 @@ export const CSS_CLASSES = {
   GROUP_SECTION: 'group-section',
   GROUP_STATS: 'group-stats',
   GROUP_COLLAPSED: 'collapsed',
+  GROUP_HIDDEN: 'group-hidden',
   
   // Button classes
   PRIMARY_BTN: 'primary-btn',
