@@ -6,7 +6,7 @@ Functional tests for search functionality
 import pytest
 import time
 from selenium.webdriver.common.by import By
-from conftest import create_test_tabs, show_demo_balloon, wait_for_element
+from .conftest import create_test_tabs, show_demo_balloon, wait_for_element, track_tabs_before_close_all
 
 
 class TestSearchFunctionality:
