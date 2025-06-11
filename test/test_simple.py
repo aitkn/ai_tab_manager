@@ -934,6 +934,143 @@ class SimpleCurrentTabTest:
             self.log_result(f"GROUP BY test failed: {e}", "FAILED")
             return False
     
+    def test_search_functionality(self):
+        """TEST 8: Check search functionality with filtering and group updates"""
+        try:
+            self.log_result("🔥 TEST 8: Testing search functionality", "PASSED")
+            
+            # Ensure we have diverse test tabs
+            test_urls = [
+                "https://github.com/microsoft/vscode",
+                "https://stackoverflow.com/questions/javascript",
+                "https://docs.google.com/spreadsheet",
+                "https://youtube.com/watch?v=python-tutorial",
+                "https://reddit.com/r/programming"
+            ]
+            
+            # Open test tabs
+            for i, url in enumerate(test_urls):
+                self.driver.execute_script(f"window.open('{url}', '_blank');")
+                time.sleep(0.3)
+                self.log_result(f"Created search test tab {i+1}: {url[:30]}...", "PASSED")
+            
+            # Switch back to extension
+            if not self.switch_back_to_extension():
+                return False
+            
+            time.sleep(2.0)  # Wait for tabs to be processed
+            
+            # Get initial counts before search
+            initial_tab_items = self.driver.find_elements(By.CSS_SELECTOR, ".tab-item, .tab-title")
+            initial_count = len(initial_tab_items)
+            self.log_result(f"Initial tab count before search: {initial_count}", "PASSED")
+            
+            # Test 1: Search for "github" (should filter tabs)
+            search_selectors = [
+                "#searchInput",
+                "[data-search]",
+                ".search-input",
+                "input[type='search']",
+                "input[placeholder*='search']",
+                "input[placeholder*='Search']"
+            ]
+            
+            search_element = None
+            for selector in search_selectors:
+                try:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    if elements:
+                        search_element = elements[0]
+                        self.log_result(f"Found search input: {selector}", "PASSED")
+                        break
+                except:
+                    continue
+            
+            if not search_element:
+                self.log_result("❌ SEARCH TEST: No search input found", "FAILED")
+                return False
+            
+            # Perform search for "github"
+            search_element.clear()
+            search_element.send_keys("github")
+            time.sleep(1.5)  # Wait for search filtering
+            
+            # Check filtered results
+            filtered_tab_items = self.driver.find_elements(By.CSS_SELECTOR, ".tab-item, .tab-title")
+            filtered_count = len(filtered_tab_items)
+            
+            if filtered_count < initial_count:
+                self.log_result(f"✅ SEARCH FILTERING: Found {filtered_count} filtered tabs (was {initial_count})", "PASSED")
+                
+                # Verify search results contain "github"
+                page_text = self.driver.find_element(By.TAG_NAME, "body").text.lower()
+                if "github" in page_text:
+                    self.log_result("✅ SEARCH CONTENT: Search results contain 'github'", "PASSED")
+                else:
+                    self.log_result("❌ SEARCH CONTENT: Search results don't show 'github'", "FAILED")
+                    return False
+            else:
+                self.log_result(f"❌ SEARCH FILTERING: No filtering occurred ({filtered_count} = {initial_count})", "FAILED")
+                return False
+            
+            # Test 2: Check group counter updates during search
+            group_headers = self.driver.find_elements(By.CSS_SELECTOR, ".group-header, .category-header, .category-section h3")
+            group_counters_during_search = []
+            
+            for header in group_headers:
+                header_text = header.text.strip()
+                if "(" in header_text and ")" in header_text:
+                    # Extract counter from header like "Uncategorized (2)"
+                    import re
+                    match = re.search(r'\((\d+)\)', header_text)
+                    if match:
+                        counter = int(match.group(1))
+                        group_counters_during_search.append(counter)
+                        self.log_result(f"✅ GROUP COUNTER: Found '{header_text}'", "PASSED")
+            
+            if group_counters_during_search:
+                total_in_counters = sum(group_counters_during_search)
+                if total_in_counters <= filtered_count + 2:  # Allow some tolerance
+                    self.log_result(f"✅ GROUP COUNTERS: Updated correctly ({total_in_counters} ≈ {filtered_count})", "PASSED")
+                else:
+                    self.log_result(f"❌ GROUP COUNTERS: Mismatch ({total_in_counters} vs {filtered_count})", "FAILED")
+            
+            # Test 3: Clear search and verify restoration
+            search_element.clear()
+            time.sleep(1.5)  # Wait for search clearing
+            
+            restored_tab_items = self.driver.find_elements(By.CSS_SELECTOR, ".tab-item, .tab-title")
+            restored_count = len(restored_tab_items)
+            
+            if restored_count >= initial_count - 2:  # Allow some variance
+                self.log_result(f"✅ SEARCH CLEAR: Tabs restored ({restored_count} ≈ {initial_count})", "PASSED")
+            else:
+                self.log_result(f"❌ SEARCH CLEAR: Tabs not restored ({restored_count} vs {initial_count})", "FAILED")
+                return False
+            
+            # Test 4: Search with no results
+            search_element.clear()
+            search_element.send_keys("xyznomatchingresults123")
+            time.sleep(1.5)
+            
+            no_results_items = self.driver.find_elements(By.CSS_SELECTOR, ".tab-item, .tab-title")
+            no_results_count = len(no_results_items)
+            
+            if no_results_count == 0:
+                self.log_result("✅ SEARCH NO RESULTS: Empty search correctly shows no tabs", "PASSED")
+            else:
+                self.log_result(f"❌ SEARCH NO RESULTS: Still showing {no_results_count} tabs", "FAILED")
+            
+            # Clear search to restore
+            search_element.clear()
+            time.sleep(1.0)
+            
+            return True
+            
+        except Exception as e:
+            self.log_result(f"SEARCH test failed: {e}", "FAILED")
+            return False
+    
     def run_test(self):
         """Run complete test"""
         print("🚀 Starting Current Tab Real-Time & Navigation Test")
@@ -951,7 +1088,8 @@ class SimpleCurrentTabTest:
                 ("🔥 TEST 4: Grouped tab counter increment/decrement", self.test_grouped_tab_counter),
                 ("🔥 TEST 5: Real-time URL changes", self.test_realtime_url_changes),
                 ("🔥 TEST 6: Navigation refresh (existing feature)", self.test_navigation_refresh),
-                ("🔥 TEST 7: GROUP BY functionality and mode switching", self.test_group_by_functionality)
+                ("🔥 TEST 7: GROUP BY functionality and mode switching", self.test_group_by_functionality),
+                ("🔥 TEST 8: Search functionality with filtering and group updates", self.test_search_functionality)
             ]
             
             all_passed = True
