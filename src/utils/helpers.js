@@ -241,8 +241,16 @@ export function fallbackCategorization(tabs) {
  */
 export function extractDomain(url) {
   try {
+    // Handle special URL schemes before using URL constructor
+    if (url.startsWith('about:')) return 'about';
+    if (url.startsWith('chrome://')) return 'chrome';
+    if (url.startsWith('chrome-extension://')) return 'extension';
+    if (url.startsWith('file://')) return 'local-file';
+    if (url.startsWith('moz-extension://')) return 'extension';
+    if (url.startsWith('data:')) return 'data';
+    
     const urlObj = new URL(url);
-    return urlObj.hostname.replace('www.', '');
+    return urlObj.hostname.replace(/^www\./, '');
   } catch {
     return 'unknown';
   }

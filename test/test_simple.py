@@ -793,11 +793,14 @@ class SimpleCurrentTabTest:
         try:
             self.log_result("🔥 TEST 7: Testing GROUP BY functionality", "PASSED")
             
-            # First, create some diverse tabs for grouping
+            # First, create some diverse tabs for grouping, including edge cases that might cause "undefined"
             test_urls = [
                 "https://google.com/search?q=test1",
                 "https://youtube.com/watch?v=abc123",
                 "https://github.com/user/repo",
+                "about:blank",  # Edge case: might cause undefined domain
+                "file:///tmp/test.html",  # Edge case: file protocol
+                "chrome://settings",  # Edge case: chrome protocol
                 "https://google.com/search?q=test2"  # Same domain as first
             ]
             
@@ -863,8 +866,22 @@ class SimpleCurrentTabTest:
                     if len(group_headers) > 0:
                         self.log_result(f"✅ DOMAIN GROUPING: Found {len(group_headers)} domain groups", "PASSED")
                         
-                        # Check if google.com tabs are grouped together
+                        # CRITICAL: Check for "unknown" domain headers (TDD approach)
                         page_text = self.driver.find_element(By.TAG_NAME, "body").text
+                        if "unknown" in page_text.lower():
+                            self.log_result("❌ DOMAIN GROUPING BUG: Found 'unknown' domain header", "FAILED")
+                            
+                            # Get detailed info about the unknown groups
+                            for header in group_headers:
+                                header_text = header.text.strip()
+                                if "unknown" in header_text.lower():
+                                    self.log_result(f"❌ UNKNOWN HEADER DETECTED: '{header_text}'", "FAILED")
+                            
+                            return False
+                        else:
+                            self.log_result("✅ DOMAIN GROUPING: No 'unknown' headers found", "PASSED")
+                        
+                        # Check if google.com tabs are grouped together
                         if "google.com" in page_text.lower():
                             self.log_result("✅ DOMAIN GROUPING: Google.com domain group detected", "PASSED")
                         
