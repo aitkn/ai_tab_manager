@@ -1,0 +1,21 @@
+{
+  "name": "chrome-extension-js-tests",
+  "version": "1.0.0",
+  "description": "JavaScript-based tests for Chrome extension using Puppeteer",
+  "main": "test-runner.js",
+  "scripts": {
+    "test": "node test-runner.js",
+    "test:groupby": "node tests/test-groupby.js",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "puppeteer-core": "^21.0.0",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
