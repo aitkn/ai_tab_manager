@@ -1,0 +1,50 @@
+# Development and testing files
+test/
+test_*
+*test*
+quick-test.js
+run-*.js
+simulate-*.js
+debug_*.js
+
+# Documentation (keep only README.md in release)
+CLAUDE.md
+CHANGELOG.md
+FIXES_SUMMARY.md
+MANUAL_TEST_CHECKLIST.md
+MCP_TESTING.md
+ML_IMPLEMENTATION_PLAN.md
+ML_SETUP.md
+CSV_EXPORT_IMPORT.md
+PRIVACY_POLICY.md
+
+# Build and development scripts
+build_for_store.sh
+copy_to_windows.sh
+sync.sh
+watch-sync.sh
+
+# Legacy and backup files
+*_old.*
+*.backup
+data.tab
+
+# Node.js and package files
+node_modules/
+package*.json
+
+# Store assets and submission files
+store_assets/
+
+# Development HTML test files
+*.html
+!popup.html
+
+# Git and development config
+.git/
+.gitignore
+.syncignore
+
+# Development utilities
+create_icons.html
+generate_*.html

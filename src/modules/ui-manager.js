@@ -11,6 +11,9 @@ import { state, updateState, savePopupState } from './state-manager.js';
 // Status message timeout
 let statusTimeout = null;
 
+// Version info for testing
+console.log('UI Manager loaded - v2.2.0');
+
 /**
  * Initialize theme system
  */

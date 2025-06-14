@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+      "chrome-extension-debug": {
+        "command": "node",
+        "args": ["/home/proshkin/proj/chrome-extension-debug-mcp/src/index.js"],
+        "env": {
+          "CHROME_DEBUG_HOST": "172.25.48.1",
+          "CHROME_DEBUG_PORT": "9223"
+        }
+      }
+    }
+}
