@@ -1,0 +1,1164 @@
+/*
+ * AI Tab Manager - Copyright (c) 2025 AI Tech Knowledge LLC
+ * Tab Display Module - handles rendering of tabs in various views
+ */
+
+import { DOM_IDS, CSS_CLASSES, TAB_CATEGORIES, CATEGORY_NAMES, GROUPING_OPTIONS, URLS, STATUS_MESSAGES } from '../utils/constants.js';
+import { $, $id, show, hide, classes, createElement } from '../utils/dom-helpers.js';
+import { getRootDomain, getSubdomain, sortTabsInGroup, getWeekNumber, getWeekStartDate, formatDate, extractDateFromGroupName } from '../utils/helpers.js';
+import { createOptimizedFavicon, preloadFavicons } from '../utils/favicon-loader.js';
+import { state } from './state-manager.js';
+import { showStatus } from './ui-manager.js';
+import { getCurrentTabs } from './tab-data-source.js';
+import { moveTab } from './tab-operations.js';
+import { createTabElement as createUnifiedTabElement, unifiedTabRenderer } from './unified-tab-renderer.js';
+
+/**
+ * Display tabs based on current state and grouping
+ */
+export async function displayTabs(isFromSaved = false) {
+  try {
+    console.log(`🔄 TAB DISPLAY: displayTabs called (isFromSaved: ${isFromSaved})`);
+    state.isViewingSaved = isFromSaved;
+    
+    // Note: Grouping controls are now in the fixed controls area, not in the scrollable container
+    
+    if (!isFromSaved) {
+      const groupingType = state.popupState.groupingSelections.categorize || 'category';
+      console.log(`🔄 TAB DISPLAY: Displaying tabs with grouping: ${groupingType}`);
+      
+      if (groupingType === 'category') {
+        console.log('🔄 TAB DISPLAY: Using category view');
+        await displayCategoryView();
+      } else {
+        console.log('🔄 TAB DISPLAY: Using grouped view');
+        await displayGroupedView(groupingType, false);
+      }
+      
+      console.log('🔄 TAB DISPLAY: Updating Close All button color...');
+      // Update Close All button color
+      const { updateCloseAllButtonColor } = await import('./ui-utilities.js');
+      await updateCloseAllButtonColor();
+      
+      console.log('🔄 TAB DISPLAY: Updating categorize button state...');
+      // Update categorize button state based on current tabs
+      const { updateCategorizeButtonState } = await import('./unified-toolbar.js');
+      await updateCategorizeButtonState();
+      
+      console.log('✅ TAB DISPLAY: displayTabs completed successfully');
+    }
+  } catch (error) {
+    console.error('❌ TAB DISPLAY: Error displaying tabs:', error);
+    showStatus('Error displaying tabs', 'error');
+  }
+}
+
+/**
+ * Display tabs grouped by category with smooth transitions
+ */
+export async function displayCategoryView() {
+  console.log('🔄 CATEGORY VIEW: displayCategoryView called');
+  
+  const container = $id(DOM_IDS.TABS_CONTAINER);
+  if (!container) {
+    console.error('❌ CATEGORY VIEW: Tabs container not found');
+    return;
+  }
+  
+  console.log('🔄 CATEGORY VIEW: Container found, setting up views...');
+  
+  // Ensure the main tabs container is visible
+  show(container);
+  console.log('🔄 CATEGORY VIEW: Tabs container made visible');
+  
+  // Show category view, hide grouped view
+  const categoryView = $id(DOM_IDS.CATEGORY_VIEW);
+  show(categoryView);
+  hide($id(DOM_IDS.GROUPED_VIEW));
+  
+  console.log('🔄 CATEGORY VIEW: Views configured, fetching tabs...');
+  
+  // Fetch current tabs from background
+  const { categorizedTabs } = await getCurrentTabs();
+  
+  console.log('🔄 CATEGORY VIEW: Retrieved categorized tabs:', {
+    categories: Object.keys(categorizedTabs),
+    counts: Object.entries(categorizedTabs).map(([cat, tabs]) => `${cat}: ${tabs.length}`).join(', ')
+  });
+  
+  // Preload favicons for better performance
+  const allTabs = Object.values(categorizedTabs).flat();
+  if (allTabs.length > 0) {
+    console.log('🔄 CATEGORY VIEW: Preloading favicons for', allTabs.length, 'tabs');
+    preloadFavicons(allTabs);
+  }
+  
+  // Store current scroll position
+  const scrollTop = container.scrollTop;
+  
+  // Update each category in place without cloning
+  console.log('🔄 CATEGORY VIEW: Updating categories in place...');
+  await updateCategoriesInPlace(categorizedTabs);
+  
+  // Restore scroll position
+  container.scrollTop = scrollTop;
+  
+  console.log('✅ CATEGORY VIEW: displayCategoryView completed');
+}
+
+/**
+ * Update categories in place without replacing the entire view
+ */
+async function updateCategoriesInPlace(categorizedTabs) {
+  console.log('🔄 UPDATE CATEGORIES: Starting in-place update...');
+  
+  // Process each category directly in the DOM
+  [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE].forEach(category => {
+    const categorySection = $id(`category${category}`);
+    if (!categorySection) {
+      console.error(`❌ UPDATE CATEGORIES: Category section not found for category ${category}`);
+      return;
+    }
+    
+    const tabs = categorizedTabs[category] || [];
+    console.log(`🔄 UPDATE CATEGORIES: Processing category ${category} with ${tabs.length} tabs`);
+    
+    let tabsList = categorySection.querySelector('.tabs-list');
+    const countElement = categorySection.querySelector('.count');
+    
+    // Show/hide uncategorized section based on whether it has tabs
+    if (category === TAB_CATEGORIES.UNCATEGORIZED) {
+      const hasUncategorized = tabs.length > 0;
+      categorySection.style.display = hasUncategorized ? 'block' : 'none';
+      console.log(`🔄 UPDATE CATEGORIES: Uncategorized section visibility: ${hasUncategorized ? 'visible' : 'hidden'}`);
+    }
+    
+    // Update count
+    if (countElement) {
+      countElement.textContent = tabs.length;
+      console.log(`🔄 UPDATE CATEGORIES: Updated count for category ${category}: ${tabs.length}`);
+      
+      // Debug: Log tab details for uncategorized
+      if (category === TAB_CATEGORIES.UNCATEGORIZED && tabs.length > 0) {
+        console.log(`🔍 DEBUG UNCATEGORIZED: Found ${tabs.length} uncategorized tabs:`, 
+          tabs.map(t => ({ id: t.id, title: t.title?.slice(0, 50), url: t.url?.slice(0, 80) })));
+      }
+    }
+    
+    // If tabs list doesn't exist, create it
+    if (!tabsList) {
+      tabsList = document.createElement('div');
+      tabsList.className = 'tabs-list';
+      categorySection.appendChild(tabsList);
+    }
+    
+    // Build new content off-screen
+    const newTabsList = document.createElement('div');
+    newTabsList.className = 'tabs-list';
+    
+    // Mark section as empty if no tabs
+    if (tabs.length === 0) {
+      classes.add(categorySection, CSS_CLASSES.CATEGORY_EMPTY);
+      // Clear the tabs list if it exists
+      if (tabsList) {
+        tabsList.innerHTML = '';
+      }
+    } else {
+      classes.remove(categorySection, CSS_CLASSES.CATEGORY_EMPTY);
+      
+      // Sort tabs by domain first, then add them
+      const sortedTabs = sortTabsInGroup(tabs, 'category');
+      
+      sortedTabs.forEach(tab => {
+        const shouldShow = !state.searchQuery || 
+          tab.title.toLowerCase().includes(state.searchQuery) || 
+          tab.url.toLowerCase().includes(state.searchQuery);
+        
+        if (shouldShow) {
+          const tabElement = createTabElement(tab, category);
+          newTabsList.appendChild(tabElement);
+        }
+      });
+    }
+    
+    // Update the tabs list
+    if (tabsList) {
+      // Check if content actually changed
+      const oldCount = tabsList.children.length;
+      const newCount = newTabsList.children.length;
+      
+      if (oldCount === newCount && oldCount > 0) {
+        // Check if the tab IDs are the same
+        const oldIds = Array.from(tabsList.children).map(el => el.dataset.tabId).join(',');
+        const newIds = Array.from(newTabsList.children).map(el => el.dataset.tabId).join(',');
+        
+        if (oldIds === newIds) {
+          // Check if duplicate counts have changed
+          let duplicatesChanged = false;
+          const oldTitles = Array.from(tabsList.children).map(el => el.querySelector('.tab-title')?.textContent || '').join('|');
+          const newTitles = Array.from(newTabsList.children).map(el => el.querySelector('.tab-title')?.textContent || '').join('|');
+          
+          if (oldTitles !== newTitles) {
+            duplicatesChanged = true;
+          }
+          
+          if (!duplicatesChanged) {
+            // Content hasn't changed, skip update
+            return;
+          }
+        }
+      }
+      
+      // Content has changed - use morphdom for smooth update
+      console.log('Content changed, using morphdom');
+      
+      // Use morphdom to smoothly morph the existing DOM to match the new DOM
+      if (window.morphdom) {
+        // Add CSS transition for smooth visual updates
+        tabsList.style.transition = 'opacity 300ms ease-in-out';
+        
+        // Use morphdom with options for better performance
+        window.morphdom(tabsList, newTabsList, {
+          // Only update if nodes are different
+          onBeforeElUpdated: function(fromEl, toEl) {
+            // Skip if they're identical
+            if (fromEl.isEqualNode(toEl)) {
+              return false;
+            }
+            return true;
+          },
+          
+          // Handle node updates smoothly
+          onElUpdated: function(el) {
+            // Add a subtle animation class if needed
+            el.style.transition = 'opacity 300ms ease-in-out';
+          },
+          
+          // Preserve scroll position
+          onBeforeNodeAdded: function(node) {
+            return node;
+          },
+          
+          // Skip certain attributes that might cause flicker
+          getNodeKey: function(node) {
+            // Use data-tab-id as key for tab elements
+            if (node.dataset && node.dataset.tabId) {
+              return node.dataset.tabId;
+            }
+            return node.id;
+          },
+          
+          // Don't update certain nodes
+          onBeforeNodeDiscarded: function(node) {
+            // Keep nodes that are being interacted with
+            if (node === document.activeElement) {
+              return false;
+            }
+            return true;
+          }
+        });
+        
+        // Clean up transition
+        setTimeout(() => {
+          tabsList.style.transition = '';
+        }, 300);
+        
+        console.log('Morphdom update complete');
+      } else {
+        // Fallback if morphdom isn't loaded
+        console.warn('Morphdom not loaded, using direct update');
+        tabsList.innerHTML = newTabsList.innerHTML;
+      }
+    }
+    
+    // Add action buttons to category header if they don't exist
+    const headerActions = categorySection.querySelector('.category-header-actions');
+    if (headerActions && headerActions.children.length === 0 && tabs.length > 0) {
+      // Add close button for all categories with tabs
+      const hasUncategorized = category === TAB_CATEGORIES.UNCATEGORIZED;
+      const closeBtn = createElement('button', {
+        className: 'category-close-btn' + (hasUncategorized ? ' has-uncategorized' : ''),
+        title: hasUncategorized ? 
+          'Close all uncategorized tabs (WARNING: These tabs have not been saved)' : 
+          'Close all tabs in this category',
+        innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+        onclick: (e) => {
+          e.stopPropagation();
+          if (hasUncategorized) {
+            // Show warning for uncategorized tabs
+            if (confirm(STATUS_MESSAGES.WARNING_CLOSE_UNCATEGORIZED)) {
+              closeAllInCategory(category);
+            }
+          } else {
+            closeAllInCategory(category);
+          }
+        }
+      });
+      headerActions.appendChild(closeBtn);
+    }
+    
+    // Make category header clickable to collapse/expand
+    const categoryHeader = categorySection.querySelector('.category-header');
+    if (categoryHeader && !categoryHeader.onclick) {
+      categoryHeader.style.cursor = 'pointer';
+      categoryHeader.onclick = (e) => {
+        // Don't collapse if clicking on action buttons
+        if (e.target.closest('.category-header-actions')) return;
+        
+        classes.toggle(categorySection, CSS_CLASSES.CATEGORY_COLLAPSED);
+      };
+    }
+  });
+}
+
+
+/**
+ * Display tabs in grouped view
+ * @param {string} groupingType - Type of grouping
+ * @param {boolean} isFromSaved - Whether displaying saved tabs
+ * @param {Object} tabsToDisplay - Optional tabs to display (for saved tabs)
+ */
+export async function displayGroupedView(groupingType, isFromSaved = false, tabsToDisplay = null) {
+  // Fetch current tabs if not provided
+  let tabs = tabsToDisplay;
+  if (!tabs && !isFromSaved) {
+    const { categorizedTabs } = await getCurrentTabs();
+    tabs = categorizedTabs;
+  } else if (!tabs) {
+    tabs = {};
+  }
+  
+  const container = isFromSaved ? $id(DOM_IDS.SAVED_CONTENT) : $id(DOM_IDS.TABS_CONTAINER);
+  if (!container) return;
+  
+  // For saved tabs, we create a new grouped view element
+  let groupedView;
+  if (isFromSaved) {
+    groupedView = createElement('div', {
+      className: 'grouping-view',
+      id: 'savedGroupedView'
+    });
+  } else {
+    // Hide category view, show grouped view
+    hide($id(DOM_IDS.CATEGORY_VIEW));
+    groupedView = $id(DOM_IDS.GROUPED_VIEW);
+    show(groupedView);
+    // Clear existing content
+    groupedView.innerHTML = '';
+  }
+  
+  // Flatten all tabs from all categories
+  const allTabs = [];
+  [TAB_CATEGORIES.UNCATEGORIZED, TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.IMPORTANT].forEach(category => {
+    if (tabs[category]) {
+      tabs[category].forEach(tab => {
+        allTabs.push({ ...tab, category });
+      });
+    }
+  });
+  
+  // Group tabs based on grouping type
+  let groups = {};
+  switch (groupingType) {
+    case GROUPING_OPTIONS.DOMAIN:
+      groups = groupByDomain(allTabs);
+      break;
+    case GROUPING_OPTIONS.SAVED_DATE:
+      groups = groupBySavedDate(allTabs);
+      break;
+    case GROUPING_OPTIONS.SAVED_WEEK:
+      groups = groupBySavedWeek(allTabs);
+      break;
+    case GROUPING_OPTIONS.SAVED_MONTH:
+      groups = groupBySavedMonth(allTabs);
+      break;
+    case GROUPING_OPTIONS.LAST_ACCESSED_DATE:
+      groups = groupByLastAccessedDate(allTabs);
+      break;
+    case GROUPING_OPTIONS.LAST_ACCESSED_WEEK:
+      groups = groupByLastAccessedWeek(allTabs);
+      break;
+    case GROUPING_OPTIONS.LAST_ACCESSED_MONTH:
+      groups = groupByLastAccessedMonth(allTabs);
+      break;
+    case GROUPING_OPTIONS.CLOSE_TIME:
+      groups = groupByCloseTime(allTabs);
+      break;
+    default:
+      groups = { 'All Tabs': allTabs };
+  }
+  
+  // Sort groups and create sections
+  const sortedGroups = Object.entries(groups).sort((a, b) => {
+    // Sort by date for date-based groupings
+    if (groupingType.includes('Date') || groupingType.includes('Week') || groupingType.includes('Month') || groupingType === 'closeTime') {
+      // For close time, extract date from "Closed MM/DD/YYYY, HH:MM:SS AM/PM" format
+      if (groupingType === 'closeTime') {
+        const extractCloseDate = (groupName) => {
+          if (groupName === 'Never Closed') return new Date(0); // Sort to end
+          const match = groupName.match(/Closed (.+)/);
+          return match ? new Date(match[1]) : new Date(0);
+        };
+        const dateA = extractCloseDate(a[0]);
+        const dateB = extractCloseDate(b[0]);
+        return dateB - dateA; // Newest first
+      } else {
+        const dateA = extractDateFromGroupName(a[0]);
+        const dateB = extractDateFromGroupName(b[0]);
+        return dateB - dateA; // Newest first
+      }
+    }
+    // Sort alphabetically for domain grouping
+    return a[0].localeCompare(b[0]);
+  });
+  
+  sortedGroups.forEach(([groupName, groupTabs]) => {
+    if (groupTabs.length > 0) {
+      const section = createGroupSection(groupName, groupTabs, groupingType);
+      groupedView.appendChild(section);
+    }
+  });
+  
+  // Return the grouped view for saved tabs
+  if (isFromSaved) {
+    return groupedView;
+  }
+}
+
+/**
+ * Create a group section
+ */
+export function createGroupSection(groupName, tabs, groupingType) {
+  // Sort tabs within the group
+  const sortedTabs = sortTabsInGroup(tabs, groupingType);
+  
+  // Count tabs by category
+  const categoryCounts = { 
+    [TAB_CATEGORIES.UNCATEGORIZED]: 0,
+    [TAB_CATEGORIES.CAN_CLOSE]: 0, 
+    [TAB_CATEGORIES.SAVE_LATER]: 0, 
+    [TAB_CATEGORIES.IMPORTANT]: 0 
+  };
+  
+  sortedTabs.forEach(tab => {
+    if (categoryCounts[tab.category] !== undefined) {
+      categoryCounts[tab.category]++;
+    }
+  });
+  
+  const section = createElement('div', {
+    className: CSS_CLASSES.GROUP_SECTION
+  });
+  
+  // Create header
+  const header = createElement('div', {
+    className: 'group-header',
+    onclick: (e) => {
+      // Don't collapse if clicking on action buttons
+      if (e.target.closest('.group-actions')) return;
+      
+      classes.toggle(section, CSS_CLASSES.GROUP_COLLAPSED);
+    }
+  });
+  
+  // Group title with icon
+  const titleDiv = createElement('div', { className: 'group-title' });
+  
+  // Add appropriate icon based on grouping type
+  let icon = '';
+  if (groupingType === GROUPING_OPTIONS.DOMAIN) {
+    icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
+  } else if (groupingType.includes('Date') || groupingType.includes('Week') || groupingType.includes('Month')) {
+    icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>';
+  }
+  
+  titleDiv.innerHTML = icon + `<span>${groupName}</span>`;
+  header.appendChild(titleDiv);
+  
+  // Create stats and actions container
+  const headerRight = createElement('div', { className: 'header-right' });
+  
+  // Stats
+  const stats = createElement('div', { className: CSS_CLASSES.GROUP_STATS });
+  
+  // Show counts with icons for each category
+  if (categoryCounts[TAB_CATEGORIES.UNCATEGORIZED] > 0) {
+    const uncategorizedStat = createElement('span', {
+      className: 'stat-item uncategorized',
+      innerHTML: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12" y2="16"></line></svg> ${categoryCounts[TAB_CATEGORIES.UNCATEGORIZED]}`
+    });
+    stats.appendChild(uncategorizedStat);
+  }
+  
+  if (categoryCounts[TAB_CATEGORIES.IMPORTANT] > 0) {
+    const importantStat = createElement('span', {
+      className: 'stat-item important',
+      innerHTML: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${categoryCounts[TAB_CATEGORIES.IMPORTANT]}`
+    });
+    stats.appendChild(importantStat);
+  }
+  
+  if (categoryCounts[TAB_CATEGORIES.SAVE_LATER] > 0) {
+    const saveForLaterStat = createElement('span', {
+      className: 'stat-item somewhat',
+      innerHTML: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg> ${categoryCounts[TAB_CATEGORIES.SAVE_LATER]}`
+    });
+    stats.appendChild(saveForLaterStat);
+  }
+  
+  if (categoryCounts[TAB_CATEGORIES.CAN_CLOSE] > 0) {
+    const canCloseStat = createElement('span', {
+      className: 'stat-item not-important',
+      innerHTML: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> ${categoryCounts[TAB_CATEGORIES.CAN_CLOSE]}`
+    });
+    stats.appendChild(canCloseStat);
+  }
+  
+  // Total count
+  const totalStat = createElement('span', {
+    className: 'stat-item total',
+    textContent: `Total: ${tabs.length}`
+  });
+  stats.appendChild(totalStat);
+  
+  headerRight.appendChild(stats);
+  
+  // Group actions
+  const groupActions = createElement('div', { className: 'group-actions' });
+  
+  // Save all button removed - tabs are auto-saved during categorization
+  // if (!state.isViewingSaved) {
+  //   const saveBtn = createElement('button', {
+  //     className: CSS_CLASSES.ICON_BTN_SMALL,
+  //     title: 'Save all tabs in this group',
+  //     innerHTML: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>',
+  //     onclick: (e) => {
+  //       e.stopPropagation();
+  //       saveAndCloseTabsInGroup(tabs);
+  //     }
+  //   });
+  //   groupActions.appendChild(saveBtn);
+  // }
+  
+  // Open all button - only show for saved tabs
+  if (state.isViewingSaved) {
+    const openAllBtn = createElement('button', {
+      className: CSS_CLASSES.ICON_BTN_SMALL,
+      title: 'Open all tabs in this group',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>',
+      onclick: (e) => {
+        e.stopPropagation();
+        openAllTabsInGroup(tabs);
+      }
+    });
+    groupActions.appendChild(openAllBtn);
+  }
+  
+  // Delete/Close group button
+  if (state.isViewingSaved) {
+    const deleteBtn = createElement('button', {
+      className: CSS_CLASSES.ICON_BTN_SMALL + ' delete-btn',
+      title: 'Delete all tabs in this group',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>',
+      onclick: (e) => {
+        e.stopPropagation();
+        deleteTabsInGroup(tabs, groupName);
+      }
+    });
+    groupActions.appendChild(deleteBtn);
+  } else {
+    // Close all button for current tabs
+    const hasUncategorizedInGroup = tabs.some(tab => tab.category === TAB_CATEGORIES.UNCATEGORIZED);
+    const closeBtn = createElement('button', {
+      className: 'group-close-btn' + (hasUncategorizedInGroup ? ' has-uncategorized' : ''),
+      title: hasUncategorizedInGroup ? 
+        'Close all tabs in this group (WARNING: Includes uncategorized tabs)' : 
+        'Close all tabs in this group',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+      onclick: (e) => {
+        e.stopPropagation();
+        closeTabsInGroup(tabs);
+      }
+    });
+    groupActions.appendChild(closeBtn);
+  }
+  
+  headerRight.appendChild(groupActions);
+  header.appendChild(headerRight);
+  section.appendChild(header);
+  
+  // Create tabs list
+  const tabsList = createElement('div', { className: CSS_CLASSES.TABS_LIST });
+  
+  // Add tabs
+  sortedTabs.forEach(tab => {
+    const shouldShow = !state.searchQuery || 
+      tab.title.toLowerCase().includes(state.searchQuery) || 
+      tab.url.toLowerCase().includes(state.searchQuery);
+    
+    if (shouldShow) {
+      const tabElement = createTabElement(tab, tab.category);
+      tabsList.appendChild(tabElement);
+    }
+  });
+  
+  section.appendChild(tabsList);
+  
+  return section;
+}
+
+/**
+ * Create a tab element
+ */
+export function createTabElement(tab, category, isFromSaved = false) {
+  // Log duplicate info for debugging
+  if (tab.duplicateIds || tab.duplicateCount) {
+    console.log('Creating tab element with duplicates:', tab.url, 'duplicateIds:', tab.duplicateIds, 'count:', tab.duplicateCount);
+  }
+  
+  const tabElement = createElement('div', {
+    className: CSS_CLASSES.TAB_ITEM + (category === TAB_CATEGORIES.UNCATEGORIZED ? ' category-uncategorized' : 
+                                      category === TAB_CATEGORIES.IMPORTANT ? ' category-important' : 
+                                      category === TAB_CATEGORIES.SAVE_LATER ? ' category-save-later' : 
+                                      category === TAB_CATEGORIES.CAN_CLOSE ? ' category-can-close' : ''),
+    dataset: { 
+      tabId: tab.id,
+      category: category
+    }
+  });
+  
+  // Add class if already saved
+  if (tab.alreadySaved) {
+    classes.add(tabElement, CSS_CLASSES.TAB_ALREADY_SAVED);
+  }
+  
+  // Add class if already categorized (not uncategorized)
+  if (tab.alreadyCategorized || (tab.knownCategory && tab.knownCategory !== 0)) {
+    classes.add(tabElement, 'already-categorized');
+  }
+  
+  // Optimized favicon with timeout and caching
+  const favicon = createOptimizedFavicon(tab);
+  tabElement.appendChild(favicon);
+  
+  // Tab info
+  // Add confidence indicator if available
+  if (tab.mlMetadata && tab.mlMetadata.confidence !== undefined) {
+    const confidence = Math.round(tab.mlMetadata.confidence * 100);
+    const confidenceLevel = confidence >= 80 ? 'high' : confidence >= 60 ? 'medium' : 'low';
+    const source = tab.mlMetadata.source || 'unknown';
+    
+    const confidenceIndicator = createElement('div', {
+      className: `ml-confidence ml-confidence-${confidenceLevel}`,
+      title: `${confidence}% confidence (${source})`,
+      innerHTML: `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="${10 * tab.mlMetadata.confidence}" opacity="${0.3 + 0.7 * tab.mlMetadata.confidence}"/>
+        </svg>
+        <span class="confidence-text">${confidence}%</span>
+      `
+    });
+    tabElement.appendChild(confidenceIndicator);
+  }
+  
+  const tabInfo = createElement('div', {
+    className: 'tab-info',
+    onclick: async () => {
+      if (state.isViewingSaved) {
+        // For saved tabs, open in a different window to keep popup open
+        try {
+          // Get all windows
+          const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+          const currentWindow = await chrome.windows.getCurrent();
+          
+          // Find a window that's not the current one
+          const otherWindow = windows.find(w => w.id !== currentWindow.id);
+          
+          if (otherWindow) {
+            // Open in the other window
+            await chrome.tabs.create({ 
+              url: tab.url,
+              active: true,
+              windowId: otherWindow.id
+            });
+            // Focus that window
+            await chrome.windows.update(otherWindow.id, { focused: true });
+          } else {
+            // No other window, create a new one
+            await chrome.windows.create({
+              url: tab.url,
+              focused: true
+            });
+          }
+          // Popup stays open
+        } catch (error) {
+          console.error('Error opening saved tab:', error);
+        }
+      } else {
+        // For active tabs, switch to the existing tab
+        if (tab.windowId) {
+          chrome.windows.update(tab.windowId, { focused: true }, () => {
+            chrome.tabs.update(tab.id, { active: true });
+            // Keep popup open
+          });
+        } else {
+          chrome.tabs.update(tab.id, { active: true });
+          // Keep popup open
+        }
+      }
+    }
+  });
+  
+  // Title with duplicate count if applicable
+  let titleText = tab.title || 'Untitled';
+  if (tab.duplicateCount && tab.duplicateCount > 1) {
+    titleText += ` (${tab.duplicateCount})`;
+  }
+  
+  const tabTitle = createElement('div', {
+    className: 'tab-title',
+    textContent: titleText,
+    title: titleText
+  });
+  tabInfo.appendChild(tabTitle);
+  
+  const tabUrl = createElement('div', {
+    className: 'tab-url',
+    textContent: tab.url,
+    title: tab.url
+  });
+  
+  // Add class for matched URLs (saved tabs)
+  if (tab.alreadySaved || tab.knownCategory !== undefined) {
+    classes.add(tabUrl, 'tab-url-matched');
+  }
+  
+  tabInfo.appendChild(tabUrl);
+  
+  tabElement.appendChild(tabInfo);
+  
+  // Action buttons
+  if (!isFromSaved) {
+    // Category selection buttons
+    const categoryButtons = createElement('div', { className: 'category-buttons' });
+    
+    // Important category button (always rendered, hidden if current category)
+    const importantBtn = createElement('button', {
+      className: 'category-btn category-important' + (category === TAB_CATEGORIES.IMPORTANT ? ' hidden-category' : ''),
+      title: 'Mark as Important',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
+      onclick: async (e) => {
+        e.stopPropagation();
+        if (category !== TAB_CATEGORIES.IMPORTANT) {
+          await moveTabToCategory(tab, category, TAB_CATEGORIES.IMPORTANT);
+        }
+      }
+    });
+    categoryButtons.appendChild(importantBtn);
+    
+    // Save Later category button (always rendered, hidden if current category)
+    const saveLaterBtn = createElement('button', {
+      className: 'category-btn category-save-later' + (category === TAB_CATEGORIES.SAVE_LATER ? ' hidden-category' : ''),
+      title: 'Mark as Useful',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>',
+      onclick: async (e) => {
+        e.stopPropagation();
+        if (category !== TAB_CATEGORIES.SAVE_LATER) {
+          await moveTabToCategory(tab, category, TAB_CATEGORIES.SAVE_LATER);
+        }
+      }
+    });
+    categoryButtons.appendChild(saveLaterBtn);
+    
+    // Can Close category button (always rendered, hidden if current category)
+    const canCloseBtn = createElement('button', {
+      className: 'category-btn category-can-close' + (category === TAB_CATEGORIES.CAN_CLOSE ? ' hidden-category' : ''),
+      title: 'Mark as Ignore',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+      onclick: async (e) => {
+        e.stopPropagation();
+        if (category !== TAB_CATEGORIES.CAN_CLOSE) {
+          await moveTabToCategory(tab, category, TAB_CATEGORIES.CAN_CLOSE);
+        }
+      }
+    });
+    categoryButtons.appendChild(canCloseBtn);
+    
+    tabElement.appendChild(categoryButtons);
+    
+    // Close button
+    const closeBtn = createElement('button', {
+      className: 'close-btn',
+      title: 'Close tab',
+      innerHTML: '×',
+      onclick: (e) => {
+        e.stopPropagation();
+        closeTab(tab, category);
+      }
+    });
+    tabElement.appendChild(closeBtn);
+  } else {
+    // Delete button for saved tabs
+    const deleteBtn = createElement('button', {
+      className: 'delete-btn',
+      title: 'Delete saved tab',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>',
+      onclick: (e) => {
+        e.stopPropagation();
+        deleteSavedTab(tab.id);
+      }
+    });
+    tabElement.appendChild(deleteBtn);
+  }
+  
+  return tabElement;
+}
+
+// Grouping functions
+function groupByDomain(tabs) {
+  const groups = {};
+  
+  tabs.forEach(tab => {
+    const domain = tab.domain || 'unknown';
+    if (!groups[domain]) {
+      groups[domain] = [];
+    }
+    groups[domain].push(tab);
+  });
+  
+  return groups;
+}
+
+function groupBySavedDate(tabs) {
+  const groups = {};
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  tabs.forEach(tab => {
+    const savedDate = new Date(tab.savedAt || tab.lastAccessed || Date.now());
+    const dateOnly = new Date(savedDate.getFullYear(), savedDate.getMonth(), savedDate.getDate());
+    
+    let groupName;
+    if (dateOnly.getTime() === today.getTime()) {
+      groupName = 'Today';
+    } else if (dateOnly.getTime() === yesterday.getTime()) {
+      groupName = 'Yesterday';
+    } else {
+      const daysAgo = Math.floor((today - dateOnly) / (1000 * 60 * 60 * 24));
+      if (daysAgo <= 7) {
+        groupName = `${daysAgo} days ago`;
+      } else {
+        groupName = `Saved ${formatDate(savedDate.getTime())}`;
+      }
+    }
+    
+    if (!groups[groupName]) {
+      groups[groupName] = [];
+    }
+    groups[groupName].push(tab);
+  });
+  
+  return groups;
+}
+
+function groupBySavedWeek(tabs) {
+  const groups = {};
+  
+  tabs.forEach(tab => {
+    const savedDate = new Date(tab.savedAt || tab.lastAccessed || Date.now());
+    const weekStart = getWeekStartDate(savedDate);
+    const weekNum = getWeekNumber(savedDate);
+    
+    // Format: "Week of Mon DD"
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const groupName = `Week of ${monthNames[weekStart.getMonth()]} ${weekStart.getDate()}`;
+    
+    if (!groups[groupName]) {
+      groups[groupName] = [];
+    }
+    groups[groupName].push(tab);
+  });
+  
+  return groups;
+}
+
+function groupBySavedMonth(tabs) {
+  const groups = {};
+  
+  tabs.forEach(tab => {
+    const savedDate = new Date(tab.savedAt || tab.lastAccessed || Date.now());
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    const groupName = `${monthNames[savedDate.getMonth()]} ${savedDate.getFullYear()}`;
+    
+    if (!groups[groupName]) {
+      groups[groupName] = [];
+    }
+    groups[groupName].push(tab);
+  });
+  
+  return groups;
+}
+
+function groupByLastAccessedDate(tabs) {
+  // Same logic as saved date but using lastAccessed timestamp
+  return groupBySavedDate(tabs.map(tab => ({
+    ...tab,
+    savedAt: tab.lastAccessed || tab.savedAt
+  })));
+}
+
+function groupByLastAccessedWeek(tabs) {
+  // Same logic as saved week but using lastAccessed timestamp
+  return groupBySavedWeek(tabs.map(tab => ({
+    ...tab,
+    savedAt: tab.lastAccessed || tab.savedAt
+  })));
+}
+
+function groupByLastAccessedMonth(tabs) {
+  // Same logic as saved month but using lastAccessed timestamp
+  return groupBySavedMonth(tabs.map(tab => ({
+    ...tab,
+    savedAt: tab.lastAccessed || tab.savedAt
+  })));
+}
+
+function groupByCloseTime(tabs) {
+  const groups = {};
+  
+  tabs.forEach(tab => {
+    if (tab.closeEvents && tab.closeEvents.length > 0) {
+      // Group by each close event
+      tab.closeEvents.forEach(event => {
+        if (event.closeTime) {
+          const closeDate = new Date(event.closeTime);
+          const groupName = `Closed ${closeDate.toLocaleString()}`;
+          
+          if (!groups[groupName]) {
+            groups[groupName] = [];
+          }
+          
+          // Create a copy of the tab for this close event
+          const tabCopy = {
+            ...tab,
+            closeTime: event.closeTime,
+            groupKey: groupName
+          };
+          
+          groups[groupName].push(tabCopy);
+        }
+      });
+    } else if (tab.lastCloseTime) {
+      // Fallback to single close time if available
+      const closeDate = new Date(tab.lastCloseTime);
+      const groupName = `Closed ${closeDate.toLocaleString()}`;
+      
+      if (!groups[groupName]) {
+        groups[groupName] = [];
+      }
+      
+      groups[groupName].push({
+        ...tab,
+        closeTime: tab.lastCloseTime,
+        groupKey: groupName
+      });
+    } else {
+      // No close time available
+      const groupName = 'Never Closed';
+      if (!groups[groupName]) {
+        groups[groupName] = [];
+      }
+      groups[groupName].push(tab);
+    }
+  });
+  
+  return groups;
+}
+
+// Note: extractDateFromGroupName is already imported from helpers.js at the top of the file
+
+/**
+ * Render tabs to a specific container (for background renderer)
+ * @param {HTMLElement} container - Container to render tabs into
+ * @param {Object} categorizedTabs - Categorized tabs data
+ */
+export async function renderTabsToContainer(container, categorizedTabs) {
+  if (!container || !categorizedTabs) return;
+  
+  console.log('🔄 TabDisplay: Rendering tabs to custom container');
+  
+  // Clear container
+  container.innerHTML = '';
+  
+  // Save current state
+  const originalCategorizedTabs = state.categorizedTabs;
+  const originalIsViewingSaved = state.isViewingSaved;
+  
+  try {
+    // Temporarily set state for rendering
+    state.categorizedTabs = categorizedTabs;
+    state.isViewingSaved = false;
+    
+    const groupingType = state.popupState.groupingSelections.categorize || 'category';
+    console.log('Rendering with grouping:', groupingType);
+    
+    if (groupingType === 'category') {
+      await renderCategoryViewToContainer(container);
+    } else {
+      await renderGroupedViewToContainer(container, groupingType);
+    }
+    
+  } finally {
+    // Restore original state
+    state.categorizedTabs = originalCategorizedTabs;
+    state.isViewingSaved = originalIsViewingSaved;
+  }
+}
+
+/**
+ * Render category view to a specific container
+ * @param {HTMLElement} container - Container to render into
+ */
+async function renderCategoryViewToContainer(container) {
+  const categorizedTabs = state.categorizedTabs;
+  
+  // Create category sections
+  for (const category of [TAB_CATEGORIES.IMPORTANT, TAB_CATEGORIES.SAVE_LATER, TAB_CATEGORIES.CAN_CLOSE, TAB_CATEGORIES.UNCATEGORIZED]) {
+    const tabs = categorizedTabs[category] || [];
+    if (tabs.length > 0) {
+      const categorySection = await createCategorySection(category, tabs);
+      if (categorySection) {
+        container.appendChild(categorySection);
+      }
+    }
+  }
+}
+
+/**
+ * Render grouped view to a specific container
+ * @param {HTMLElement} container - Container to render into
+ * @param {string} groupingType - Type of grouping
+ */
+async function renderGroupedViewToContainer(container, groupingType) {
+  const categorizedTabs = state.categorizedTabs;
+  
+  // Get all tabs
+  const allTabs = Object.values(categorizedTabs).flat();
+  
+  if (allTabs.length === 0) {
+    container.innerHTML = '<div class="no-tabs">No tabs to display</div>';
+    return;
+  }
+  
+  // Group tabs by the specified type
+  const groups = groupTabsBy(allTabs, groupingType);
+  
+  // Create sections for each group
+  for (const [groupName, tabs] of Object.entries(groups)) {
+    if (tabs.length > 0) {
+      const groupSection = createGroupSection(groupName, tabs, groupingType);
+      if (groupSection) {
+        container.appendChild(groupSection);
+      }
+    }
+  }
+}
+
+/**
+ * Create a category section for a specific container
+ * @param {number} category - Category number
+ * @param {Array} tabs - Tabs in this category
+ * @returns {HTMLElement} Category section element
+ */
+async function createCategorySection(category, tabs) {
+  if (tabs.length === 0) return null;
+  
+  const section = createElement('div', {
+    className: CSS_CLASSES.CATEGORY_SECTION,
+    id: `category${category}`,
+    dataset: { category: category }
+  });
+  
+  // Create header
+  const header = createElement('div', { className: CSS_CLASSES.CATEGORY_HEADER });
+  
+  // Category info
+  const categoryInfo = createElement('div', { className: CSS_CLASSES.CATEGORY_INFO });
+  
+  const categoryIcon = createElement('div', { 
+    className: CSS_CLASSES.CATEGORY_ICON,
+    innerHTML: getCategoryIcon(category)
+  });
+  
+  const categoryName = createElement('div', { 
+    className: CSS_CLASSES.CATEGORY_NAME,
+    textContent: CATEGORY_NAMES[category] || `Category ${category}`
+  });
+  
+  const categoryCount = createElement('div', { 
+    className: CSS_CLASSES.CATEGORY_COUNT,
+    textContent: `${tabs.length} tab${tabs.length === 1 ? '' : 's'}`
+  });
+  
+  categoryInfo.appendChild(categoryIcon);
+  categoryInfo.appendChild(categoryName);
+  categoryInfo.appendChild(categoryCount);
+  
+  header.appendChild(categoryInfo);
+  section.appendChild(header);
+  
+  // Create tabs list
+  const tabsList = createElement('div', { className: CSS_CLASSES.TABS_LIST });
+  
+  // Add tabs
+  tabs.forEach(tab => {
+    const shouldShow = !state.searchQuery || 
+      tab.title.toLowerCase().includes(state.searchQuery) || 
+      tab.url.toLowerCase().includes(state.searchQuery);
+    
+    if (shouldShow) {
+      const tabElement = createTabElement(tab, category);
+      tabsList.appendChild(tabElement);
+    }
+  });
+  
+  section.appendChild(tabsList);
+  
+  return section;
+}
+
+/**
+ * Get category icon HTML
+ * @param {number} category - Category number
+ * @returns {string} Icon HTML
+ */
+function getCategoryIcon(category) {
+  switch (category) {
+    case TAB_CATEGORIES.IMPORTANT:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>';
+    case TAB_CATEGORIES.SAVE_LATER:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>';
+    case TAB_CATEGORIES.CAN_CLOSE:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    case TAB_CATEGORIES.UNCATEGORIZED:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6m11-5h-6m-6 0H1"></path></svg>';
+    default:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg>';
+  }
+}
+
+// Import tab operations
+import { saveAndCloseCategory, openAllInCategory, closeAllInCategory, openAllTabsInGroup, closeTabsInGroup, saveAndCloseTabsInGroup, deleteTabsInGroup, closeTab, deleteSavedTab } from './tab-operations.js';
+
+// Export functions
+export default {
+  displayTabs,
+  displayCategoryView,
+  displayGroupedView,
+  createGroupSection,
+  createTabElement,
+  renderTabsToContainer
+};
