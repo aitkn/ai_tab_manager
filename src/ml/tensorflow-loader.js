@@ -40,18 +40,18 @@ export async function loadTensorFlow(preferGPU = true) {
       };
       
       // Load core first
-      await loadScript('tf-core.min.js');
+      await loadScript('src/libs/tf-core.min.js');
       console.log('TensorFlow.js core loaded');
       
       // Load CPU backend (always available as fallback)
-      await loadScript('tf-backend-cpu.min.js');
+      await loadScript('src/libs/tf-backend-cpu.min.js');
       console.log('TensorFlow.js CPU backend loaded');
       availableBackends.push('cpu');
       
       // Try to load WebGL backend for GPU acceleration
       if (preferGPU) {
         try {
-          await loadScript('tf-backend-webgl.min.js');
+          await loadScript('src/libs/tf-backend-webgl.min.js');
           console.log('TensorFlow.js WebGL backend loaded');
           availableBackends.push('webgl');
         } catch (webglError) {
@@ -60,7 +60,7 @@ export async function loadTensorFlow(preferGPU = true) {
       }
       
       // Load layers API
-      await loadScript('tf-layers.min.js');
+      await loadScript('src/libs/tf-layers.min.js');
       console.log('TensorFlow.js layers loaded');
       
       // Give a moment for everything to initialize
